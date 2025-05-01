@@ -100,7 +100,7 @@ class _ChatCommentApprovalSectionState extends State<ChatCommentApprovalSection>
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Failed to load messages. Status Code: ${response.statusCode}';
+          _errorMessage = 'Failed to load messages';
         });
       }
     } catch (e) {

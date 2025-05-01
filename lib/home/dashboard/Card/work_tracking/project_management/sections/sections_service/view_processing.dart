@@ -87,7 +87,7 @@ class ViewProcessingPageState extends State<ViewProcessingPage> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load meeting details: ${response.body}')),
+          SnackBar(content: Text('Failed to load meeting details')),
         );
         setState(() {
           _isLoading = false;

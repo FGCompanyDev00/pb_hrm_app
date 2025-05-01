@@ -34,7 +34,7 @@ class AssignmentService {
         throw Exception('Unexpected response format');
       }
     } else {
-      throw Exception('Failed to load assignments: ${response.reasonPhrase}');
+      throw Exception('Failed to load assignments');
     }
   }
 

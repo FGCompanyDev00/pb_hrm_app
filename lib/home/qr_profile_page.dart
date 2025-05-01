@@ -274,7 +274,7 @@ class ProfileScreenState extends State<ProfileScreen>
       }
     } else {
       debugPrint(
-          'Failed to load profile data - Status Code: ${response.statusCode}');
+          'Failed to load profile data ');
       debugPrint('Response Body: ${response.body}');
       throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
     }
@@ -388,7 +388,7 @@ class ProfileScreenState extends State<ProfileScreen>
       }
     } else {
       debugPrint(
-          'Failed to load display data - Status Code: ${response.statusCode}');
+          'Failed to load display data');
       debugPrint('Response Body: ${response.body}');
       throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
     }

@@ -166,7 +166,7 @@ class NotificationPageState extends State<NotificationPage> {
         }
       } else {
         throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+            'Failed to load leave types');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -423,10 +423,10 @@ class NotificationPageState extends State<NotificationPage> {
           allMeetings.add(meetingItem);
         }
       } else {
-        throw Exception(responseBody['message'] ?? 'Failed to load from $url');
+        throw Exception(responseBody['message'] ?? 'Failed to load');
       }
     } else {
-      throw Exception('Failed to load from $url: ${response.statusCode}');
+      throw Exception('Failed to load ');
     }
   }
 

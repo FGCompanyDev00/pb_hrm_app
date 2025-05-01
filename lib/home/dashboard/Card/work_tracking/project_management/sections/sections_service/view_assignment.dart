@@ -86,7 +86,7 @@ class ViewAssignmentPageState extends State<ViewAssignmentPage> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load assignment details: ${response.body}')),
+          const SnackBar(content: Text('Failed to load assignment details')),
         );
         setState(() {
           _isLoading = false;

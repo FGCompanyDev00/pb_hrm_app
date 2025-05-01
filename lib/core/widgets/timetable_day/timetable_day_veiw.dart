@@ -21,10 +21,27 @@ class TimeTableDayWidget extends HookWidget {
   final List<Events> eventsTimeTable;
   final DateTime? selectedDay;
 
+  // Helper method to get appropriate title based on event category
+  String getEventTitle(Events event) {
+    if (event.category == 'Leave' && event.leaveType != null) {
+      return event.leaveType!;
+    }
+    return event.title;
+  }
+
+  // Helper method to get appropriate description based on event category
+  String getEventDescription(Events event) {
+    if (event.category == 'Leave') {
+      return event.desc; // take_leave_reason
+    }
+    return event.desc;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ValueNotifier<List<Events>> currentEvents = useState([]);
-    final ValueNotifier<List<OverTimeEventsRow<String>>> currentOverflowEventsRow = useState([]);
+    final ValueNotifier<List<OverTimeEventsRow<String>>>
+        currentOverflowEventsRow = useState([]);
     int currentHour = 0;
     int untilEnd = 24;
     late String eventType;
@@ -50,7 +67,9 @@ class TimeTableDayWidget extends HookWidget {
         DateTime startTime;
         DateTime endTime;
 
-        if (e.start.hour != 0 && e.end.hour != 0 && slotStartTime.isAtSameMomentAs(slotEndTime)) {
+        if (e.start.hour != 0 &&
+            e.end.hour != 0 &&
+            slotStartTime.isAtSameMomentAs(slotEndTime)) {
           debugPrint('invalid same time');
           startTime = DateTime.utc(
             selectedDay!.year,
@@ -138,8 +157,10 @@ class TimeTableDayWidget extends HookWidget {
 
       currentOverflowEventsRow.value = processOverTimeEvents(
         [...currentEvents.value]..sort((a, b) => a.compare(b)),
-        startOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: currentHour, minute: 0)),
-        endOfDay: selectedDay!.copyTimeAndMinClean(TimeOfDay(hour: untilEnd, minute: 0)),
+        startOfDay: selectedDay!
+            .copyTimeAndMinClean(TimeOfDay(hour: currentHour, minute: 0)),
+        endOfDay: selectedDay!
+            .copyTimeAndMinClean(TimeOfDay(hour: untilEnd, minute: 0)),
         cropBottomEvents: true,
       );
     }
@@ -183,7 +204,8 @@ class TimeTableDayWidget extends HookWidget {
                     eventType = AppLocalizations.of(context)!.leave;
                     break;
                   case 'Meeting Room Bookings':
-                    eventType = AppLocalizations.of(context)!.meetingRoomBookings;
+                    eventType =
+                        AppLocalizations.of(context)!.meetingRoomBookings;
                     break;
                   case 'Booking Car':
                     eventType = AppLocalizations.of(context)!.bookingCar;
@@ -207,7 +229,8 @@ class TimeTableDayWidget extends HookWidget {
                       width: 60,
                       decoration: BoxDecoration(
                           color: statusColor.withOpacity(0.2),
-                          borderRadius: const BorderRadius.all(Radius.circular(10)),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(10)),
                           border: Border.all(
                             color: statusColor,
                             width: 3,
@@ -227,7 +250,8 @@ class TimeTableDayWidget extends HookWidget {
                       height: constraints.maxHeight,
                       decoration: BoxDecoration(
                         color: statusColor.withOpacity(0.2),
-                        borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(10)),
                       ),
                       width: 60,
                       child: DottedBorder(
@@ -236,7 +260,8 @@ class TimeTableDayWidget extends HookWidget {
                         dashPattern: const <double>[5, 5],
                         borderType: BorderType.RRect,
                         radius: const Radius.circular(12),
-                        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 2, vertical: 10),
                         child: Text(
                           eventType,
                           textAlign: TextAlign.center,
@@ -260,22 +285,24 @@ class TimeTableDayWidget extends HookWidget {
                             MaterialPageRoute(
                               builder: (context) => EventDetailView(
                                 event: {
-                                  'title': event.title,
-                                  'description': eventsTimeTable[itemIndex].desc,
+                                  'title': getEventTitle(event),
+                                  'description': event.desc,
                                   'startDateTime': event.start.toString(),
                                   'endDateTime': event.end.toString(),
-                                  'isMeeting': eventsTimeTable[itemIndex].isMeeting,
-                                  'createdBy': eventsTimeTable[itemIndex].createdBy ?? '',
-                                  'location': eventsTimeTable[itemIndex].location ?? '',
+                                  'isMeeting': event.isMeeting,
+                                  'createdBy': event.createdBy ?? '',
+                                  'location': event.location ?? '',
                                   'status': event.status,
-                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                                  'is_repeat': eventsTimeTable[itemIndex].isRepeat ?? '',
-                                  'video_conference': eventsTimeTable[itemIndex].videoConference ?? '',
-                                  'uid': eventsTimeTable[itemIndex].uid,
+                                  'img_name': event.imgName ?? '',
+                                  'created_at': event.createdAt ?? '',
+                                  'is_repeat': event.isRepeat ?? '',
+                                  'video_conference':
+                                      event.videoConference ?? '',
+                                  'uid': event.uid,
                                   'members': event.members ?? [],
                                   'category': event.category,
-                                  'leave_type': eventsTimeTable[itemIndex].leaveType ?? '',
+                                  'leave_type': event.leaveType ?? '',
+                                  'take_leave_reason': event.desc,
                                 },
                               ),
                             ),
@@ -285,17 +312,20 @@ class TimeTableDayWidget extends HookWidget {
                             ? const SizedBox.shrink()
                             : Container(
                                 alignment: Alignment.center,
-                                margin: const EdgeInsets.only(right: 3, left: 3),
+                                margin:
+                                    const EdgeInsets.only(right: 3, left: 3),
                                 padding: const EdgeInsets.all(8.0),
                                 height: constraints.maxHeight,
                                 width: 80,
                                 decoration: BoxDecoration(
                                   color: ColorStandardization().colorDarkGold,
-                                  borderRadius: const BorderRadius.all(Radius.circular(10)),
+                                  borderRadius: const BorderRadius.all(
+                                      Radius.circular(10)),
                                 ),
                                 child: Text(
                                   eventType,
-                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -309,28 +339,29 @@ class TimeTableDayWidget extends HookWidget {
                             MaterialPageRoute(
                               builder: (context) => EventDetailView(
                                 event: {
-                                  'title': event.title,
-                                  'description': eventsTimeTable[itemIndex].reason,
+                                  'title': getEventTitle(event),
+                                  'description': event.desc,
                                   'startDateTime': event.start.toString(),
                                   'endDateTime': event.end.toString(),
-                                  'isMeeting': true,
-                                  'createdBy': eventsTimeTable[itemIndex].requestorID,
-                                  'location': '',
+                                  'isMeeting': event.isMeeting,
+                                  'createdBy': event.createdBy ?? '',
+                                  'location': event.location ?? '',
                                   'status': event.status,
-                                  'img_name': eventsTimeTable[itemIndex].imgName ?? '',
-                                  'created_at': eventsTimeTable[itemIndex].createdAt ?? '',
-                                  'is_repeat': '',
-                                  'video_conference': '',
-                                  'uid': eventsTimeTable[itemIndex].uid,
-                                  'members': const [],
+                                  'img_name': event.imgName ?? '',
+                                  'created_at': event.createdAt ?? '',
+                                  'is_repeat': event.isRepeat ?? '',
+                                  'video_conference':
+                                      event.videoConference ?? '',
+                                  'uid': event.uid,
+                                  'members': event.members ?? [],
                                   'category': event.category,
                                   'leave_type': event.leaveType,
+                                  'take_leave_reason': event.desc,
                                 },
                               ),
                             ),
                           );
                         },
-                        // child: statusChild,
                         child: Container(
                           margin: const EdgeInsets.only(right: 3, left: 3),
                           padding: const EdgeInsets.all(8.0),
@@ -343,22 +374,28 @@ class TimeTableDayWidget extends HookWidget {
                               top: BorderSide(color: statusColor),
                               bottom: BorderSide(color: statusColor),
                             ),
-                            borderRadius: const BorderRadius.all(Radius.circular(10)),
+                            borderRadius:
+                                const BorderRadius.all(Radius.circular(10)),
                           ),
                           child: Row(
                             children: [
                               (time.inHours) < 2
                                   ? Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         SingleChildScrollView(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Row(
                                                 children: [
-                                                  const Icon(Icons.window_rounded, size: 15),
+                                                  const Icon(
+                                                      Icons.window_rounded,
+                                                      size: 15),
                                                   const SizedBox(width: 5),
                                                   Text(eventType),
                                                 ],
@@ -366,20 +403,33 @@ class TimeTableDayWidget extends HookWidget {
                                               const SizedBox(height: 6),
                                               Row(
                                                 children: [
-                                                  iconCategory != null ? Image.asset(iconCategory, width: 15) : const SizedBox.shrink(),
+                                                  iconCategory != null
+                                                      ? Image.asset(
+                                                          iconCategory,
+                                                          width: 15)
+                                                      : const SizedBox.shrink(),
                                                   const SizedBox(width: 5),
-                                                  Text(event.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                                  Text(getEventTitle(event),
+                                                      style: const TextStyle(
+                                                          fontSize: 12,
+                                                          fontWeight:
+                                                              FontWeight.bold)),
                                                 ],
                                               ),
                                               // Text(event.desc, style: const TextStyle(fontSize: 10)),
-                                              Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                              Row(
+                                                  children:
+                                                      buildMembersAvatarsTimeTable(
+                                                          event, context)),
                                               Row(
                                                 children: [
-                                                  const Icon(Icons.access_time, size: 15),
+                                                  const Icon(Icons.access_time,
+                                                      size: 15),
                                                   const SizedBox(width: 5),
                                                   Text(
                                                     '${FLDateTime.formatWithNames(event.start, 'hh:mm a')} - ${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                    style: const TextStyle(fontSize: 10),
+                                                    style: const TextStyle(
+                                                        fontSize: 10),
                                                   ),
                                                 ],
                                               ),
@@ -389,18 +439,24 @@ class TimeTableDayWidget extends HookWidget {
                                       ],
                                     )
                                   : Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         // First column for eventType and event.desc
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             // Row for icon and eventType
                                             Row(
                                               children: [
                                                 ColorFiltered(
                                                   colorFilter: ColorFilter.mode(
-                                                    Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                                    Theme.of(context)
+                                                                .brightness ==
+                                                            Brightness.dark
+                                                        ? Colors.white
+                                                        : Colors.black,
                                                     BlendMode.srcIn,
                                                   ),
                                                   child: Image.asset(
@@ -417,12 +473,15 @@ class TimeTableDayWidget extends HookWidget {
                                             // Row for event.desc
                                             Row(
                                               children: [
-                                                const Icon(Icons.title_sharp, size: 18, color: Colors.blueGrey),
+                                                const Icon(Icons.title_sharp,
+                                                    size: 18,
+                                                    color: Colors.blueGrey),
                                                 const SizedBox(width: 5),
                                                 Align(
-                                                  alignment: Alignment.bottomCenter,
+                                                  alignment:
+                                                      Alignment.bottomCenter,
                                                   child: Text(
-                                                    event.desc,
+                                                    getEventDescription(event),
                                                     textAlign: TextAlign.start,
                                                     style: const TextStyle(
                                                       fontSize: 14,
@@ -439,24 +498,36 @@ class TimeTableDayWidget extends HookWidget {
 
                                         // Second column for additional content like members, time, and other info
                                         Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             // Row for avatars
-                                            Row(children: buildMembersAvatarsTimeTable(event, context)),
+                                            Row(
+                                                children:
+                                                    buildMembersAvatarsTimeTable(
+                                                        event, context)),
                                             const SizedBox(height: 20),
 
                                             // Row for time and additional details
                                             Row(
-                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
                                               children: [
                                                 Row(
                                                   children: [
                                                     iconCategory != null
                                                         ? Padding(
-                                                            padding: const EdgeInsets.only(left: 10),
-                                                            child: Image.asset(iconCategory, width: 15),
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .only(
+                                                                    left: 10),
+                                                            child: Image.asset(
+                                                                iconCategory,
+                                                                width: 15),
                                                           )
-                                                        : const SizedBox.shrink(),
+                                                        : const SizedBox
+                                                            .shrink(),
                                                   ],
                                                 ),
                                                 const SizedBox(width: 20),
@@ -465,12 +536,17 @@ class TimeTableDayWidget extends HookWidget {
                                                     Icon(
                                                       Icons.access_time,
                                                       size: 15,
-                                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                                      color: Theme.of(context)
+                                                                  .brightness ==
+                                                              Brightness.dark
+                                                          ? Colors.white
+                                                          : Colors.black,
                                                     ),
                                                     const SizedBox(width: 5),
                                                     Text(
                                                       '${FLDateTime.formatWithNames(event.start, 'hh:mm a')}-${FLDateTime.formatWithNames(event.end, 'hh:mm a')}',
-                                                      style: const TextStyle(fontSize: 10),
+                                                      style: const TextStyle(
+                                                          fontSize: 10),
                                                     ),
                                                   ],
                                                 ),

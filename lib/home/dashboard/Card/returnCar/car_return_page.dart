@@ -132,7 +132,7 @@ class ReturnCarPageState extends State<ReturnCarPage>
         isLoading = false;
       });
       if (kDebugMode) {
-        print('Failed to load events: ${response.statusCode}');
+        print('Failed to load events');
       }
     }
   }

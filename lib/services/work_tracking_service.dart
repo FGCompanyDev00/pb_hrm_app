@@ -51,7 +51,7 @@ class WorkTrackingService {
         throw Exception('Unexpected response format');
       }
     } else {
-      throw Exception('Failed to load projects: ${response.reasonPhrase}');
+      throw Exception('Failed to load projects');
     }
   }
 
@@ -341,7 +341,7 @@ class WorkTrackingService {
         throw Exception('Unexpected response format');
       }
     } else {
-      throw Exception('Failed to load chat messages: ${response.reasonPhrase}');
+      throw Exception('Failed to load chat messages');
     }
   }
 
@@ -406,7 +406,7 @@ class WorkTrackingService {
         throw Exception('Unexpected response format');
       }
     } else {
-      throw Exception('Failed to load assignments: ${response.reasonPhrase}');
+      throw Exception('Failed to load assignments');
     }
   }
 
@@ -637,7 +637,7 @@ class WorkTrackingService {
       }
     } else {
       throw Exception(
-          'Failed to load project members: ${response.reasonPhrase}');
+          'Failed to load project members');
     }
   }
 
@@ -667,7 +667,7 @@ class WorkTrackingService {
       }
     } else {
       throw Exception(
-          'Failed to load assignment members: ${response.reasonPhrase}');
+          'Failed to load assignment members');
     }
   }
 

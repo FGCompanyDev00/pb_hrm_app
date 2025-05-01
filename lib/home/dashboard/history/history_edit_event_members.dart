@@ -87,7 +87,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
           });
         }
       } else {
-        print('Failed to load members. Status code: ${response.statusCode}');
+        print('Failed to load members');
       }
     } catch (error) {
       print('Error fetching members: $error');
@@ -114,7 +114,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
         });
       }
     } else {
-      print('Failed to load meeting members. Status code: ${response.statusCode}');
+      print('Failed to load meeting members');
     }
   }
 
@@ -157,7 +157,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
           });
         }
       } else {
-        print('Failed to load car members. Status code: ${secondResponse.statusCode}');
+        print('Failed to load car members');
       }
     }
   }

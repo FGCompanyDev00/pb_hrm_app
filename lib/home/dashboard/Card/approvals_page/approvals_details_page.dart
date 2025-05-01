@@ -259,7 +259,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           throw Exception(data['message'] ?? 'Failed to load waiting list.');
         }
       } else {
-        throw Exception('Failed to load waiting list: ${response.statusCode}');
+        throw Exception('Failed to load waiting list');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching waiting list: $standardErrorMessage');
@@ -308,7 +308,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           throw Exception(data['message'] ?? 'Failed to load vehicles.');
         }
       } else {
-        throw Exception('Failed to load vehicles: ${response.statusCode}');
+        throw Exception('Failed to load vehicles');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching vehicles: $e');

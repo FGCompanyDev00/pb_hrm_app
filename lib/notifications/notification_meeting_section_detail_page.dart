@@ -83,7 +83,7 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
           throw Exception(data['message'] ?? 'Failed to load meeting details.');
         }
       } else {
-        throw Exception('Failed to load meeting details: ${response.statusCode}');
+        throw Exception('Failed to load meeting details');
       }
     } catch (e) {
       _showErrorDialog('Error', e.toString());

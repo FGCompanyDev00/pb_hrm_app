@@ -109,12 +109,12 @@ class ViewProjectPageState extends State<ViewProjectPage> {
         }
       } else {
         if (kDebugMode) {
-          print('Failed to load project members: ${response.statusCode}');
+          print('Failed to load project members');
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to load project members: $e');
+        print('Failed to load project members');
       }
     }
   }
@@ -129,13 +129,13 @@ class ViewProjectPageState extends State<ViewProjectPage> {
         return data['results']?['images'] ?? 'https://via.placeholder.com/150';
       } else {
         if (kDebugMode) {
-          print('Failed to load profile image: ${response.statusCode}');
+          print('Failed to load profile image');
         }
         return 'https://via.placeholder.com/150';
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to load profile image: $e');
+        print('Failed to load profile image');
       }
       return 'https://via.placeholder.com/150';
     }

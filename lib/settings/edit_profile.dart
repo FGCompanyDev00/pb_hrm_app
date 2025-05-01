@@ -105,7 +105,7 @@ class EditProfilePageState extends State<EditProfilePage> {
       } else if (profileResponse.statusCode == 401) {
         _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
       } else {
-        _showDialog('Error', 'Failed to load profile. (${profileResponse.statusCode})');
+        _showDialog('Error', 'Failed to load profile');
       }
 
       // Fetch profile image

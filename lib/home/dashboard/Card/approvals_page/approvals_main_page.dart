@@ -293,7 +293,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         }
       } else {
         throw Exception(
-            'Failed to load leave types: ${leaveTypesResponse.statusCode}');
+            'Failed to load leave types');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching leave types: $e');
@@ -500,7 +500,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
           throw Exception(errorMessage);
         }
       } else {
-        final errorMessage = 'Failed to load history data: ${historyResponse.statusCode}';
+        const errorMessage = 'Failed to load history data';
         debugPrint(errorMessage);
         throw Exception(errorMessage);
       }

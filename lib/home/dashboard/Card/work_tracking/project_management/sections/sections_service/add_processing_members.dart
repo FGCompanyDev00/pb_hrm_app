@@ -105,7 +105,7 @@ class SelectProcessingMembersPageState extends State<SelectProcessingMembersPage
         // Fetch images for each member
         await _fetchMembersImages(token);
       } else {
-        throw Exception('Failed to load members: ${response.statusCode}, ${response.reasonPhrase}');
+        throw Exception('Failed to load members');
       }
     } catch (e) {
       _showErrorMessage('Error fetching members: $e');

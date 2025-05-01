@@ -294,13 +294,13 @@ class EditProjectPageState extends State<EditProjectPage> {
         }
       } else {
         if (kDebugMode) {
-          print('Failed to load project members: ${response.statusCode}');
+          print('Failed to load project members');
         }
-        _showErrorDialog('Failed to load project members: ${response.reasonPhrase}');
+        _showErrorDialog('Failed to load project members');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to load project members: $e');
+        print('Failed to load project members');
       }
       _showErrorDialog('An error occurred while fetching project members.');
     } finally {
@@ -320,13 +320,13 @@ class EditProjectPageState extends State<EditProjectPage> {
         return data['results']?['images'] ?? 'https://via.placeholder.com/150'; // Use null-aware operator
       } else {
         if (kDebugMode) {
-          print('Failed to load profile image: ${response.statusCode}');
+          print('Failed to load profile image');
         }
         return 'https://via.placeholder.com/150';
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Failed to load profile image: $e');
+        print('Failed to load profile image');
       }
       return 'https://via.placeholder.com/150';
     }

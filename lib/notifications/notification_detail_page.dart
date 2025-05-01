@@ -139,7 +139,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
         throw Exception('Approval details not found: ${response.statusCode}');
       } else {
         throw Exception(
-            'Failed to load approval details: ${response.statusCode}');
+            'Failed to load approval details');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching approval details: $e');
@@ -258,7 +258,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
           throw Exception(data['message'] ?? 'Failed to load waiting list.');
         }
       } else {
-        throw Exception('Failed to load waiting list: ${response.statusCode}');
+        throw Exception('Failed to load waiting list');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching waiting list: $e');
@@ -307,7 +307,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
           throw Exception(data['message'] ?? 'Failed to load vehicles.');
         }
       } else {
-        throw Exception('Failed to load vehicles: ${response.statusCode}');
+        throw Exception('Failed to load vehicles');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching vehicles: $e');
@@ -345,7 +345,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
           throw Exception(data['message'] ?? 'Failed to load profile image.');
         }
       } else {
-        throw Exception('Failed to load profile image: ${response.statusCode}');
+        throw Exception('Failed to load profile image');
       }
     } catch (e) {
       // Log the error or handle it as per your requirement

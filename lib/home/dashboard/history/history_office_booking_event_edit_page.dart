@@ -285,7 +285,7 @@ class OfficeBookingEventEditPageState extends State<OfficeBookingEventEditPage> 
           throw Exception('Unexpected data format received from API.');
         }
       } else {
-        throw Exception('Failed to load event details: ${response.statusCode}');
+        throw Exception('Failed to load event details');
       }
     } catch (e) {
       setState(() {

@@ -83,7 +83,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load meetings: ${response.body}')),
+          const SnackBar(content: Text('Failed to load meetings')),
         );
         setState(() {
           _isLoading = false;
@@ -92,7 +92,7 @@ class _ProcessingSectionState extends State<ProcessingSection> {
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('Failed to load meeting data: $e');
+        debugPrint('Failed to load meeting data');
       }
       setState(() {
         _isLoading = false;

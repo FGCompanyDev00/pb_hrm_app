@@ -87,18 +87,18 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load assignments: ${response.body}')),
+          SnackBar(content: Text('Failed to load assignments')),
         );
         setState(() {
           _isLoading = false;
           _hasError = true;
         });
 
-        debugPrint('[_AssignmentSection] Failed to load assignments: ${response.body}');
+        debugPrint('[_AssignmentSection] Failed to load assignments');
       }
     } catch (e) {
       if (kDebugMode) {
-        debugPrint('[_AssignmentSection] Failed to load assignment data: $e');
+        debugPrint('[_AssignmentSection] Failed to load assignment data');
       }
       setState(() {
         _isLoading = false;
