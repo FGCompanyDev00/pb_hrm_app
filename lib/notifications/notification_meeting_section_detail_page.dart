@@ -7,20 +7,26 @@ import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 class NotificationMeetingDetailsPage extends StatefulWidget {
   final String id;
+  final bool isOutMeeting;
 
   const NotificationMeetingDetailsPage({
     super.key,
     required this.id,
+    this.isOutMeeting = false,
   });
 
   @override
-  NotificationMeetingDetailsPageState createState() => NotificationMeetingDetailsPageState();
+  NotificationMeetingDetailsPageState createState() =>
+      NotificationMeetingDetailsPageState();
 }
 
-class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetailsPage> with SingleTickerProviderStateMixin {
+class NotificationMeetingDetailsPageState
+    extends State<NotificationMeetingDetailsPage>
+    with SingleTickerProviderStateMixin {
   bool isLoading = true;
   bool isFinalized = false;
   Map<String, dynamic>? meetingData;
@@ -40,16 +46,21 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
       duration: const Duration(seconds: 1),
       vsync: this,
     );
-    _animation = CurvedAnimation(parent: _animationController, curve: Curves.easeOut);
+    _animation =
+        CurvedAnimation(parent: _animationController, curve: Curves.easeOut);
   }
 
   Future<void> _fetchMeetingDetails() async {
-    String apiUrl = '$baseUrl/api/office-administration/book_meeting_room/invite-meeting/${widget.id}';
+    // Choose API based on meeting type
+    String apiUrl = widget.isOutMeeting
+        ? '$baseUrl/api/work-tracking/out-meeting/outmeeting/my-member/${widget.id}'
+        : '$baseUrl/api/office-administration/book_meeting_room/invite-meeting/${widget.id}';
 
     try {
       final String? token = await _getToken();
       if (token == null) {
-        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
         return;
       }
 
@@ -77,6 +88,11 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
 
             userResponse = meetingData!['status']?.toString().toLowerCase();
 
+            // For out-meeting, check if the current user's response is in the member list
+            if (widget.isOutMeeting && meetingData!['members'] != null) {
+              getMyResponseFromOutMeeting();
+            }
+
             isLoading = false;
           });
         } else {
@@ -87,6 +103,122 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
       }
     } catch (e) {
       _showErrorDialog('Error', e.toString());
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  // Function to get the current user's response from out-meeting members list
+  Future<void> getMyResponseFromOutMeeting() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? employeeId = prefs.getString('employee_id');
+
+      if (employeeId != null && meetingData!['members'] != null) {
+        final List<dynamic> members = meetingData!['members'];
+        for (var member in members) {
+          if (member['employee_id'] == employeeId) {
+            setState(() {
+              userResponse =
+                  member['going']?.toString().toLowerCase() ?? 'pending';
+            });
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      print('Error getting response from out-meeting: $e');
+    }
+  }
+
+  // Function to submit a response for out-meeting
+  Future<void> submitOutMeetingResponse(String response) async {
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      final String? token = await _getToken();
+      if (token == null) {
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
+        return;
+      }
+
+      // Get the outmeeting_uid from meetingData, fallback to widget.id if not available
+      String outmeetingUid =
+          meetingData?['outmeeting_uid']?.toString() ?? widget.id;
+
+      if (kDebugMode) {
+        print('Using outmeeting_uid: $outmeetingUid for $response response');
+      }
+
+      // Determine which API to call based on the response
+      String apiUrl;
+      switch (response.toLowerCase()) {
+        case 'yes':
+          apiUrl =
+              '$baseUrl/api/work-tracking/out-meeting/outmeeting/yes/$outmeetingUid';
+          break;
+        case 'no':
+          apiUrl =
+              '$baseUrl/api/work-tracking/out-meeting/outmeeting/no/$outmeetingUid';
+          break;
+        case 'maybe':
+          apiUrl =
+              '$baseUrl/api/work-tracking/out-meeting/outmeeting/maybe/$outmeetingUid';
+          break;
+        default:
+          throw Exception('Invalid response');
+      }
+
+      if (kDebugMode) {
+        print('Making PUT request to: $apiUrl');
+      }
+
+      final responseData = await http.put(
+        Uri.parse(apiUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Response status: ${responseData.statusCode}');
+        print('Response body: ${responseData.body}');
+      }
+
+      // Accept both 200 and 201 as successful status codes
+      if (responseData.statusCode == 200 || responseData.statusCode == 201) {
+        final data = jsonDecode(responseData.body);
+        // Check if the API response itself indicates success
+        if (data['statusCode'] == 200 || data['statusCode'] == 201) {
+          setState(() {
+            userResponse = response.toLowerCase();
+            isFinalized = true;
+          });
+
+          // Refresh meeting details
+          await _fetchMeetingDetails();
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Response submitted successfully')),
+          );
+        } else {
+          throw Exception(data['message'] ?? 'Failed to submit response');
+        }
+      } else {
+        throw Exception(
+            'Failed to submit response: ${responseData.statusCode}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in submitOutMeetingResponse: $e');
+      }
+      _showErrorDialog('Error', e.toString());
+    } finally {
       setState(() {
         isLoading = false;
       });
@@ -118,11 +250,13 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white, // Pure white background
       appBar: _buildAppBar(context, darkModeGlobal),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -133,7 +267,9 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
                   const SizedBox(height: 40),
                   _buildMeetingDetails(darkModeGlobal),
                   const SizedBox(height: 30),
-                  _buildMeetingActionButtons(),
+                  widget.isOutMeeting
+                      ? _buildOutMeetingActionButtons()
+                      : _buildMeetingActionButtons(),
                 ],
               ),
             ),
@@ -145,7 +281,8 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
-            image: AssetImage(darkModeGlobal ? 'assets/darkbg.png' : 'assets/background.png'),
+            image: AssetImage(
+                darkModeGlobal ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -157,10 +294,12 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
       centerTitle: true,
       title: Text(
         'Meeting Details',
-        style: TextStyle(color: darkModeGlobal ? Colors.white : Colors.black, fontSize: 20),
+        style: TextStyle(
+            color: darkModeGlobal ? Colors.white : Colors.black, fontSize: 20),
       ),
       leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios_new, color: darkModeGlobal ? Colors.white : Colors.black, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new,
+            color: darkModeGlobal ? Colors.white : Colors.black, size: 20),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -172,9 +311,10 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
   }
 
   Widget _buildRequestorSection(bool darkModeGlobal) {
-    String requestorName = meetingData?['employee_name'] ?? 'No Name';
-    String submittedOn = formatDate(meetingData?['date_create']);
-    String profileImage = requestorImage ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+    String requestorName = meetingData?['created_by_name'] ?? 'No Name';
+    String submittedOn = formatDate(meetingData?['created_at']);
+    String profileImage = requestorImage ??
+        'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -228,11 +368,15 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
       decoration: BoxDecoration(
-        color: darkModeGlobal ? Colors.blueGrey.withOpacity(0.3) : Colors.lightBlueAccent.withOpacity(0.3),
+        color: darkModeGlobal
+            ? Colors.blueGrey.withOpacity(0.3)
+            : Colors.lightBlueAccent.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        'MEETING ROOM BOOKING REQUEST',
+        widget.isOutMeeting
+            ? 'ADD MEETING INVITATION'
+            : 'MEETING ROOM BOOKING REQUEST',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: darkModeGlobal ? Colors.white : Colors.black,
@@ -243,23 +387,105 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
   }
 
   Widget _buildMeetingDetails(bool darkModeGlobal) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildInfoRow('Meeting ID', meetingData?['meeting_id']?.toString() ?? 'N/A', Icons.meeting_room, Colors.green, darkModeGlobal),
-        _buildInfoRow('Title', meetingData?['title'] ?? 'N/A', Icons.title, Colors.blue, darkModeGlobal),
-        _buildInfoRow('From Date', formatDate(meetingData?['from_date_time']), Icons.calendar_today, Colors.blue, darkModeGlobal),
-        _buildInfoRow('To Date', formatDate(meetingData?['to_date_time']), Icons.calendar_today, Colors.blue, darkModeGlobal),
-        _buildInfoRow('Room Name', meetingData?['room_name']?.toString() ?? 'N/A', Icons.room, Colors.orange, darkModeGlobal),
-        _buildInfoRow('Floor', meetingData?['room_floor']?.toString() ?? 'N/A', Icons.layers, Colors.orange, darkModeGlobal),
-        _buildInfoRow('Branch Name', meetingData?['branch_name']?.toString() ?? 'N/A', Icons.business, Colors.red, darkModeGlobal),
-        _buildInfoRow('Status', meetingData?['status']?.toString() ?? 'Pending', Icons.stairs, Colors.red, darkModeGlobal),
-        _buildMembersSection(darkModeGlobal),
-      ],
-    );
+    if (widget.isOutMeeting) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow(
+              'Meeting ID',
+              meetingData?['outmeeting_uid']?.toString() ?? 'N/A',
+              Icons.meeting_room,
+              Colors.purple,
+              darkModeGlobal),
+          _buildInfoRow('Title', meetingData?['title'] ?? 'N/A', Icons.title,
+              Colors.blue, darkModeGlobal),
+          _buildInfoRow('Description', meetingData?['description'] ?? 'N/A',
+              Icons.description, Colors.teal, darkModeGlobal),
+          _buildInfoRow('From Date', formatDate(meetingData?['fromdate']),
+              Icons.calendar_today, Colors.blue, darkModeGlobal),
+          _buildInfoRow('To Date', formatDate(meetingData?['todate']),
+              Icons.calendar_today, Colors.blue, darkModeGlobal),
+          // _buildInfoRow(
+          //     'Location',
+          //     meetingData?['location']?.toString() ?? 'N/A',
+          //     Icons.location_on,
+          //     Colors.orange,
+          //     darkModeGlobal),
+          // _buildInfoRow(
+          //     'Video Conference',
+          //     meetingData?['video_conference']?.toString() ?? 'N/A',
+          //     Icons.video_call,
+          //     Colors.amber,
+          //     darkModeGlobal),
+          _buildInfoRow(
+              'Notification',
+              '${meetingData?['notification'] ?? 'N/A'} minutes',
+              Icons.notifications,
+              Colors.pink,
+              darkModeGlobal),
+          _buildInfoRow(
+              'Status',
+              meetingData?['status']?.toString() ?? 'Pending',
+              Icons.info,
+              Colors.red,
+              darkModeGlobal),
+          _buildInfoRow(
+              'Created By',
+              meetingData?['created_by_name']?.toString() ?? 'N/A',
+              Icons.person,
+              Colors.indigo,
+              darkModeGlobal),
+          _buildOutMeetingMembersSection(darkModeGlobal),
+        ],
+      );
+    } else {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildInfoRow(
+              'Meeting ID',
+              meetingData?['meeting_id']?.toString() ?? 'N/A',
+              Icons.meeting_room,
+              Colors.green,
+              darkModeGlobal),
+          _buildInfoRow('Title', meetingData?['title'] ?? 'N/A', Icons.title,
+              Colors.blue, darkModeGlobal),
+          _buildInfoRow('From Date', formatDate(meetingData?['from_date_time']),
+              Icons.calendar_today, Colors.blue, darkModeGlobal),
+          _buildInfoRow('To Date', formatDate(meetingData?['to_date_time']),
+              Icons.calendar_today, Colors.blue, darkModeGlobal),
+          _buildInfoRow(
+              'Room Name',
+              meetingData?['room_name']?.toString() ?? 'N/A',
+              Icons.room,
+              Colors.orange,
+              darkModeGlobal),
+          _buildInfoRow(
+              'Floor',
+              meetingData?['room_floor']?.toString() ?? 'N/A',
+              Icons.layers,
+              Colors.orange,
+              darkModeGlobal),
+          _buildInfoRow(
+              'Branch Name',
+              meetingData?['branch_name']?.toString() ?? 'N/A',
+              Icons.business,
+              Colors.red,
+              darkModeGlobal),
+          _buildInfoRow(
+              'Status',
+              meetingData?['status']?.toString() ?? 'Pending',
+              Icons.stairs,
+              Colors.red,
+              darkModeGlobal),
+          _buildMembersSection(darkModeGlobal),
+        ],
+      );
+    }
   }
 
-  Widget _buildInfoRow(String title, String content, IconData icon, Color color, bool darkModeGlobal) {
+  Widget _buildInfoRow(String title, String content, IconData icon, Color color,
+      bool darkModeGlobal) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -273,7 +499,9 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
               '$title: $content',
               style: TextStyle(
                 fontSize: 14,
-                color: darkModeGlobal ? Colors.white : Colors.black, // Text color changes based on dark mode
+                color: darkModeGlobal
+                    ? Colors.white
+                    : Colors.black, // Text color changes based on dark mode
               ),
             ),
           ),
@@ -297,14 +525,17 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
         ...members.map((member) {
           String memberName = member['member_name'] ?? 'No Name';
           String status = member['status'] ?? 'Unknown';
-          String memberImage = member['img_name'] ?? 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+          String memberImage = member['img_name'] ??
+              'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2.0),
             child: ListTile(
               leading: CircleAvatar(
                 backgroundImage: NetworkImage(memberImage),
-                backgroundColor: darkModeGlobal ? Colors.grey[700] : Colors.grey[300], // Adjust avatar background color
+                backgroundColor: darkModeGlobal
+                    ? Colors.grey[700]
+                    : Colors.grey[300], // Adjust avatar background color
                 radius: 20,
                 onBackgroundImageError: (error, stackTrace) {},
               ),
@@ -312,14 +543,18 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
                 memberName,
                 style: TextStyle(
                   fontSize: 14,
-                  color: darkModeGlobal ? Colors.white : Colors.black, // Text color for dark mode
+                  color: darkModeGlobal
+                      ? Colors.white
+                      : Colors.black, // Text color for dark mode
                 ),
               ),
               subtitle: Text(
                 'Status: $status',
                 style: TextStyle(
                   fontSize: 12,
-                  color: darkModeGlobal ? Colors.white70 : Colors.black54, // Subtitle text color
+                  color: darkModeGlobal
+                      ? Colors.white70
+                      : Colors.black54, // Subtitle text color
                 ),
               ),
               contentPadding: EdgeInsets.zero,
@@ -332,7 +567,10 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
   }
 
   Widget _buildMeetingActionButtons() {
-    bool alreadyResponded = userResponse != null && (userResponse == 'yes' || userResponse == 'no' || userResponse == 'undecided');
+    bool alreadyResponded = userResponse != null &&
+        (userResponse == 'yes' ||
+            userResponse == 'no' ||
+            userResponse == 'undecided');
     String responseLabel = '';
     Color buttonColor = Colors.grey;
     IconData buttonIcon = Icons.check;
@@ -362,11 +600,17 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
                     style: OutlinedButton.styleFrom(
                       backgroundColor: buttonColor,
                       side: BorderSide.none,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30)),
                     ),
                     icon: Icon(buttonIcon, color: Colors.white, size: 18),
-                    label: Text(responseLabel, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                    label: Text(responseLabel,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white)),
                   ),
                 ],
               )
@@ -425,10 +669,13 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         ),
         icon: Icon(icon, color: textColor, size: 18),
-        label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: textColor)),
+        label: Text(label,
+            style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w500, color: textColor)),
       ),
     );
   }
@@ -439,7 +686,8 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
     String endpoint;
 
     if (action == 'join') {
-      endpoint = '$baseUrl/api/office-administration/book_meeting_room/yes/$uid';
+      endpoint =
+          '$baseUrl/api/office-administration/book_meeting_room/yes/$uid';
     } else if (action == 'decline' || action == 'undecided') {
       endpoint = '$baseUrl/api/office-administration/book_meeting_room/no/$uid';
     } else {
@@ -454,7 +702,8 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
     try {
       final String? token = await _getToken();
       if (token == null) {
-        _showErrorDialog('Authentication Error', 'Token not found. Please log in again.');
+        _showErrorDialog(
+            'Authentication Error', 'Token not found. Please log in again.');
         setState(() {
           isFinalized = false;
         });
@@ -469,6 +718,7 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
         },
       );
 
+      // Accept both 200 and 201 as successful status codes
       if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() {
           userResponse = action == 'join'
@@ -480,11 +730,13 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
         _animationController.forward().then((_) {
           _animationController.reset();
         });
-        _showSuccessDialog('Success', 'You have successfully ${action == 'join' ? 'joined' : 'responded to'} the meeting invite.');
+        _showSuccessDialog('Success',
+            'You have successfully ${action == 'join' ? 'joined' : 'responded to'} the meeting invite.');
         Navigator.of(context).pop(true);
       } else {
         final responseBody = jsonDecode(response.body);
-        String errorMessage = responseBody['message'] ?? 'Failed to $action the meeting invite.';
+        String errorMessage =
+            responseBody['message'] ?? 'Failed to $action the meeting invite.';
         _showErrorDialog('Error', errorMessage);
         setState(() {
           isFinalized = false;
@@ -531,5 +783,268 @@ class NotificationMeetingDetailsPageState extends State<NotificationMeetingDetai
         ],
       ),
     );
+  }
+
+  // New method to build action buttons for out-meeting
+  Widget _buildOutMeetingActionButtons() {
+    // Check if user has already responded
+    bool hasResponded = userResponse != null && userResponse != 'pending';
+    String currentResponse = userResponse?.toLowerCase() ?? 'pending';
+
+    return Column(
+      children: [
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _buildStylishButton(
+              label: 'Confirm',
+              icon: Icons.check_circle_outline,
+              activeColor: Colors.green.shade600,
+              isActive: currentResponse == 'yes',
+              isDisabled: hasResponded && currentResponse != 'yes',
+              onPressed: () => submitOutMeetingResponse('yes'),
+            ),
+            _buildStylishButton(
+              label: 'Undecided',
+              icon: Icons.help_outline,
+              activeColor: Colors.amber.shade600,
+              isActive: currentResponse == 'maybe',
+              isDisabled: hasResponded && currentResponse != 'maybe',
+              onPressed: () => submitOutMeetingResponse('maybe'),
+            ),
+            _buildStylishButton(
+              label: 'Decline',
+              icon: Icons.cancel_outlined,
+              activeColor: Colors.red.shade600,
+              isActive: currentResponse == 'no',
+              isDisabled: hasResponded && currentResponse != 'no',
+              onPressed: () => submitOutMeetingResponse('no'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        AnimatedOpacity(
+          opacity: currentResponse == 'pending' ? 0.0 : 1.0,
+          duration: const Duration(milliseconds: 500),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: _getStatusColor(currentResponse).withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: _getStatusColor(currentResponse), width: 1.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  currentResponse == 'yes'
+                      ? Icons.check_circle
+                      : currentResponse == 'no'
+                          ? Icons.cancel
+                          : Icons.help,
+                  color: _getStatusColor(currentResponse),
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Your Response: ${currentResponse.toUpperCase()}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: _getStatusColor(currentResponse),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper method for creating stylish buttons
+  Widget _buildStylishButton({
+    required String label,
+    required IconData icon,
+    required Color activeColor,
+    required bool isActive,
+    required bool isDisabled,
+    required VoidCallback onPressed,
+  }) {
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: ElevatedButton(
+          onPressed: isDisabled ? null : onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isActive ? activeColor : Colors.white,
+            foregroundColor: isActive ? Colors.white : Colors.grey.shade800,
+            elevation: isActive ? 4 : 1,
+            shadowColor:
+                isActive ? activeColor.withOpacity(0.6) : Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: isActive ? activeColor : Colors.grey.shade300,
+                width: 1.5,
+              ),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 20,
+                color: isActive ? Colors.white : activeColor,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: isActive ? Colors.white : Colors.grey.shade800,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'yes':
+        return Colors.green.shade600;
+      case 'no':
+        return Colors.red.shade600;
+      case 'maybe':
+        return Colors.amber.shade600;
+      default:
+        return Colors.grey.shade600;
+    }
+  }
+
+  // New widget to build the members section for out-meeting
+  Widget _buildOutMeetingMembersSection(bool darkModeGlobal) {
+    List<dynamic> members = meetingData?['members'] ?? [];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(Icons.people, size: 18, color: Colors.green.shade600),
+            const SizedBox(width: 8),
+            Text(
+              'Members:',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: darkModeGlobal ? Colors.white : Colors.black,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ...members.map((member) {
+          String memberName = member['employee_name'] ?? 'No Name';
+          String status = member['going'] ?? 'Pending';
+          String memberImage = member['img_name'] ??
+              'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/default_avatar.jpg';
+          String department = member['department_name'] ?? '';
+          String branch = member['branch_name'] ?? '';
+
+          return Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            elevation: 2,
+            color: Colors.white, // Pure white card background
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(
+                color: _getResponderStatusColor(status),
+                width: 1.5,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(memberImage),
+                    backgroundColor: Colors.grey[300],
+                    radius: 20,
+                    onBackgroundImageError: (error, stackTrace) {},
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          memberName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: darkModeGlobal ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        if (department.isNotEmpty || branch.isNotEmpty)
+                          Text(
+                            '$department${department.isNotEmpty && branch.isNotEmpty ? ' - ' : ''}$branch',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: darkModeGlobal
+                                  ? Colors.white70
+                                  : Colors.black54,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _getResponderStatusColor(status),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      status,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  Color _getResponderStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'yes':
+        return Colors.green.shade600;
+      case 'no':
+        return Colors.red.shade600;
+      case 'maybe':
+        return Colors.amber.shade600;
+      case 'pending':
+        return Colors.amber.shade500; // Changed to amber color for pending
+      default:
+        return Colors.grey.shade400;
+    }
   }
 }

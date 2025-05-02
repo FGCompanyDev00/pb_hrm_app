@@ -165,8 +165,7 @@ class NotificationPageState extends State<NotificationPage> {
               responseBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception(
-            'Failed to load leave types');
+        throw Exception('Failed to load leave types');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -368,10 +367,14 @@ class NotificationPageState extends State<NotificationPage> {
         _meetingInvites = allMeetings;
       });
 
-      debugPrint('Total meeting invites loaded: ${_meetingInvites.length}');
+      if (kDebugMode) {
+        debugPrint('Total meeting invites loaded: ${_meetingInvites.length}');
+      }
     } catch (e, stackTrace) {
-      debugPrint('No meeting invites');
-      debugPrint(stackTrace.toString());
+      if (kDebugMode) {
+        debugPrint('Error fetching meeting invites: $e');
+        debugPrint(stackTrace.toString());
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -399,34 +402,78 @@ class NotificationPageState extends State<NotificationPage> {
 
   Future<void> _fetchMeetingsFromUrl(String url, String token,
       List<Map<String, dynamic>> allMeetings, String type) async {
-    final response = await http.get(
-      Uri.parse(url),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (kDebugMode) {
-      debugPrint('Fetching from $url: Status Code ${response.statusCode}');
-    }
+      if (kDebugMode) {
+        debugPrint('Fetching from $url: Status Code ${response.statusCode}');
+        if (response.statusCode == 200) {
+          final responseBody = jsonDecode(response.body);
+          debugPrint('Response data structure: ${responseBody.keys}');
+          if (responseBody['results'] != null) {
+            debugPrint('Results count: ${responseBody['results'].length}');
+          }
+        }
+      }
 
-    if (response.statusCode == 200) {
-      final responseBody = jsonDecode(response.body);
-      if (responseBody['statusCode'] == 200 &&
-          responseBody['results'] != null) {
-        final List<dynamic> meetingData = responseBody['results'];
-        for (var item in meetingData) {
-          final Map<String, dynamic> meetingItem =
-              Map<String, dynamic>.from(item);
-          meetingItem['types'] = type;
-          allMeetings.add(meetingItem);
+      if (response.statusCode == 200) {
+        final responseBody = jsonDecode(response.body);
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
+          final List<dynamic> meetingData = responseBody['results'];
+
+          if (kDebugMode) {
+            debugPrint('Found ${meetingData.length} items for $type');
+          }
+
+          for (var item in meetingData) {
+            final Map<String, dynamic> meetingItem =
+                Map<String, dynamic>.from(item);
+            meetingItem['types'] = type;
+            // Add display type label based on the endpoint
+            if (type == 'meeting') {
+              meetingItem['display_type'] = 'Meeting and Booking Meeting Room';
+            } else if (type == 'out-meeting') {
+              meetingItem['display_type'] = 'Add Meeting';
+              // For out-meeting, add UID to ensure we have an ID to click on
+              if (meetingItem['uid'] == null &&
+                  meetingItem['outmeeting_uid'] != null) {
+                meetingItem['uid'] = meetingItem['outmeeting_uid'];
+              }
+            }
+            allMeetings.add(meetingItem);
+
+            if (kDebugMode && type == 'out-meeting') {
+              debugPrint(
+                  'Out-meeting item added: ${meetingItem['title']} - ID: ${meetingItem['uid'] ?? meetingItem['outmeeting_uid']}');
+            }
+          }
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+                'Failed to load data from $url: ${responseBody['message']}');
+          }
+          throw Exception(responseBody['message'] ?? 'Failed to load');
         }
       } else {
-        throw Exception(responseBody['message'] ?? 'Failed to load');
+        if (kDebugMode) {
+          debugPrint(
+              'HTTP Error from $url: ${response.statusCode} - ${response.reasonPhrase}');
+          debugPrint('Response body: ${response.body}');
+        }
+        throw Exception('Failed to load');
       }
-    } else {
-      throw Exception('Failed to load ');
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error in _fetchMeetingsFromUrl for $url: $e');
+      }
+      // Don't rethrow here to allow other endpoints to still work
     }
   }
 
@@ -768,15 +815,26 @@ class NotificationPageState extends State<NotificationPage> {
     final bool isDarkMode = themeNotifier.isDarkMode;
 
     String type = (item['types']?.toString().toLowerCase() ?? 'unknown').trim();
+    String displayType = (item['display_type']?.toString() ?? type).trim();
     String status = (item['status']?.toString() ?? 'Pending').trim();
     String employeeName = (item['employee_name']?.toString() ?? 'N/A').trim();
     String requestorName = (item['requestor_name']?.toString() ?? 'N/A').trim();
+
+    // For out-meeting, use created_by_name instead of employee_name
+    if (type == 'out-meeting' && item['created_by_name'] != null) {
+      employeeName = (item['created_by_name']?.toString() ?? 'N/A').trim();
+    }
 
     if (status.toLowerCase() == 'branch approved')
       status = 'Approved';
     else if (status.toLowerCase() == 'branch waiting') status = 'Waiting';
 
     String id = (item['uid']?.toString() ?? '').trim();
+    // For out-meeting, use outmeeting_uid if uid is empty
+    if (id.isEmpty && type == 'out-meeting') {
+      id = (item['outmeeting_uid']?.toString() ?? '').trim();
+    }
+
     if (id.isEmpty) return const SizedBox.shrink();
 
     String imgName = item['img_name']?.toString().trim() ?? '';
@@ -805,6 +863,13 @@ class NotificationPageState extends State<NotificationPage> {
         startDate = item['from_date_time']?.toString() ?? '';
         endDate = item['to_date_time']?.toString() ?? '';
         detailLabel = 'Employee';
+        detailValue = employeeName;
+        break;
+      case 'out-meeting':
+        title = item['title']?.toString() ?? 'No Title';
+        startDate = item['fromdate']?.toString() ?? '';
+        endDate = item['todate']?.toString() ?? '';
+        detailLabel = 'Created By';
         detailValue = employeeName;
         break;
       case 'leave':
@@ -836,9 +901,16 @@ class NotificationPageState extends State<NotificationPage> {
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => type == 'meeting' && _isMeetingSelected
-                ? NotificationMeetingDetailsPage(id: id)
-                : NotificationApprovalsDetailsPage(id: id, type: type),
+            builder: (context) {
+              if (type == 'out-meeting' && _isMeetingSelected) {
+                return NotificationMeetingDetailsPage(
+                    id: id, isOutMeeting: true);
+              } else if (type == 'meeting' && _isMeetingSelected) {
+                return NotificationMeetingDetailsPage(id: id);
+              } else {
+                return NotificationApprovalsDetailsPage(id: id, type: type);
+              }
+            },
           ),
         );
 
@@ -848,31 +920,33 @@ class NotificationPageState extends State<NotificationPage> {
         color: isDarkMode ? Colors.grey[850] : Colors.white,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(screenSize.width * 0.04),
-          side: BorderSide(color: typeColor, width: screenSize.width * 0.003),
+          side: BorderSide(color: typeColor, width: screenSize.width * 0.004),
         ),
         margin: EdgeInsets.symmetric(vertical: screenSize.height * 0.005),
         child: Padding(
           padding: EdgeInsets.symmetric(
             vertical: screenSize.height * 0.008,
-            horizontal: screenSize.width * 0.025,
+            horizontal: screenSize.width * 0.02,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Fixed Icon Section to maintain alignment
               SizedBox(
-                width: screenSize.width * 0.12,
+                width: screenSize.width * 0.14,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(typeIcon,
-                        color: typeColor, size: screenSize.width * 0.06),
+                        color: typeColor, size: screenSize.width * 0.08),
                     SizedBox(height: screenSize.height * 0.002),
                     Text(
-                      type[0].toUpperCase() + type.substring(1),
+                      displayType.length > 12
+                          ? '${displayType.substring(0, 12)}...' // Truncate if too long
+                          : displayType,
                       style: TextStyle(
                         color: typeColor,
-                        fontSize: screenSize.width * 0.028,
+                        fontSize: screenSize.width * 0.025,
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.center,
@@ -1064,6 +1138,8 @@ class NotificationPageState extends State<NotificationPage> {
       case 'deleted':
       case 'disapproved':
         return Colors.red;
+      case 'public':
+        return Colors.green;
       default:
         return Colors.grey;
     }
@@ -1073,6 +1149,8 @@ class NotificationPageState extends State<NotificationPage> {
   Color _getTypeColor(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
+        return Colors.green;
+      case 'out-meeting':
         return Colors.green;
       case 'leave':
         return Colors.orange;
@@ -1088,6 +1166,8 @@ class NotificationPageState extends State<NotificationPage> {
     switch (type.toLowerCase()) {
       case 'meeting':
         return Icons.meeting_room;
+      case 'out-meeting':
+        return Icons.event_available;
       case 'leave':
         return Icons.event;
       case 'car':
