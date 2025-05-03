@@ -196,7 +196,7 @@ class HistoryPageState extends State<HistoryPage>
   String _getDisplayType(String type) {
     switch (type.toLowerCase()) {
       case 'meeting':
-        return 'Add meeting';
+        return 'Add meeting and booking Room';
       case 'minutes of meeting':
         return 'Add meeting and booking Room';
       case 'car':
@@ -213,12 +213,13 @@ class HistoryPageState extends State<HistoryPage>
     bool hasCachedData = false;
     try {
       final prefs = await SharedPreferences.getInstance();
+      final currentEmployeeId = prefs.getString('employee_id');
 
       // Load cached leave types
       final cachedLeaveTypes = prefs.getString('cached_leave_types');
       if (cachedLeaveTypes != null) {
         final Map<String, dynamic> leaveTypesData =
-            jsonDecode(cachedLeaveTypes);
+        jsonDecode(cachedLeaveTypes);
         _leaveTypes = Map<int, String>.from(leaveTypesData
             .map((key, value) => MapEntry(int.parse(key), value.toString())));
         hasCachedData = true;
@@ -228,10 +229,25 @@ class HistoryPageState extends State<HistoryPage>
       final cachedPendingItems = prefs.getString('cached_pending_items');
       if (cachedPendingItems != null) {
         final List<dynamic> decodedItems = jsonDecode(cachedPendingItems);
-        _pendingItems = decodedItems.map<Map<String, dynamic>>((item) {
+
+        // Filter pending items by current user
+        final filteredPendingItems = decodedItems.where((item) {
+          if (currentEmployeeId == null) return false;
+
+          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
+          final type = typedItem['types']?.toString().toLowerCase() ?? '';
+
+          // For car type, use requestor_id; for others use employee_id
+          String itemId = type == 'car'
+              ? typedItem['requestor_id']?.toString() ?? ''
+              : typedItem['employee_id']?.toString() ?? '';
+
+          return itemId == currentEmployeeId;
+        }).toList();
+
+        _pendingItems = filteredPendingItems.map<Map<String, dynamic>>((item) {
           // Convert string dates back to DateTime
-          final Map<String, dynamic> typedItem =
-              Map<String, dynamic>.from(item);
+          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
           if (typedItem['updated_at'] != null) {
             typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
           }
@@ -244,10 +260,25 @@ class HistoryPageState extends State<HistoryPage>
       final cachedHistoryItems = prefs.getString('cached_history_items');
       if (cachedHistoryItems != null) {
         final List<dynamic> decodedItems = jsonDecode(cachedHistoryItems);
-        _historyItems = decodedItems.map<Map<String, dynamic>>((item) {
+
+        // Filter history items by current user
+        final filteredHistoryItems = decodedItems.where((item) {
+          if (currentEmployeeId == null) return false;
+
+          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
+          final type = typedItem['types']?.toString().toLowerCase() ?? '';
+
+          // For car type, use requestor_id; for others use employee_id
+          String itemId = type == 'car'
+              ? typedItem['requestor_id']?.toString() ?? ''
+              : typedItem['employee_id']?.toString() ?? '';
+
+          return itemId == currentEmployeeId;
+        }).toList();
+
+        _historyItems = filteredHistoryItems.map<Map<String, dynamic>>((item) {
           // Convert string dates back to DateTime
-          final Map<String, dynamic> typedItem =
-              Map<String, dynamic>.from(item);
+          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
           if (typedItem['updated_at'] != null) {
             typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
           }
@@ -279,6 +310,11 @@ class HistoryPageState extends State<HistoryPage>
   Future<void> _fetchDataFromApi(SharedPreferences prefs, String token,
       String pendingApiUrl, String historyApiUrl, String leaveTypesUrl) async {
     try {
+      final currentEmployeeId = prefs.getString('employee_id');
+      if (currentEmployeeId == null) {
+        throw Exception('Employee ID not found');
+      }
+
       // Fetch Leave Types
       final leaveTypesResponse = await http.get(
         Uri.parse(leaveTypesUrl),
@@ -334,13 +370,21 @@ class HistoryPageState extends State<HistoryPage>
         final responseBody = jsonDecode(pendingResponse.body);
         if (responseBody['statusCode'] == 200) {
           final List<dynamic> pendingData = responseBody['results'];
-          // Exclude items with status 'cancel' from pending
           final List<dynamic> filteredPendingData = pendingData.where((item) {
             final status = (item['status'] ?? '').toString().toLowerCase();
             return status != 'cancel';
           }).toList();
 
-          tempPendingItems.addAll(filteredPendingData
+          // Filter by current user
+          final userPendingData = filteredPendingData.where((item) {
+            final type = item['types']?.toString().toLowerCase() ?? '';
+            String itemId = type == 'car'
+                ? item['requestor_id']?.toString() ?? ''
+                : item['employee_id']?.toString() ?? '';
+            return itemId == currentEmployeeId;
+          }).toList();
+
+          tempPendingItems.addAll(userPendingData
               .map((item) => _formatItem(item as Map<String, dynamic>)));
         }
       }
@@ -350,13 +394,21 @@ class HistoryPageState extends State<HistoryPage>
         final responseBody = jsonDecode(historyResponse.body);
         if (responseBody['statusCode'] == 200) {
           final List<dynamic> historyData = responseBody['results'];
-          // Exclude items with status 'cancel' from history
           final List<dynamic> filteredHistoryData = historyData.where((item) {
             final status = (item['status'] ?? '').toString().toLowerCase();
             return status != 'cancel';
           }).toList();
 
-          tempHistoryItems.addAll(filteredHistoryData
+          // Filter by current user
+          final userHistoryData = filteredHistoryData.where((item) {
+            final type = item['types']?.toString().toLowerCase() ?? '';
+            String itemId = type == 'car'
+                ? item['requestor_id']?.toString() ?? ''
+                : item['employee_id']?.toString() ?? '';
+            return itemId == currentEmployeeId;
+          }).toList();
+
+          tempHistoryItems.addAll(userHistoryData
               .map((item) => _formatItem(item as Map<String, dynamic>)));
         }
       }
@@ -479,6 +531,8 @@ class HistoryPageState extends State<HistoryPage>
           'employee_name': item['employee_name'] ?? 'N/A',
           'id': item['uid']?.toString() ?? '',
           'remark': item['remark'] ?? '',
+          'employee_id': item['employee_id'],
+          'types': item['types'],
         });
         break;
 
@@ -490,7 +544,8 @@ class HistoryPageState extends State<HistoryPage>
           'startDate': item['take_leave_from'] ?? '',
           'endDate': item['take_leave_to'] ?? '',
           'leave_type': leaveTypeName,
-          'employee_name': item['requestor_name'] ?? 'N/A',
+          'requestor_id': item['requestor_id'],
+          'types': item['types'],
           'id': item['take_leave_request_id']?.toString() ?? '',
         });
         break;
@@ -516,23 +571,27 @@ class HistoryPageState extends State<HistoryPage>
           'endDate': endDateTimeStr,
           'employee_name': item['requestor_name'] ?? 'N/A',
           'place': item['place'] ?? 'N/A',
+          'requestor_id': item['requestor_id'],
+          'types': item['types'],
           'id': item['uid']?.toString() ?? '',
         });
         break;
-
-      /// NEW CASE: minutes of meeting
-      case 'minutes of meeting':
-        formattedItem.addAll({
-          'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
-          'startDate': item['fromdate'] ?? '',
-          'endDate': item['todate'] ?? '',
-          'employee_name': item['created_by_name'] ?? 'N/A',
-          'id': item['outmeeting_uid']?.toString() ?? '',
-          'description': item['description'] ?? '',
-          'location': item['location'] ?? '',
-          'file_download_url': item['file_name'] ?? '',
-        });
-        break;
+      //
+      // /// NEW CASE: minutes of meeting
+      // case 'minutes of meeting':
+      //   formattedItem.addAll({
+      //     'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
+      //     'startDate': item['fromdate'] ?? '',
+      //     'endDate': item['todate'] ?? '',
+      //     'employee_name': item['created_by_name'] ?? 'N/A',
+      //     'id': item['outmeeting_uid']?.toString() ?? '',
+      //     'description': item['description'] ?? '',
+      //     'location': item['location'] ?? '',
+      //     'file_download_url': item['file_name'] ?? '',
+      //     'employee_id': item['employee_id'],
+      //     'types': item['types'],
+      //   });
+      //   break;
 
       default:
         // Handle unknown types if necessary

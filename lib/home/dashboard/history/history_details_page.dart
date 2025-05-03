@@ -537,21 +537,7 @@ class DetailsPageState extends State<DetailsPage> {
         {
           'icon': Icons.radar,
           'title': 'Status',
-          'value': RichText(
-            text: TextSpan(
-              children: [
-                const TextSpan(
-                  text: 'Status: ',
-                ),
-                TextSpan(
-                  text: data?['status'] ?? 'No status',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: _getStatusColor(data?['status'] ?? 'no status')),
-                ),
-              ],
-            ),
-          ),
+          'value': _capitalizeFirstLetter(data?['status'] ?? 'No status'),
           'color': _getStatusColor(data?['status'] ?? 'no status')
         }
       ]);
@@ -747,15 +733,35 @@ class DetailsPageState extends State<DetailsPage> {
         ),
         const SizedBox(width: 16),
         Expanded(
-          child: content is Widget
-              ? content
-              : Text(
-                  '$title: $content',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: isDarkMode ? Colors.white : Colors.black,
+          child: Padding(
+            padding: title.toLowerCase() == 'status'
+                ? const EdgeInsets.only(
+                    top: 4.0) // Add padding only for status row
+                : EdgeInsets.zero,
+            child: content is Widget
+                ? content
+                : RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: isDarkMode ? Colors.white : Colors.black,
+                      ),
+                      children: [
+                        TextSpan(text: '$title: '),
+                        if (title.toLowerCase() == 'status')
+                          TextSpan(
+                            text: content.toString(),
+                            style: TextStyle(
+                              color: _getStatusColor(content.toString()),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          )
+                        else
+                          TextSpan(text: content.toString()),
+                      ],
+                    ),
                   ),
-                ),
+          ),
         ),
       ],
     );

@@ -292,8 +292,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
               responseBody['message'] ?? 'Failed to load leave types');
         }
       } else {
-        throw Exception(
-            'Failed to load leave types');
+        throw Exception('Failed to load leave types');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching leave types: $e');
@@ -327,11 +326,13 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         },
       );
 
-      debugPrint('Fetching pending items: Status Code ${pendingResponse.statusCode}');
+      debugPrint(
+          'Fetching pending items: Status Code ${pendingResponse.statusCode}');
 
       if (pendingResponse.statusCode == 200) {
         final responseBody = jsonDecode(pendingResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> pendingData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -339,8 +340,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
               .where((item) => item != null)
               .map((item) => Map<String, dynamic>.from(item))
               .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
+                  item['types'] != null &&
+                  _knownTypes.contains(item['types'].toString().toLowerCase()))
               .toList();
 
           // Sort the filtered data by 'updated_at' in descending order
@@ -379,14 +380,17 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
               _pendingItems = filteredData;
             });
           }
-          debugPrint('Pending items loaded and sorted: ${_pendingItems.length} items.');
+          debugPrint(
+              'Pending items loaded and sorted: ${_pendingItems.length} items.');
         } else {
-          final errorMessage = responseBody['message'] ?? 'Failed to load pending data';
+          final errorMessage =
+              responseBody['message'] ?? 'Failed to load pending data';
           debugPrint('API Error: $errorMessage');
           throw Exception(errorMessage);
         }
       } else {
-        final errorMessage = 'Failed to load pending data: ${pendingResponse.statusCode}';
+        final errorMessage =
+            'Failed to load pending data: ${pendingResponse.statusCode}';
         debugPrint(errorMessage);
         throw Exception(errorMessage);
       }
@@ -441,11 +445,13 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
         },
       );
 
-      debugPrint('Fetching history items: Status Code ${historyResponse.statusCode}');
+      debugPrint(
+          'Fetching history items: Status Code ${historyResponse.statusCode}');
 
       if (historyResponse.statusCode == 200) {
         final responseBody = jsonDecode(historyResponse.body);
-        if (responseBody['statusCode'] == 200 && responseBody['results'] != null) {
+        if (responseBody['statusCode'] == 200 &&
+            responseBody['results'] != null) {
           final List<dynamic> historyData = responseBody['results'];
 
           // Filter out null items and unknown types
@@ -453,8 +459,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
               .where((item) => item != null)
               .map((item) => Map<String, dynamic>.from(item))
               .where((item) =>
-          item['types'] != null &&
-              _knownTypes.contains(item['types'].toString().toLowerCase()))
+                  item['types'] != null &&
+                  _knownTypes.contains(item['types'].toString().toLowerCase()))
               .toList();
 
           // Sort the filtered data by 'updated_at' in descending order
@@ -495,7 +501,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
           }
           debugPrint('History items loaded: ${_historyItems.length} items.');
         } else {
-          final errorMessage = responseBody['message'] ?? 'Failed to load history data';
+          final errorMessage =
+              responseBody['message'] ?? 'Failed to load history data';
           debugPrint('API Error: $errorMessage');
           throw Exception(errorMessage);
         }
@@ -1130,7 +1137,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
             item['take_leave_from'], item['take_leave_to'],
             alwaysShowTime: true);
         detailLabel = 'Reason';
-        detailValue =  item['take_leave_reason'];
+        detailValue = item['take_leave_reason'];
         break;
       case 'car':
         title = item['purpose']?.toString() ?? 'No Purpose';
@@ -1183,8 +1190,8 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(typeIcon,
-                        color: typeColor, size: screenSize.width * 0.06),
-                    SizedBox(height: screenSize.height * 0.002),
+                        color: typeColor, size: screenSize.width * 0.08),
+                    SizedBox(height: screenSize.height * 0.005),
                     Text(
                       type[0].toUpperCase() + type.substring(1),
                       style: TextStyle(
@@ -1212,6 +1219,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    SizedBox(height: screenSize.height * 0.003),
                     if (dateRange.isNotEmpty)
                       Text(
                         dateRange,
@@ -1288,31 +1296,33 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
       if (dateTime == null || dateTime.isEmpty) return '';
 
       try {
-        // First try to parse with standard format
         DateTime? parsedDate;
 
         // Handle different date formats
         if (dateTime.contains('T')) {
           // ISO format
           parsedDate = DateTime.parse(dateTime);
-        } else {
-          // Custom format YYYY-M-DD HH:mm
+        } else if (dateTime.contains(' ')) {
+          // Format: YYYY-MM-DD HH:mm or YYYY-M-DD HH:mm
           final parts = dateTime.split(' ');
-          if (parts.length == 2) {
-            final dateParts = parts[0].split('-');
-            final timeParts = parts[1].split(':');
+          final datePart = parts[0].split('-');
+          final timePart = parts[1].split(':');
 
-            if (dateParts.length == 3 && timeParts.length >= 2) {
-              parsedDate = DateTime(
-                  int.parse(dateParts[0]), // year
-                  int.parse(dateParts[1]), // month
-                  int.parse(dateParts[2]), // day
-                  int.parse(timeParts[0]), // hour
-                  int.parse(timeParts[1]), // minute
-                  timeParts.length > 2 ? int.parse(timeParts[2]) : 0 // seconds
-                  );
-            }
-          }
+          parsedDate = DateTime(
+            int.parse(datePart[0]), // year
+            int.parse(datePart[1]), // month
+            int.parse(datePart[2]), // day
+            timePart.length > 0 ? int.parse(timePart[0]) : 0, // hour
+            timePart.length > 1 ? int.parse(timePart[1]) : 0, // minute
+          );
+        } else {
+          // Format: YYYY-MM-DD or YYYY-M-DD
+          final parts = dateTime.split('-');
+          parsedDate = DateTime(
+            int.parse(parts[0]), // year
+            int.parse(parts[1]), // month
+            int.parse(parts[2]), // day
+          );
         }
 
         if (parsedDate == null) {
@@ -1320,15 +1330,18 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
           return '';
         }
 
-        // If forceTime is false and the time is 00:00, remove it
-        if (!forceTime && parsedDate.hour == 0 && parsedDate.minute == 0) {
-          return DateFormat('dd-MM-yyyy').format(parsedDate);
-        }
+        // Check if time component exists or is forced
+        bool hasTime = (dateTime.contains(':') || forceTime) &&
+            !(parsedDate.hour == 0 && parsedDate.minute == 0 && !forceTime);
 
-        return DateFormat('dd-MM-yyyy HH:mm').format(parsedDate);
+        if (hasTime) {
+          return DateFormat('dd/MM/yyyy HH:mm').format(parsedDate);
+        } else {
+          return DateFormat('dd/MM/yyyy').format(parsedDate);
+        }
       } catch (e) {
         debugPrint('Error parsing date: $dateTime -> $e');
-        return '';
+        return dateTime; // Return original string if parsing fails
       }
     }
 
@@ -1343,7 +1356,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
       return formattedEnd;
     }
 
-    return 'N/A'; // Show 'N/A' if both are missing
+    return 'N/A';
   }
 
   /// Returns appropriate color based on the status

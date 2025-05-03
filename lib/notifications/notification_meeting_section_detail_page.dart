@@ -204,7 +204,7 @@ class NotificationMeetingDetailsPageState
           await _fetchMeetingDetails();
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Response submitted successfully')),
+            const SnackBar(content: Text('Response submitted successfully')),
           );
         } else {
           throw Exception(data['message'] ?? 'Failed to submit response');
