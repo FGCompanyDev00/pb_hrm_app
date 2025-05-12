@@ -207,27 +207,6 @@ class NotificationPageState extends State<NotificationPage> {
         debugPrint('Pending items loaded: ${_pendingItems.length} items.');
       }
 
-      // Check if there are no items and show snackbar if needed
-      if (allPendingItems.isEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
-              'No invitation',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            backgroundColor: Colors.red[600],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(15),
-            ),
-            margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error fetching pending data: $e');
@@ -512,7 +491,7 @@ class NotificationPageState extends State<NotificationPage> {
                         : (_pendingItems.isEmpty && _historyItems.isEmpty)
                             ? Center(
                                 child: Text(
-                                  'No Invitation',
+                                  'No Approval',
                                   style: TextStyle(
                                     fontSize: screenSize.width * 0.045,
                                   ),
@@ -578,7 +557,7 @@ class NotificationPageState extends State<NotificationPage> {
     if (combinedApprovalItems.isEmpty) {
       return Center(
         child: Text(
-          'No Invitation',
+          'No Approval Invitation',
           style: TextStyle(
             fontSize: screenSize.width * 0.045,
           ),

@@ -28,6 +28,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 abstract class Refreshable {
   void refresh();
+  void forceCompleteRefresh();
 }
 
 class HomeCalendar extends StatefulWidget {
@@ -131,18 +132,26 @@ class HomeCalendarState extends State<HomeCalendar>
       ),
     );
 
-    // First load data from local storage before fetching from server
-    _loadLocalData().then((_) {
-      // After loading local data, check if we're online and fetch fresh data
-      connectivityResult.checkConnectivity().then((connectivity) {
-        if (!connectivity.contains(ConnectivityResult.none)) {
-          fetchData();
+    // Schedule data loading after the widget is fully mounted
+    // This fixes the "setState called in constructor" error
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // First load data from local storage before fetching from server
+      _loadLocalData().then((_) {
+        // After loading local data, check if we're online and fetch fresh data
+        if (mounted) {
+          connectivityResult.checkConnectivity().then((connectivity) {
+            if (!connectivity.contains(ConnectivityResult.none) && mounted) {
+              fetchData();
+            }
+          });
         }
       });
     });
 
-    // Clear cache when connectivity changes
+    // Clear cache when connectivity changes - with mounted checks
     connectivityResult.onConnectivityChanged.listen((source) async {
+      if (!mounted) return;
+
       if (source.contains(ConnectivityResult.none)) {
         // If offline, reload from local storage
         await _loadLocalData();
@@ -227,9 +236,15 @@ class HomeCalendarState extends State<HomeCalendar>
 
   /// Fetches all required data concurrently
   Future<void> fetchData({bool showUpdateInfo = false}) async {
-    setState(() {
+    // Only call setState if mounted
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    } else {
       _isLoading = true;
-    });
+    }
+
     try {
       // Store previous event count to compare after fetching
       final int previousEventCount = eventsForAll.length;
@@ -289,9 +304,13 @@ class HomeCalendarState extends State<HomeCalendar>
       // If fetch fails, load from local storage as fallback
       await _loadLocalData();
     } finally {
-      setState(() {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      } else {
         _isLoading = false;
-      });
+      }
       _filterAndSearchEvents();
     }
   }
@@ -299,23 +318,94 @@ class HomeCalendarState extends State<HomeCalendar>
   /// Fetches all required data concurrently
   Future<void> fetchDataPass() async {
     try {
+      // Only set loading state if widget is mounted
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      } else {
+        _isLoading = true; // Set the variable directly if not mounted
+      }
+
+      // Use Future.wait to fetch all data in parallel for better performance
       await Future.wait([
-        _fetchMeetingData(),
-        _fetchLeaveRequests(),
-        _fetchMeetingRoomBookings(),
-        _fetchMeetingRoomInvite(),
-        _fetchCarBookings(),
-        _fetchCarBookingsInvite(),
-        _fetchMinutesOfMeeting(),
-        _fetchMeetingMembers(),
+        _fetchMeetingData()
+            .catchError((e) => debugPrint('Error fetching meeting data: $e')),
+        _fetchLeaveRequests()
+            .catchError((e) => debugPrint('Error fetching leave requests: $e')),
+        _fetchMeetingRoomBookings().catchError(
+            (e) => debugPrint('Error fetching meeting room bookings: $e')),
+        _fetchMeetingRoomInvite().catchError(
+            (e) => debugPrint('Error fetching meeting room invites: $e')),
+        _fetchCarBookings()
+            .catchError((e) => debugPrint('Error fetching car bookings: $e')),
+        _fetchCarBookingsInvite().catchError(
+            (e) => debugPrint('Error fetching car booking invites: $e')),
+        _fetchMinutesOfMeeting().catchError(
+            (e) => debugPrint('Error fetching minutes of meeting: $e')),
+        _fetchMeetingMembers().catchError(
+            (e) => debugPrint('Error fetching meeting members: $e')),
       ]);
+
+      // Apply filters and search after all data is loaded
+      _filterAndSearchEvents();
     } catch (e) {
-    } finally {}
+      debugPrint('Error during fetchDataPass: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      } else {
+        _isLoading = false; // Set the variable directly if not mounted
+      }
+    }
   }
 
   @override
   void refresh() async {
     await fetchDataPass(); // Refresh data when triggered from the bottom navigation bar
+  }
+
+  @override
+  void forceCompleteRefresh() async {
+    // Force a complete refresh of all data sources
+    debugPrint('Forcing complete calendar data refresh');
+
+    // Start by clearing any cached data
+    try {
+      if (eventsBox.isOpen) {
+        await eventsBox.clear();
+      }
+      events.value.clear();
+      eventsForDay.clear();
+      eventsForAll.clear();
+
+      // Clear the caches
+      _clearCaches();
+
+      // Check if mounted before calling setState
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+        });
+      } else {
+        _isLoading = true;
+      }
+
+      // Fetch everything fresh from APIs
+      await fetchData(showUpdateInfo: false);
+    } catch (e) {
+      debugPrint('Error during forced calendar refresh: $e');
+      // Check if mounted before calling setState
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      } else {
+        _isLoading = false;
+      }
+    }
   }
 
   /// Fetches leave requests from the API

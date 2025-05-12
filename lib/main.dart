@@ -54,6 +54,8 @@ import 'package:pb_hrsystem/hive_helper/model/calendar_events_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_list_record.dart';
 import 'package:pb_hrsystem/widgets/update_dialog.dart';
 import 'core/utils/responsive_helper.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// ------------------------------------------------------------
 /// 1) Global instance of FlutterLocalNotificationsPlugin
@@ -579,9 +581,30 @@ void main() {
       ),
     );
   }, (error, stack) {
+    // Skip error logging for specific error types
+    if (error is TimeoutException &&
+        error.toString().contains('position update')) {
+      // Silently ignore location timeout errors
+      return;
+    }
+
+    // Ignore S3 URL errors that are expected
+    if (error.toString().contains('HttpException') &&
+        (error.toString().contains('403') ||
+            error.toString().contains('Invalid statusCode: 403'))) {
+      // If this is an S3 URL error, handle it silently
+      if (error.toString().contains('s3.ap-southeast-1.amazonaws.com')) {
+        // Silently handle S3 errors - the widgets should handle these with fallbacks
+        return;
+      }
+    }
+
     if (kDebugMode) {
-      logger.e("Uncaught error: $error");
-      logger.e(stack);
+      // Only log important errors
+      if (!(error is TimeoutException)) {
+        logger.e("Uncaught error: $error");
+        logger.e(stack);
+      }
     }
 
     // Handle keychain storage error
@@ -594,7 +617,7 @@ void main() {
     // Handle location timeout specifically
     if (error is TimeoutException &&
         error.toString().contains('position update')) {
-      logger.i('Location timeout detected - attempting to recover');
+      // Silently handle, no logging
       // Add retry mechanism with exponential backoff
       Future.delayed(const Duration(seconds: 5), () {
         // Attempt to get location again
@@ -910,6 +933,19 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         // Find the calendar widget in the widget tree and update its data
         final context = _navigatorKeys[1].currentContext;
         if (context != null) {
+          // Clear any S3 related caches first to ensure fresh data
+          try {
+            // Since we're coming from login, assume profiles/images need refresh
+            // This helps clear any expired S3 URLs that might be cached
+            DefaultCacheManager().emptyCache();
+
+            // Log the refresh attempt
+            debugPrint(
+                'Refreshing calendar data after login with cleared caches');
+          } catch (e) {
+            debugPrint('Error clearing cache: $e');
+          }
+
           // Use the HomeCalendar's refresh method if it's already available as a refreshable
           final refreshables = <Refreshable>[];
           void collectRefreshables(Element element) {
@@ -924,25 +960,74 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             context.visitChildren(collectRefreshables);
           }
 
-          // Refresh any found HomeCalendar instances
+          // Refresh any found HomeCalendar instances with complete refresh
           for (final refreshable in refreshables) {
-            refreshable.refresh();
+            // Use the more thorough complete refresh for post-login scenarios
+            refreshable.forceCompleteRefresh();
           }
 
           // Also try to access HomeCalendarState directly if possible
           try {
             final state = context.findAncestorStateOfType<HomeCalendarState>();
             if (state != null) {
-              // Use fetchData method without showing update information
-              state.fetchData(showUpdateInfo: false);
+              // Force a complete refresh with data fetch to handle expired S3 URLs
+              state.forceCompleteRefresh();
               debugPrint('Successfully refreshed calendar data after login');
             }
           } catch (e) {
             debugPrint('Error refreshing calendar: $e');
+            // If direct state access fails, try a fallback approach
+            try {
+              _forceCalendarUpdate(context);
+            } catch (e) {
+              debugPrint('Error with fallback calendar refresh: $e');
+            }
           }
         }
       }
     });
+  }
+
+  // Fallback method to force calendar update using notification system
+  void _forceCalendarUpdate(BuildContext context) {
+    try {
+      // Use the notification system to trigger a refresh
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // This will request a complete refresh of calendar data
+        debugPrint('Using fallback method to refresh calendar data');
+
+        // Find first calendar widget and trigger its refresh
+        final list = <Element>[];
+        void collectElements(Element element) {
+          if (element.widget.toString().contains('HomeCalendar')) {
+            list.add(element);
+          }
+          element.visitChildren(collectElements);
+        }
+
+        if (context is Element) {
+          context.visitChildren(collectElements);
+
+          if (list.isNotEmpty) {
+            // Try to force a refresh via state
+            final element = list.first;
+            try {
+              // Access any HomeCalendar instance
+              final state =
+                  element.findAncestorStateOfType<HomeCalendarState>();
+              if (state != null) {
+                // Use the enhanced complete refresh method instead
+                state.forceCompleteRefresh();
+              }
+            } catch (e) {
+              debugPrint('Error in fallback refresh: $e');
+            }
+          }
+        }
+      });
+    } catch (e) {
+      debugPrint('Error in force calendar update: $e');
+    }
   }
 
   // Handle memory management

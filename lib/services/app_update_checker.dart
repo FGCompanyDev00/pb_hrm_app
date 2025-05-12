@@ -3,6 +3,8 @@ import 'package:flutter_in_store_app_version_checker/flutter_in_store_app_versio
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pb_hrsystem/widgets/update_dialog.dart';
 import 'update_service.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' show Platform;
 
 /// A service for checking and handling app updates
 class AppUpdateChecker {
@@ -26,7 +28,11 @@ class AppUpdateChecker {
   static Future<bool> _isUpdateRequired() async {
     try {
       // First attempt: Use the flutter_in_store_app_version_checker package
-      final checker = InStoreAppVersionChecker();
+      final checker = InStoreAppVersionChecker(
+        appId: Platform.isIOS
+            ? 'com.phongsavanh.pb_hrsystem' // Use the correct iOS bundle ID
+            : 'com.phongsavanh.pb_hrsystem', // Use the correct Android package name
+      );
       final result = await checker.checkUpdate();
 
       debugPrint('Current version: ${result.currentVersion}');

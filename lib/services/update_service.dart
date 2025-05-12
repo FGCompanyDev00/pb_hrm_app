@@ -10,6 +10,7 @@ import 'package:flutter_in_store_app_version_checker/flutter_in_store_app_versio
 
 class UpdateService {
   static const String _androidPackageName = 'com.phongsavanh.pb_hrsystem';
+  static const String _iosBundleId = 'com.psvsystem.next';
   static const String _iosAppId = '6742818675';
 
   // Store URLs
@@ -72,7 +73,11 @@ class UpdateService {
   /// Get store version using the flutter_in_store_app_version_checker package
   static Future<String> _getStoreVersionWithPackage() async {
     try {
-      final checker = InStoreAppVersionChecker();
+      // Create the checker with the correct configuration
+      final checker = InStoreAppVersionChecker(
+        appId: Platform.isIOS ? _iosAppId : _androidPackageName,
+      );
+
       final response = await checker.checkUpdate();
 
       debugPrint('App version checker response: ${response.toString()}');
@@ -146,7 +151,9 @@ class UpdateService {
     try {
       // First attempt: Use the flutter_in_store_app_version_checker package
       try {
-        final checker = InStoreAppVersionChecker();
+        final checker = InStoreAppVersionChecker(
+          appId: _androidPackageName,
+        );
         final response = await checker.checkUpdate();
 
         if (response.newVersion != null && response.newVersion!.isNotEmpty) {
@@ -231,7 +238,9 @@ class UpdateService {
     try {
       // First attempt: Use the flutter_in_store_app_version_checker package
       try {
-        final checker = InStoreAppVersionChecker();
+        final checker = InStoreAppVersionChecker(
+          appId: _iosAppId,
+        );
         final response = await checker.checkUpdate();
 
         if (response.newVersion != null && response.newVersion!.isNotEmpty) {
@@ -241,7 +250,7 @@ class UpdateService {
         debugPrint('Error using InStoreAppVersionChecker for App Store: $e');
       }
 
-      // Second attempt: Use iTunes API (original method)
+      // Second attempt: Use iTunes API directly with app ID
       final response = await _dio.get(
         'https://itunes.apple.com/lookup?id=$_iosAppId',
       );

@@ -24,6 +24,17 @@ import 'package:geolocator/geolocator.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pb_hrsystem/services/s3_image_service.dart';
+import 'dart:math' as math;
+
+// Flag to control all cache-related logging in this file
+const bool _enableCacheLogging = false;
+
+// Helper to log messages only if enabled
+void _log(String message) {
+  if (_enableCacheLogging) {
+    debugPrint(message);
+  }
+}
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -105,7 +116,7 @@ class DashboardState extends State<Dashboard>
   static final profileImageCacheManager = CacheManager(
     Config(
       'profileImageCache',
-      stalePeriod: const Duration(days: 7),
+      stalePeriod: const Duration(hours: 24), // Reduced from 7 days to 24 hours
       maxNrOfCacheObjects: 20,
       repo: JsonCacheInfoRepository(databaseName: 'profileImageCache'),
       fileService: S3HttpFileService(),
@@ -116,7 +127,8 @@ class DashboardState extends State<Dashboard>
   static final bannerImageCacheManager = CacheManager(
     Config(
       'bannerImageCache',
-      stalePeriod: const Duration(days: 14),
+      stalePeriod:
+          const Duration(hours: 24), // Reduced from 14 days to 24 hours
       maxNrOfCacheObjects: 50,
       repo: JsonCacheInfoRepository(databaseName: 'bannerImageCache'),
       fileService: S3HttpFileService(),
@@ -561,39 +573,36 @@ class DashboardState extends State<Dashboard>
   // Clear a specific image from the cache
   Future<void> _clearImageFromCache(String imageUrl) async {
     try {
-      if (imageUrl.isNotEmpty &&
-          Uri.tryParse(imageUrl)?.hasAbsolutePath == true) {
-        // Check if this is an S3 URL
-        if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
-          // Use the S3 cache manager for S3 URLs
-          await profileImageCacheManager.removeFile(imageUrl);
+      if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true) {
+        return;
+      }
 
-          // Also clear from Flutter's image cache
-          final provider = NetworkImage(imageUrl);
-          PaintingBinding.instance.imageCache.evict(provider);
+      // Check if this is an S3 URL
+      if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
+        // Use the S3 cache manager for S3 URLs
+        await profileImageCacheManager.removeFile(imageUrl);
 
-          // Clear from CachedNetworkImage's cache
-          final cachedProvider = CachedNetworkImageProvider(imageUrl);
-          PaintingBinding.instance.imageCache.evict(cachedProvider);
+        // Also clear from Flutter's image cache
+        final provider = NetworkImage(imageUrl);
+        PaintingBinding.instance.imageCache.evict(provider);
 
-          debugPrint('Cleared old S3 image from all caches: $imageUrl');
-        } else {
-          // For non-S3 URLs, use the default cache manager
-          await DefaultCacheManager().removeFile(imageUrl);
+        // Clear from CachedNetworkImage's cache
+        final cachedProvider = CachedNetworkImageProvider(imageUrl);
+        PaintingBinding.instance.imageCache.evict(cachedProvider);
+      } else {
+        // For non-S3 URLs, use the default cache manager
+        await DefaultCacheManager().removeFile(imageUrl);
 
-          // Also clear from Flutter's image cache
-          final provider = NetworkImage(imageUrl);
-          PaintingBinding.instance.imageCache.evict(provider);
+        // Also clear from Flutter's image cache
+        final provider = NetworkImage(imageUrl);
+        PaintingBinding.instance.imageCache.evict(provider);
 
-          // Clear from CachedNetworkImage's cache
-          final cachedProvider = CachedNetworkImageProvider(imageUrl);
-          PaintingBinding.instance.imageCache.evict(cachedProvider);
-
-          debugPrint('Cleared old image from all caches: $imageUrl');
-        }
+        // Clear from CachedNetworkImage's cache
+        final cachedProvider = CachedNetworkImageProvider(imageUrl);
+        PaintingBinding.instance.imageCache.evict(cachedProvider);
       }
     } catch (e) {
-      debugPrint('Error clearing image from cache: $e');
+      // Silent error handling - no logs
     }
   }
 
@@ -772,7 +781,7 @@ class DashboardState extends State<Dashboard>
       // Only do memory caching for visible/high-priority images
       if (highPriority) {
         precacheImage(provider, context, onError: (exception, stackTrace) {
-          debugPrint('Error precaching image: $exception');
+          _log('Error precaching image: $exception');
           // Handle S3 errors by refreshing pre-signed URLs if needed
           if (isS3Url) {
             // Determine image type for refresh logic
@@ -787,7 +796,7 @@ class DashboardState extends State<Dashboard>
       cacheManager.getFileFromCache(cacheKey).then((fileInfo) {
         if (fileInfo != null) {
           // File already cached on disk, no need to download again
-          debugPrint('Image already in disk cache: ${fileInfo.file.path}');
+          // Silent operation - no logging
         } else {
           // File not in cache, download it with size constraints
           // Use getFileStream instead of getSingleFile for better memory management
@@ -798,10 +807,9 @@ class DashboardState extends State<Dashboard>
             force: false, // Don't force if already in progress
           )
               .then((fileInfo) {
-            debugPrint(
-                'Image successfully cached to disk: ${fileInfo.file.path}');
+            // Successfully cached - silent operation
           }).catchError((e) {
-            debugPrint('Error caching image to disk: $e for URL: $imageUrl');
+            _log('Error caching image to disk: $e');
             // Handle S3 errors by refreshing pre-signed URLs if needed
             if (isS3Url) {
               // Determine image type for refresh logic
@@ -812,10 +820,10 @@ class DashboardState extends State<Dashboard>
           });
         }
       }).catchError((e) {
-        debugPrint('Error checking cache status: $e for URL: $imageUrl');
+        _log('Error checking cache status: $e');
       });
     } catch (e) {
-      debugPrint('Error prefetching image: $e for URL: $imageUrl');
+      _log('Error prefetching image: $e');
     }
   }
 
@@ -972,6 +980,10 @@ class DashboardState extends State<Dashboard>
   Future<void> _initializeLocation() async {
     if (_isDisposed) return;
 
+    // Completely skip location initialization since tracking is disabled
+    return;
+
+    // The rest of this method is kept but won't be executed
     try {
       // Check if we need to update location based on interval
       if (_lastLocationUpdate != null &&
@@ -984,7 +996,7 @@ class DashboardState extends State<Dashboard>
       try {
         bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
         if (!serviceEnabled) {
-          debugPrint('Location services are disabled');
+          _log('Location services are disabled');
           return;
         }
 
@@ -992,13 +1004,13 @@ class DashboardState extends State<Dashboard>
         if (permission == LocationPermission.denied) {
           permission = await Geolocator.requestPermission();
           if (permission == LocationPermission.denied) {
-            debugPrint('Location permissions are denied');
+            _log('Location permissions are denied');
             return;
           }
         }
 
         if (permission == LocationPermission.deniedForever) {
-          debugPrint('Location permissions are permanently denied');
+          _log('Location permissions are permanently denied');
           return;
         }
 
@@ -1012,7 +1024,7 @@ class DashboardState extends State<Dashboard>
           // Set up a timeout that completes with null after 10 seconds
           Timer(const Duration(seconds: 10), () {
             if (!completer.isCompleted) {
-              debugPrint('💡 Location timeout detected - completing with null');
+              _log('Location timeout detected - completing with null');
               completer.complete(null);
             }
           });
@@ -1028,7 +1040,7 @@ class DashboardState extends State<Dashboard>
           }).catchError((error) {
             if (!completer.isCompleted) {
               if (error is TimeoutException) {
-                debugPrint('Location timeout caught and handled gracefully');
+                _log('Location timeout caught and handled gracefully');
                 completer.complete(null);
               } else {
                 completer.completeError(error);
@@ -1038,7 +1050,7 @@ class DashboardState extends State<Dashboard>
 
           // Wait for either the position or the timeout
           _lastKnownPosition = await completer.future.catchError((error) {
-            debugPrint('Error getting position, handled gracefully: $error');
+            _log('Error getting position, handled gracefully: $error');
             return null;
           });
 
@@ -1046,7 +1058,7 @@ class DashboardState extends State<Dashboard>
             _lastLocationUpdate = DateTime.now();
           }
         } catch (e) {
-          debugPrint('Error getting initial position (handled): $e');
+          _log('Error getting initial position (handled): $e');
           // Continue without initial position
         }
 
@@ -1056,16 +1068,12 @@ class DashboardState extends State<Dashboard>
         }
       } catch (e) {
         // Catch any location service errors
-        debugPrint('Location service error (handled): $e');
+        _log('Location service error (handled): $e');
       }
     } catch (e) {
       // Final fallback to ensure app doesn't crash
-      debugPrint('Error initializing location (handled at root): $e');
+      _log('Error initializing location (handled at root): $e');
     }
-  }
-
-  bool _shouldTrackLocation() {
-    return false; // Default to false to save battery
   }
 
   void _startLocationUpdates() {
@@ -1093,14 +1101,14 @@ class DashboardState extends State<Dashboard>
         onError: (error) {
           // Handle all errors gracefully without propagating
           if (error is TimeoutException) {
-            debugPrint('💡 Location timeout detected - attempting to recover');
+            _log('Location timeout detected - attempting to recover');
             // Don't propagate timeout errors, just log them
             return;
           }
 
           if (mounted && !_isDisposed) {
             // Log but don't crash on location errors
-            debugPrint('Location stream error (handled): $error');
+            _log('Location stream error (handled): $error');
             _handleLocationError(error);
           }
         },
@@ -1108,7 +1116,7 @@ class DashboardState extends State<Dashboard>
       );
     } catch (e) {
       // Catch any errors during stream setup
-      debugPrint('Error setting up location stream (handled): $e');
+      _log('Error setting up location stream (handled): $e');
     }
   }
 
@@ -1118,16 +1126,16 @@ class DashboardState extends State<Dashboard>
     try {
       if (error is TimeoutException) {
         // For timeouts, wait longer before retrying to avoid rapid retries
-        debugPrint('Location timeout - waiting before retry');
+        _log('Location timeout - waiting before retry');
         if (_shouldTrackLocation()) {
           _restartLocationUpdatesWithDelay(5); // Wait 5 seconds before retry
         }
         return;
       } else if (error.toString().contains('location service disabled')) {
-        debugPrint('Location services are disabled. Not restarting updates.');
+        _log('Location services are disabled. Not restarting updates.');
         setState(() => _isLocationEnabled = false);
       } else {
-        debugPrint('Location error (handled): $error');
+        _log('Location error (handled): $error');
         if (_shouldTrackLocation()) {
           _restartLocationUpdatesWithDelay(
               3); // Wait 3 seconds for other errors
@@ -1135,7 +1143,7 @@ class DashboardState extends State<Dashboard>
       }
     } catch (e) {
       // Final safety net to prevent any crashes in the error handler itself
-      debugPrint('Error in location error handler (handled): $e');
+      _log('Error in location error handler (handled): $e');
     }
   }
 
@@ -1378,6 +1386,7 @@ class DashboardState extends State<Dashboard>
                             userProfile: userProfile,
                             isDarkMode: isDarkMode,
                             cacheManager: profileImageCacheManager,
+                            fetchUserProfile: fetchUserProfile,
                           ),
                           const SizedBox(height: 6),
 
@@ -1903,50 +1912,86 @@ class DashboardState extends State<Dashboard>
 
   // Handle S3 image load error by potentially refreshing the data
   Future<void> _handleS3ImageError(String url, String type) async {
-    if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
+    // Always clear the cache for S3 URLs with errors to force refresh
+    try {
+      await _clearImageFromCache(url);
+
       // Check if this is likely an expired pre-signed URL error
       final uri = Uri.tryParse(url);
       if (uri != null) {
+        // Check if URL has AWS pre-signed parameters
         final dateParam = uri.queryParameters['X-Amz-Date'];
         final expiresParam = uri.queryParameters['X-Amz-Expires'];
+        bool isExpired = false;
 
+        // Determine if the URL is expired
         if (dateParam != null && expiresParam != null) {
           try {
-            // Parse the AWS date format (YYYYMMDDTHHMMSSZ)
-            final reqDate = DateTime.parse(
-                '${dateParam.substring(0, 4)}-${dateParam.substring(4, 6)}-${dateParam.substring(6, 8)}T' +
-                    '${dateParam.substring(9, 11)}:${dateParam.substring(11, 13)}:${dateParam.substring(13, 15)}Z');
+            // Parse the AWS date format
+            final year = dateParam.substring(0, 4);
+            final month = dateParam.substring(4, 6);
+            final day = dateParam.substring(6, 8);
+            final hour = dateParam.substring(9, 11);
+            final minute = dateParam.substring(11, 13);
+            final second = dateParam.substring(13, 15);
+
+            final reqDate =
+                DateTime.parse('$year-$month-${day}T$hour:$minute:${second}Z');
+
             final expiresSeconds = int.parse(expiresParam);
             final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
 
-            // If URL has expired or will expire soon, refresh the data
-            if (DateTime.now().isAfter(expiryTime) ||
-                DateTime.now()
-                    .add(const Duration(minutes: 5))
-                    .isAfter(expiryTime)) {
-              debugPrint('Refreshing ${type} data due to expired S3 URL');
-
-              // Clear the cache for this URL
-              await _clearImageFromCache(url);
-
-              // Refresh user profile if this is a profile image
-              if (type == 'profile') {
-                setState(() {
-                  futureUserProfile = fetchUserProfile();
-                  _prefetchImage(url);
-                });
-              }
-              // Refresh banners if this is a banner image
-              else if (type == 'banner') {
-                await _fetchBannersFromApiAndUpdate(forceUpdate: true);
-              }
-            }
+            // Check if already expired
+            isExpired = DateTime.now().toUtc().isAfter(expiryTime);
           } catch (e) {
-            debugPrint('Error handling expired S3 URL: $e');
+            // If we can't parse the date, assume it might be expired
+            isExpired = true;
+          }
+        } else if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
+          // If it's an S3 URL without auth parameters, consider it expired
+          isExpired = true;
+        }
+
+        // Refresh data based on type and expiry status
+        if (isExpired) {
+          if (type == 'profile') {
+            // For expired profile images, fetch a fresh user profile
+            if (mounted) {
+              setState(() {
+                futureUserProfile = fetchUserProfile();
+              });
+
+              // Also request profile update from UserProvider
+              Future.microtask(() {
+                if (mounted) {
+                  Provider.of<UserProvider>(context, listen: false)
+                      .fetchAndUpdateUser();
+                }
+              });
+            }
+          } else if (type == 'banner') {
+            // For expired banner images, force refresh with network fetch
+            await _fetchBannersFromApiAndUpdate(forceUpdate: true);
           }
         }
+      } else {
+        // If URL parsing failed, refresh data anyway as a precaution
+        if (type == 'profile' && mounted) {
+          setState(() {
+            futureUserProfile = fetchUserProfile();
+          });
+        } else if (type == 'banner') {
+          await _fetchBannersFromApiAndUpdate(forceUpdate: true);
+        }
       }
+    } catch (e) {
+      // Silent error handling - no logs
     }
+  }
+
+  bool _shouldTrackLocation() {
+    // Completely disable location tracking to avoid timeout errors
+    return false;
   }
 }
 
@@ -2019,12 +2064,14 @@ class ProfileAvatar extends StatefulWidget {
   final UserProfile userProfile;
   final bool isDarkMode;
   final CacheManager cacheManager;
+  final Future<UserProfile?> Function() fetchUserProfile;
 
   const ProfileAvatar({
     Key? key,
     required this.userProfile,
     required this.isDarkMode,
     required this.cacheManager,
+    required this.fetchUserProfile,
   }) : super(key: key);
 
   @override
@@ -2036,6 +2083,11 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
   late final String cacheKey;
   bool _isOnline = true;
   bool _isLoading = true;
+  bool _hasError = false;
+  bool _isRetrying = false;
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
+  Timer? _retryTimer;
   FileInfo? _cachedFileInfo;
 
   @override
@@ -2049,7 +2101,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
 
   @override
   void dispose() {
-    // Cancel any pending operations to prevent memory leaks
+    _retryTimer?.cancel();
     super.dispose();
   }
 
@@ -2078,9 +2130,54 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
     if (!mounted) return;
 
     try {
-      if (imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png') {
+      // Check if URL is empty or default placeholder
+      if (imageUrl.isEmpty ||
+          imageUrl == 'avatar_placeholder.png' ||
+          imageUrl == 'default_avatar.jpg') {
+        // If this is a default image, trigger a profile refresh to get the actual image
+        _triggerProfileRefresh();
         _finishLoading();
         return;
+      }
+
+      // For S3 URLs, check if the URL might be expired
+      if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
+        final uri = Uri.tryParse(imageUrl);
+        if (uri != null) {
+          final dateParam = uri.queryParameters['X-Amz-Date'];
+          final expiresParam = uri.queryParameters['X-Amz-Expires'];
+
+          if (dateParam != null && expiresParam != null) {
+            try {
+              // Parse the AWS date format
+              final year = dateParam.substring(0, 4);
+              final month = dateParam.substring(4, 6);
+              final day = dateParam.substring(6, 8);
+              final hour = dateParam.substring(9, 11);
+              final minute = dateParam.substring(11, 13);
+              final second = dateParam.substring(13, 15);
+
+              final reqDate = DateTime.parse(
+                  '$year-$month-${day}T$hour:$minute:${second}Z');
+
+              final expiresSeconds = int.parse(expiresParam);
+              final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
+
+              // If URL is expired, force a refresh from network
+              if (DateTime.now().toUtc().isAfter(expiryTime)) {
+                // Clear the cache for this URL to force a refresh
+                await widget.cacheManager.removeFile(imageUrl);
+
+                // Trigger profile refresh without showing error first
+                _triggerProfileRefresh();
+                _finishLoading();
+                return;
+              }
+            } catch (e) {
+              // If we can't parse the date, proceed with normal loading
+            }
+          }
+        }
       }
 
       // Try to get the file from cache first
@@ -2099,8 +2196,13 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
         _finishLoading();
       }
     } catch (e) {
-      debugPrint('Error loading profile image from cache: $e');
+      // Silent error handling - no logs
       _finishLoading();
+      setState(() {
+        _hasError = true;
+      });
+      // If there's an error, try to refresh the profile
+      _triggerProfileRefresh();
     }
   }
 
@@ -2108,29 +2210,119 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
     if (!mounted) return;
 
     try {
-      if (imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png') {
+      if (imageUrl.isEmpty ||
+          imageUrl == 'avatar_placeholder.png' ||
+          imageUrl == 'default_avatar.jpg') {
         _finishLoading();
+        // Try to get a real image by refreshing profile
+        _triggerProfileRefresh();
         return;
       }
 
       // Use download function instead of getSingleFile for better memory management
-      final fileInfo = await widget.cacheManager.downloadFile(
+      final fileInfo = await widget.cacheManager
+          .downloadFile(
         imageUrl,
         key: cacheKey,
         // Only force download for critical images
         force: false,
-      );
+      )
+          .catchError((error) {
+        // Handle S3 specific errors
+        if (error.toString().contains('403') ||
+            error.toString().contains('expired') ||
+            error.toString().contains('Invalid statusCode')) {
+          setState(() {
+            _hasError = true;
+          });
+          // Trigger profile refresh on error
+          _triggerProfileRefresh();
+        }
+        return null;
+      });
 
-      if (mounted) {
+      if (mounted && fileInfo != null) {
         setState(() {
           _cachedFileInfo = fileInfo;
+          _hasError = false; // Clear error if we got a valid file
         });
       }
     } catch (e) {
-      debugPrint('Error updating profile image from network: $e');
+      // Silent error handling
+      setState(() {
+        _hasError = true;
+      });
+      // Trigger profile refresh on error
+      _triggerProfileRefresh();
     } finally {
       _finishLoading();
     }
+  }
+
+  // Trigger a profile refresh to get new image URLs
+  void _triggerProfileRefresh() {
+    if (_isRetrying || _retryCount >= _maxRetries) return;
+
+    setState(() {
+      _isRetrying = true;
+    });
+
+    // Schedule retries with increasing delays
+    _retryTimer?.cancel();
+    _retryTimer =
+        Timer(Duration(seconds: math.pow(2, _retryCount).toInt()), () {
+      _retryCount++;
+
+      // Request an updated profile from the API
+      if (mounted) {
+        // Use Future.microtask to avoid build phase issues
+        Future.microtask(() async {
+          if (mounted) {
+            try {
+              // Directly fetch a new user profile from API
+              final newUserProfile = await widget.fetchUserProfile();
+
+              // Check if we have a new image URL
+              if (newUserProfile != null &&
+                  newUserProfile.imgName.isNotEmpty &&
+                  newUserProfile.imgName != imageUrl &&
+                  newUserProfile.imgName != 'avatar_placeholder.png' &&
+                  newUserProfile.imgName != 'default_avatar.jpg') {
+                // Clear the old image cache
+                await widget.cacheManager.removeFile(imageUrl);
+
+                // Update to the new image URL
+                if (mounted) {
+                  setState(() {
+                    imageUrl = newUserProfile.imgName;
+                    cacheKey =
+                        'profile_${newUserProfile.id}_${imageUrl.hashCode}';
+                    _hasError = false;
+                    _isLoading = true;
+                  });
+
+                  // Try loading the new image
+                  _loadFromCache();
+                }
+              }
+
+              // Also trigger user provider refresh in the background
+              Provider.of<UserProvider>(context, listen: false)
+                  .fetchAndUpdateUser()
+                  .catchError((_) {});
+            } catch (e) {
+              // Silent error handling
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _isRetrying = false;
+                });
+              }
+            }
+          }
+        });
+      }
+    });
   }
 
   void _finishLoading() {
@@ -2146,20 +2338,41 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
     return CircleAvatar(
       radius: 28,
       backgroundColor: Colors.white,
-      child: imageUrl.isEmpty || imageUrl == 'avatar_placeholder.png'
-          ? Image.asset(
-              'assets/avatar_placeholder.png',
-              fit: BoxFit.cover,
-              width: 56,
-              height: 56,
-            )
-          : _buildProfileImage(),
+      child: _buildAvatar(),
     );
   }
 
-  Widget _buildProfileImage() {
+  Widget _buildAvatar() {
+    // If URL is empty, default placeholder, or has error AND we've exhausted retries
+    if ((imageUrl.isEmpty ||
+            imageUrl == 'avatar_placeholder.png' ||
+            imageUrl == 'default_avatar.jpg' ||
+            _hasError) &&
+        _retryCount >= _maxRetries) {
+      return Image.asset(
+        'assets/avatar_placeholder.png',
+        fit: BoxFit.cover,
+        width: 56,
+        height: 56,
+      );
+    }
+
+    // If we're retrying, show loading indicator
+    if (_isRetrying) {
+      return Center(
+        child: SizedBox(
+          width: 30,
+          height: 30,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.0,
+            color: widget.isDarkMode ? Colors.white70 : Colors.black45,
+          ),
+        ),
+      );
+    }
+
     // If we have a cached file and not forcing online refresh, use it directly
-    if (_cachedFileInfo != null && (!_isOnline || !_isLoading)) {
+    if (_cachedFileInfo != null && (!_isOnline || !_isLoading) && !_hasError) {
       return ClipOval(
         child: Image.file(
           _cachedFileInfo!.file,
@@ -2169,6 +2382,23 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
           cacheWidth: 112, // 2x for retina displays is enough
           cacheHeight: 112,
           errorBuilder: (context, error, stackTrace) {
+            // If we get an error showing the file, trigger a retry
+            Future.microtask(() => _triggerProfileRefresh());
+
+            // For first few retries, show loading indicator instead of placeholder
+            if (_retryCount < _maxRetries) {
+              return Center(
+                child: SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.0,
+                    color: widget.isDarkMode ? Colors.white70 : Colors.black45,
+                  ),
+                ),
+              );
+            }
+
             return Image.asset(
               'assets/avatar_placeholder.png',
               fit: BoxFit.cover,
@@ -2201,12 +2431,31 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
             color: widget.isDarkMode ? Colors.white70 : Colors.black45,
           ),
         ),
-        errorWidget: (context, url, error) => Image.asset(
-          'assets/avatar_placeholder.png',
-          fit: BoxFit.cover,
-          width: 56,
-          height: 56,
-        ),
+        errorWidget: (context, url, error) {
+          // On network image error, trigger a profile refresh
+          Future.microtask(() => _triggerProfileRefresh());
+
+          // For first few retries, show loading indicator instead of placeholder
+          if (_retryCount < _maxRetries) {
+            return Center(
+              child: SizedBox(
+                width: 30,
+                height: 30,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.0,
+                  color: widget.isDarkMode ? Colors.white70 : Colors.black45,
+                ),
+              ),
+            );
+          }
+
+          return Image.asset(
+            'assets/avatar_placeholder.png',
+            fit: BoxFit.cover,
+            width: 56,
+            height: 56,
+          );
+        },
       ),
     );
   }
@@ -2395,17 +2644,17 @@ class _BannerCarouselState extends State<BannerCarousel>
                 _cachedBannerFiles[url] = fileInfo;
               });
             }
-            debugPrint('Banner cached successfully: ${fileInfo.file.path}');
+            _log('Banner cached successfully: ${fileInfo.file.path}');
             activeDownloads--;
             processNextBanner();
           }).catchError((e) {
-            debugPrint('Error downloading banner: $e for URL: $url');
+            _log('Error downloading banner: $e');
             activeDownloads--;
             processNextBanner();
           });
         }
       }).catchError((e) {
-        debugPrint('Error checking banner cache: $e for URL: $url');
+        _log('Error checking banner cache: $e');
         activeDownloads--;
         processNextBanner();
       });
@@ -2588,6 +2837,47 @@ class _BannerCarouselState extends State<BannerCarousel>
       }
     }
 
+    // Check if it's an S3 URL that might be expired
+    if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
+      final uri = Uri.tryParse(imageUrl);
+      if (uri != null) {
+        final dateParam = uri.queryParameters['X-Amz-Date'];
+        final expiresParam = uri.queryParameters['X-Amz-Expires'];
+
+        if (dateParam != null && expiresParam != null) {
+          try {
+            // Parse the AWS date format
+            final year = dateParam.substring(0, 4);
+            final month = dateParam.substring(4, 6);
+            final day = dateParam.substring(6, 8);
+            final hour = dateParam.substring(9, 11);
+            final minute = dateParam.substring(11, 13);
+            final second = dateParam.substring(13, 15);
+
+            final reqDate =
+                DateTime.parse('$year-$month-${day}T$hour:$minute:${second}Z');
+
+            final expiresSeconds = int.parse(expiresParam);
+            final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
+
+            // If URL is expired, show error widget directly
+            if (DateTime.now().toUtc().isAfter(expiryTime)) {
+              // Also try to notify parent that the URL needs refreshing
+              Future.microtask(() {
+                if (widget.useS3CacheManager) {
+                  widget.onPreloadImage(imageUrl, highPriority: true);
+                }
+              });
+
+              return _buildErrorWidget();
+            }
+          } catch (e) {
+            // If we can't parse the date, continue with normal loading
+          }
+        }
+      }
+    }
+
     // Otherwise use CachedNetworkImage with our custom cache manager
     return CachedNetworkImage(
       cacheManager: widget.cacheManager,
@@ -2597,7 +2887,21 @@ class _BannerCarouselState extends State<BannerCarousel>
       fadeOutDuration: Duration.zero,
       fadeInDuration: Duration.zero,
       placeholderFadeInDuration: Duration.zero,
-      errorWidget: (context, url, error) => _buildErrorWidget(),
+      errorWidget: (context, url, error) {
+        // Attempt to refresh the image on error
+        if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
+          Future.microtask(() {
+            if (widget.useS3CacheManager) {
+              // Try to clear the cache entry
+              widget.cacheManager.removeFile(url);
+
+              // Request a refresh from the parent
+              widget.onPreloadImage(url, highPriority: true);
+            }
+          });
+        }
+        return _buildErrorWidget();
+      },
       progressIndicatorBuilder: (context, url, progress) => Container(
         color: widget.isDarkMode ? Colors.grey[850] : Colors.grey[200],
         child: Center(
@@ -2653,7 +2957,7 @@ class _BannerCarouselState extends State<BannerCarousel>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Text(
-              'Image failed to load',
+              'Image is temporarily unavailable',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: widget.isDarkMode ? Colors.white70 : Colors.black54,

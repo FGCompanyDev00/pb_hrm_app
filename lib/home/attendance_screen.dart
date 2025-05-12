@@ -956,7 +956,7 @@ class AttendanceScreenState extends State<AttendanceScreen>
 
       return position;
     } catch (e) {
-      debugPrint('Error getting current position: $e');
+      // Silent error handling - don't log to console
 
       // Try to use last known position as fallback if available
       if (_lastKnownPosition != null) {
@@ -1060,7 +1060,7 @@ class AttendanceScreenState extends State<AttendanceScreen>
       // Fallback to locally defined office locations if server didn't provide any
       return _checkAgainstLocalLocations(position);
     } catch (e) {
-      debugPrint('Error checking allowed areas: $e');
+      // Silent error handling - no logs
       // Default to allowing the check-in if our verification fails
       // This prevents blocking legitimate check-ins due to technical issues
       return true;
@@ -1094,7 +1094,7 @@ class AttendanceScreenState extends State<AttendanceScreen>
 
       return [];
     } catch (e) {
-      debugPrint('Error fetching allowed locations: $e');
+      // Silent error handling
       return [];
     }
   }

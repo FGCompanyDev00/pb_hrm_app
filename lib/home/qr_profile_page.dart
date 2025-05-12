@@ -149,7 +149,7 @@ class ProfileScreenState extends State<ProfileScreen>
   static final profileImageCacheManager = CacheManager(
     Config(
       'profileImageCache',
-      stalePeriod: const Duration(days: 7),
+      stalePeriod: const Duration(hours: 24),
       maxNrOfCacheObjects: 20,
       repo: JsonCacheInfoRepository(databaseName: 'profileImageCacheDb'),
       fileService: S3HttpFileService(),
@@ -273,8 +273,7 @@ class ProfileScreenState extends State<ProfileScreen>
         throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
       }
     } else {
-      debugPrint(
-          'Failed to load profile data ');
+      debugPrint('Failed to load profile data ');
       debugPrint('Response Body: ${response.body}');
       throw Exception(AppLocalizations.of(context)!.failedToLoadProfileData);
     }
@@ -387,8 +386,7 @@ class ProfileScreenState extends State<ProfileScreen>
         throw Exception(AppLocalizations.of(context)!.invalidResponseStructure);
       }
     } else {
-      debugPrint(
-          'Failed to load display data');
+      debugPrint('Failed to load display data');
       debugPrint('Response Body: ${response.body}');
       throw Exception(AppLocalizations.of(context)!.failedToLoadDisplayData);
     }
