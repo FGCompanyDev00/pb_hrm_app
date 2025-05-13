@@ -39,22 +39,26 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       String? token = prefs.getString('token');
-      String? currentUserId = prefs.getString('employee_id'); // Get current user id
+      String? currentUserId =
+          prefs.getString('employee_id'); // Get current user id
 
       if (token == null || currentUserId == null) {
         print('No token or employee id found in SharedPreferences.');
         return;
       }
 
-      // Fetch meeting or car members based on the widget.type
+      // Fetch meeting, car, or minutes of meeting members based on the widget.type
       if (widget.type == "meeting") {
         await _fetchMeetingMembers(currentUserId, token);
       } else if (widget.type == "car") {
         await _fetchCarMembers(currentUserId, token);
+      } else if (widget.type == "minutes_of_meeting") {
+        await _fetchMinutesOfMeetingMembers(currentUserId, token);
       }
 
       // Fetch members from the main API
-      final Uri url = Uri.parse('$baseUrl/api/work-tracking/project-member/get-all-employees');
+      final Uri url = Uri.parse(
+          '$baseUrl/api/work-tracking/project-member/get-all-employees');
       final response = await http.get(
         url,
         headers: {
@@ -71,9 +75,12 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
 
           // Filter out the current user and the already added members from meeting or car
           List<Map<String, dynamic>> membersFromApi = results
-              .where((item) => item['employee_id'] != currentUserId && !excludedMemberIds.contains(item['employee_id']))
+              .where((item) =>
+                  item['employee_id'] != currentUserId &&
+                  !excludedMemberIds.contains(item['employee_id']))
               .map<Map<String, dynamic>>((item) {
             return {
+              'employee_id': item['employee_id'],
               'name': '${item['name']} ${item['surname']}',
               'email': item['email'] ?? '',
               'img': item['img_name'] ?? '',
@@ -96,7 +103,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
 
   // Fetch meeting members and add them to the exclusion list
   Future<void> _fetchMeetingMembers(String currentUserId, String token) async {
-    final Uri url = Uri.parse('$baseUrl/api/work-tracking/meeting/get-meeting/${widget.id}');
+    final Uri url = Uri.parse(
+        '$baseUrl/api/work-tracking/meeting/get-meeting/${widget.id}');
     final response = await http.get(
       url,
       headers: {
@@ -110,7 +118,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
       if (data['statusCode'] == 200 && data['result'][0]['members'] is List) {
         List meetingMembers = data['result'][0]['members'];
         setState(() {
-          excludedMemberIds.addAll(meetingMembers.map((member) => member['employee_id']));
+          excludedMemberIds
+              .addAll(meetingMembers.map((member) => member['employee_id']));
         });
       }
     } else {
@@ -120,7 +129,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
 
   // Fetch car members and add them to the exclusion list
   Future<void> _fetchCarMembers(String currentUserId, String token) async {
-    final Uri url = Uri.parse('$baseUrl/api/office-administration/car_permit/me/${widget.id}');
+    final Uri url = Uri.parse(
+        '$baseUrl/api/office-administration/car_permit/me/${widget.id}');
     final response = await http.get(
       url,
       headers: {
@@ -134,12 +144,14 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
       if (data['statusCode'] == 200 && data['results']['members'] is List) {
         List carMembers = data['results']['members'];
         setState(() {
-          excludedMemberIds.addAll(carMembers.map((member) => member['member_id']));
+          excludedMemberIds
+              .addAll(carMembers.map((member) => member['member_id']));
         });
       }
     } else {
       // If the first API fails, try the second approach.
-      final secondUrl = Uri.parse('$baseUrl/api/office-administration/car_permit/invite-car-member/${widget.id}');
+      final secondUrl = Uri.parse(
+          '$baseUrl/api/office-administration/car_permit/invite-car-member/${widget.id}');
       final secondResponse = await http.get(
         secondUrl,
         headers: {
@@ -153,7 +165,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
         if (data['statusCode'] == 200 && data['results']['members'] is List) {
           List carMembers = data['results']['members'];
           setState(() {
-            excludedMemberIds.addAll(carMembers.map((member) => member['member_id']));
+            excludedMemberIds
+                .addAll(carMembers.map((member) => member['member_id']));
           });
         }
       } else {
@@ -162,12 +175,75 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
     }
   }
 
+  // Fetch minutes of meeting members to hide them from the selection list
+  Future<void> _fetchMinutesOfMeetingMembers(
+      String currentUserId, String token) async {
+    final Uri url =
+        Uri.parse('$baseUrl/api/app/users/history/pending/${widget.id}');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'types': 'minutes of meeting',
+          'status': 'Public', // Default status
+        }),
+      );
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 202) {
+        final data = json.decode(response.body);
+        if (data['statusCode'] == 200 && data['results'] != null) {
+          if (data['results']['guests'] != null &&
+              data['results']['guests'] is List) {
+            List guests = data['results']['guests'];
+
+            print('Fetched ${guests.length} guests for minutes of meeting');
+            print('Guest data: ${guests}');
+
+            // Add existing guests to selectedMembers
+            List<Map<String, dynamic>> existingMembers =
+                guests.map<Map<String, dynamic>>((guest) {
+              return {
+                'employee_id': guest['value'] ?? guest['employee_id'] ?? '',
+                'name': guest['name'] ?? guest['employee_name'] ?? 'Unknown',
+                'email': '',
+                'img': guest['img_name'] ?? '',
+                'selected': true,
+              };
+            }).toList();
+
+            // Add all guest IDs to the exclude list
+            setState(() {
+              selectedMembers = existingMembers;
+              excludedMemberIds.addAll(guests.map((guest) =>
+                  guest['value']?.toString() ??
+                  guest['employee_id']?.toString() ??
+                  ''));
+            });
+          }
+        }
+      } else {
+        print(
+            'Failed to load minutes of meeting members, status: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching minutes of meeting members: $e');
+    }
+  }
+
   void _filterMembers(String query) {
     setState(() {
       filteredMembers = members.where((member) {
         final name = member['name'].toLowerCase();
         final email = member['email'].toLowerCase();
-        return name.contains(query.toLowerCase()) || email.contains(query.toLowerCase());
+        return name.contains(query.toLowerCase()) ||
+            email.contains(query.toLowerCase());
       }).toList();
     });
   }
@@ -177,6 +253,7 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
     bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
         title: Text(
           AppLocalizations.of(context)!.addPeople,
@@ -184,7 +261,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        backgroundColor: Colors.transparent,
         elevation: 0,
         toolbarHeight: 80,
         flexibleSpace: Container(
@@ -222,8 +298,9 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                             child: CircleAvatar(
                               backgroundImage: selectedMembers[i]['img'] != ''
                                   ? NetworkImage(selectedMembers[i]['img'])
-                                  : const AssetImage('assets/avatar_placeholder.png')
-                              as ImageProvider,
+                                  : const AssetImage(
+                                          'assets/avatar_placeholder.png')
+                                      as ImageProvider,
                               radius: 20,
                             ),
                           ),
@@ -246,13 +323,28 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                 ElevatedButton.icon(
                   onPressed: () {
                     // Filter only selected members to pass back
-                    List<Map<String, dynamic>> selectedMembersToReturn = selectedMembers
-                        .map((member) => {
-                      'employee_id': member['employee_id'],
-                      'name': member['name'],
-                      'img_name': member['img'],
-                    })
-                        .toList();
+                    List<Map<String, dynamic>> selectedMembersToReturn =
+                        selectedMembers
+                            .map((member) => widget.type == 'minutes_of_meeting'
+                                ? {
+                                    'employee_id': member['employee_id'],
+                                    'employee_name': member['name'],
+                                    'img_name': member['img'],
+                                    'value': member[
+                                        'employee_id'], // Add value field for API
+                                    'name': member[
+                                        'name'], // Add name field for API
+                                  }
+                                : {
+                                    'employee_id': member['employee_id'],
+                                    'employee_name': member['name'],
+                                    'img_name': member['img'],
+                                  })
+                            .toList();
+
+                    // Print debug info before returning
+                    print(
+                        'Returning selected members: $selectedMembersToReturn');
 
                     // Return selected members to previous page
                     Navigator.pop(context, selectedMembersToReturn);
@@ -267,9 +359,11 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isDarkMode ? Colors.green : const Color(0xFFDBB342),
+                    backgroundColor:
+                        isDarkMode ? Colors.green : const Color(0xFFDBB342),
                     foregroundColor: isDarkMode ? Colors.white : Colors.black,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -296,7 +390,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                 ),
                 filled: true,
                 fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               ),
               style: TextStyle(
                 color: isDarkMode ? Colors.white : Colors.black,
@@ -329,8 +424,9 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                         trailing: CircleAvatar(
                           backgroundImage: member['img'] != ''
                               ? NetworkImage(member['img'])
-                              : const AssetImage('assets/avatar_placeholder.png')
-                          as ImageProvider,
+                              : const AssetImage(
+                                      'assets/avatar_placeholder.png')
+                                  as ImageProvider,
                         ),
                       ),
                       Container(

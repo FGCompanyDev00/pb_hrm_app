@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'dart:math' show sin, cos;
+import 'package:flutter/foundation.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -215,11 +216,15 @@ class HistoryPageState extends State<HistoryPage>
       final prefs = await SharedPreferences.getInstance();
       final currentEmployeeId = prefs.getString('employee_id');
 
+      if (kDebugMode) {
+        print('Loading cached data with employee ID: $currentEmployeeId');
+      }
+
       // Load cached leave types
       final cachedLeaveTypes = prefs.getString('cached_leave_types');
       if (cachedLeaveTypes != null) {
         final Map<String, dynamic> leaveTypesData =
-        jsonDecode(cachedLeaveTypes);
+            jsonDecode(cachedLeaveTypes);
         _leaveTypes = Map<int, String>.from(leaveTypesData
             .map((key, value) => MapEntry(int.parse(key), value.toString())));
         hasCachedData = true;
@@ -234,20 +239,27 @@ class HistoryPageState extends State<HistoryPage>
         final filteredPendingItems = decodedItems.where((item) {
           if (currentEmployeeId == null) return false;
 
-          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
+          final Map<String, dynamic> typedItem =
+              Map<String, dynamic>.from(item);
           final type = typedItem['types']?.toString().toLowerCase() ?? '';
 
-          // For car type, use requestor_id; for others use employee_id
-          String itemId = type == 'car'
-              ? typedItem['requestor_id']?.toString() ?? ''
-              : typedItem['employee_id']?.toString() ?? '';
+          // Show only items created by current user for all types
+          String itemId;
+          if (type == 'car') {
+            itemId = typedItem['requestor_id']?.toString() ?? '';
+          } else if (type == 'minutes of meeting') {
+            itemId = typedItem['created_by']?.toString() ?? '';
+          } else {
+            itemId = typedItem['employee_id']?.toString() ?? '';
+          }
 
           return itemId == currentEmployeeId;
         }).toList();
 
         _pendingItems = filteredPendingItems.map<Map<String, dynamic>>((item) {
           // Convert string dates back to DateTime
-          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
+          final Map<String, dynamic> typedItem =
+              Map<String, dynamic>.from(item);
           if (typedItem['updated_at'] != null) {
             typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
           }
@@ -265,20 +277,27 @@ class HistoryPageState extends State<HistoryPage>
         final filteredHistoryItems = decodedItems.where((item) {
           if (currentEmployeeId == null) return false;
 
-          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
+          final Map<String, dynamic> typedItem =
+              Map<String, dynamic>.from(item);
           final type = typedItem['types']?.toString().toLowerCase() ?? '';
 
-          // For car type, use requestor_id; for others use employee_id
-          String itemId = type == 'car'
-              ? typedItem['requestor_id']?.toString() ?? ''
-              : typedItem['employee_id']?.toString() ?? '';
+          // Show only items created by current user for all types
+          String itemId;
+          if (type == 'car') {
+            itemId = typedItem['requestor_id']?.toString() ?? '';
+          } else if (type == 'minutes of meeting') {
+            itemId = typedItem['created_by']?.toString() ?? '';
+          } else {
+            itemId = typedItem['employee_id']?.toString() ?? '';
+          }
 
           return itemId == currentEmployeeId;
         }).toList();
 
         _historyItems = filteredHistoryItems.map<Map<String, dynamic>>((item) {
           // Convert string dates back to DateTime
-          final Map<String, dynamic> typedItem = Map<String, dynamic>.from(item);
+          final Map<String, dynamic> typedItem =
+              Map<String, dynamic>.from(item);
           if (typedItem['updated_at'] != null) {
             typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
           }
@@ -378,9 +397,16 @@ class HistoryPageState extends State<HistoryPage>
           // Filter by current user
           final userPendingData = filteredPendingData.where((item) {
             final type = item['types']?.toString().toLowerCase() ?? '';
-            String itemId = type == 'car'
-                ? item['requestor_id']?.toString() ?? ''
-                : item['employee_id']?.toString() ?? '';
+
+            // Show only items created by current user for all types
+            String itemId;
+            if (type == 'car') {
+              itemId = item['requestor_id']?.toString() ?? '';
+            } else if (type == 'minutes of meeting') {
+              itemId = item['created_by']?.toString() ?? '';
+            } else {
+              itemId = item['employee_id']?.toString() ?? '';
+            }
             return itemId == currentEmployeeId;
           }).toList();
 
@@ -402,9 +428,16 @@ class HistoryPageState extends State<HistoryPage>
           // Filter by current user
           final userHistoryData = filteredHistoryData.where((item) {
             final type = item['types']?.toString().toLowerCase() ?? '';
-            String itemId = type == 'car'
-                ? item['requestor_id']?.toString() ?? ''
-                : item['employee_id']?.toString() ?? '';
+
+            // Show only items created by current user for all types
+            String itemId;
+            if (type == 'car') {
+              itemId = item['requestor_id']?.toString() ?? '';
+            } else if (type == 'minutes of meeting') {
+              itemId = item['created_by']?.toString() ?? '';
+            } else {
+              itemId = item['employee_id']?.toString() ?? '';
+            }
             return itemId == currentEmployeeId;
           }).toList();
 
@@ -576,22 +609,22 @@ class HistoryPageState extends State<HistoryPage>
           'id': item['uid']?.toString() ?? '',
         });
         break;
-      //
-      // /// NEW CASE: minutes of meeting
-      // case 'minutes of meeting':
-      //   formattedItem.addAll({
-      //     'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
-      //     'startDate': item['fromdate'] ?? '',
-      //     'endDate': item['todate'] ?? '',
-      //     'employee_name': item['created_by_name'] ?? 'N/A',
-      //     'id': item['outmeeting_uid']?.toString() ?? '',
-      //     'description': item['description'] ?? '',
-      //     'location': item['location'] ?? '',
-      //     'file_download_url': item['file_name'] ?? '',
-      //     'employee_id': item['employee_id'],
-      //     'types': item['types'],
-      //   });
-      //   break;
+
+      case 'minutes of meeting':
+        formattedItem.addAll({
+          'title': item['title'] ?? AppLocalizations.of(context)!.noTitle,
+          'startDate': item['fromdate'] ?? '',
+          'endDate': item['todate'] ?? '',
+          'employee_name': item['created_by_name'] ?? 'N/A',
+          'id': item['outmeeting_uid']?.toString() ?? '',
+          'description': item['description'] ?? '',
+          'location': item['location'] ?? '',
+          'file_download_url': item['file_name'] ?? '',
+          'employee_id': item['created_by'],
+          'types': item['types'],
+          'guests': item['guests'] ?? [], // Ensure we include guests data
+        });
+        break;
 
       default:
         // Handle unknown types if necessary
@@ -848,7 +881,7 @@ class HistoryPageState extends State<HistoryPage>
                                     end: Alignment.centerRight,
                                     tileMode: TileMode.mirror,
                                   ).createShader(bounds),
-                                  child: Text(
+                                  child: const Text(
                                     'Fetching History Data',
                                     style: TextStyle(
                                       fontSize: 18,
@@ -1297,7 +1330,10 @@ class HistoryPageState extends State<HistoryPage>
               status: formattedStatus,
             ),
           ),
-        );
+        ).then((_) {
+          // Refresh data when returning from details page
+          _fetchHistoryData();
+        });
       },
       child: Card(
         color: isDarkMode ? Colors.grey[850] : Colors.white,
@@ -1481,7 +1517,7 @@ class HistoryPageState extends State<HistoryPage>
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(screenSize.width * 0.05),
-                  side: BorderSide(
+                  side: const BorderSide(
                     color: Colors.white,
                     width: 2,
                   ),

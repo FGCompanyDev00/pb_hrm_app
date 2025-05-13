@@ -206,7 +206,6 @@ class NotificationPageState extends State<NotificationPage> {
       if (kDebugMode) {
         debugPrint('Pending items loaded: ${_pendingItems.length} items.');
       }
-
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error fetching pending data: $e');
@@ -243,16 +242,41 @@ class NotificationPageState extends State<NotificationPage> {
             responseBody['results'] != null) {
           final List<dynamic> dataItems = responseBody['results'];
 
+          // Get current user ID to filter out own events
+          final prefs = await SharedPreferences.getInstance();
+          final currentUserId = prefs.getString('employee_id');
+
+          if (kDebugMode) {
+            debugPrint('Current user ID: $currentUserId');
+          }
+
           for (var item in dataItems) {
             final Map<String, dynamic> dataItem =
                 Map<String, dynamic>.from(item);
-            // Add type to distinguish different items
-            dataItem['types'] = itemType;
-            itemsList.add(dataItem);
+
+            // Check if this item is created by current user
+            bool isCreatedByCurrentUser = false;
+            String creatorId = '';
+
+            if (itemType == 'car') {
+              creatorId = dataItem['requestor_id']?.toString() ?? '';
+            } else {
+              creatorId = dataItem['employee_id']?.toString() ?? '';
+            }
+
+            isCreatedByCurrentUser = creatorId == currentUserId;
+
+            // Only add items NOT created by current user (notifications are for invitations from others)
+            if (!isCreatedByCurrentUser) {
+              // Add type to distinguish different items
+              dataItem['types'] = itemType;
+              itemsList.add(dataItem);
+            }
           }
 
           if (kDebugMode) {
-            debugPrint('Loaded ${dataItems.length} $itemType items');
+            debugPrint(
+                'Loaded ${itemsList.length} $itemType items after filtering');
           }
         }
       }
@@ -407,31 +431,60 @@ class NotificationPageState extends State<NotificationPage> {
             responseBody['results'] != null) {
           final List<dynamic> meetingData = responseBody['results'];
 
+          // Get current user ID to filter out own events
+          final prefs = await SharedPreferences.getInstance();
+          final currentUserId = prefs.getString('employee_id');
+
           if (kDebugMode) {
-            debugPrint('Found ${meetingData.length} items for $type');
+            debugPrint(
+                'Found ${meetingData.length} items for $type before filtering');
+            debugPrint('Current user ID: $currentUserId');
           }
 
+          int addedCount = 0;
           for (var item in meetingData) {
             final Map<String, dynamic> meetingItem =
                 Map<String, dynamic>.from(item);
-            meetingItem['types'] = type;
-            // Add display type label based on the endpoint
+
+            // Check if this meeting is created by current user
+            bool isCreatedByCurrentUser = false;
+            String creatorId = '';
+
             if (type == 'meeting') {
-              meetingItem['display_type'] = 'Meeting and Booking Meeting Room';
+              creatorId = meetingItem['employee_id']?.toString() ?? '';
             } else if (type == 'out-meeting') {
-              meetingItem['display_type'] = 'Add Meeting';
-              // For out-meeting, add UID to ensure we have an ID to click on
-              if (meetingItem['uid'] == null &&
-                  meetingItem['outmeeting_uid'] != null) {
-                meetingItem['uid'] = meetingItem['outmeeting_uid'];
+              creatorId = meetingItem['created_by']?.toString() ?? '';
+            }
+
+            isCreatedByCurrentUser = creatorId == currentUserId;
+
+            // Only add meetings NOT created by current user
+            if (!isCreatedByCurrentUser) {
+              meetingItem['types'] = type;
+              // Add display type label based on the endpoint
+              if (type == 'meeting') {
+                meetingItem['display_type'] =
+                    'Meeting and Booking Meeting Room';
+              } else if (type == 'out-meeting') {
+                meetingItem['display_type'] = 'Add Meeting';
+                // For out-meeting, add UID to ensure we have an ID to click on
+                if (meetingItem['uid'] == null &&
+                    meetingItem['outmeeting_uid'] != null) {
+                  meetingItem['uid'] = meetingItem['outmeeting_uid'];
+                }
+              }
+              allMeetings.add(meetingItem);
+              addedCount++;
+
+              if (kDebugMode && type == 'out-meeting') {
+                debugPrint(
+                    'Out-meeting item added: ${meetingItem['title']} - ID: ${meetingItem['uid'] ?? meetingItem['outmeeting_uid']}');
               }
             }
-            allMeetings.add(meetingItem);
+          }
 
-            if (kDebugMode && type == 'out-meeting') {
-              debugPrint(
-                  'Out-meeting item added: ${meetingItem['title']} - ID: ${meetingItem['uid'] ?? meetingItem['outmeeting_uid']}');
-            }
+          if (kDebugMode) {
+            debugPrint('Added $addedCount items for $type after filtering');
           }
         } else {
           if (kDebugMode) {

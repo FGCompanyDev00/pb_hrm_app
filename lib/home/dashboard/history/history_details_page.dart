@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_office_booking_event_edit_page.dart';
+import 'package:pb_hrsystem/home/dashboard/history/history_edit_event_members.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -232,11 +233,29 @@ class DetailsPageState extends State<DetailsPage> {
             // ✅ Handle case when results is a Map
             final Map<String, dynamic> singleData = responseData['results'];
 
+            // Debug the received data
+            if (kDebugMode) {
+              print('===== RECEIVED DATA =====');
+              print(jsonEncode(singleData));
+              print('=========================');
+
+              if (widget.types.toLowerCase() == 'minutes of meeting') {
+                print('Minutes of Meeting guests: ${singleData['guests']}');
+              }
+            }
+
             // 🔥 Fix: Convert "details" field to an empty list if it's a string
             if (singleData.containsKey('details') &&
                 singleData['details'] is String) {
               singleData['details'] =
                   []; // ✅ Convert to empty list to avoid errors
+            }
+
+            // Ensure guests field is properly initialized for minutes of meeting
+            if (widget.types.toLowerCase() == 'minutes of meeting' &&
+                (!singleData.containsKey('guests') ||
+                    singleData['guests'] == null)) {
+              singleData['guests'] = [];
             }
 
             setState(() {
@@ -626,13 +645,31 @@ class DetailsPageState extends State<DetailsPage> {
           'value': data?['status'] ?? '',
           'color': Colors.red
         },
-        {
+      ]);
+
+      // Debug the guests data
+      if (kDebugMode) {
+        print(
+            'Minutes of Meeting - Guests data from details page: ${data?['guests']}');
+      }
+
+      // Only add members if the guests array is not empty
+      final guests = data?['guests'];
+      if (guests != null && guests is List && guests.isNotEmpty) {
+        details.add({
           'icon': Icons.groups,
           'title': 'Members',
-          'value': _buildMemberCircles(data?['guests'] ?? []),
+          'value': _buildMemberCircles(guests),
           'color': Colors.indigo
-        },
-      ]);
+        });
+      } else {
+        details.add({
+          'icon': Icons.groups,
+          'title': 'Members',
+          'value': const Text('No members available'),
+          'color': Colors.indigo
+        });
+      }
     }
 
     return Column(
@@ -656,7 +693,33 @@ class DetailsPageState extends State<DetailsPage> {
     );
   }
 
-  Widget _buildMemberCircles(List<dynamic> guests) {
+  Widget _buildMemberCircles(dynamic guestsInput) {
+    // Debug print to see what's coming in
+    if (kDebugMode) {
+      print('Building member circles with: $guestsInput');
+    }
+
+    List<dynamic> guests = [];
+
+    // Handle different input types
+    if (guestsInput is List) {
+      guests = guestsInput;
+    } else if (guestsInput is String) {
+      try {
+        final parsedGuests = jsonDecode(guestsInput);
+        if (parsedGuests is List) {
+          guests = parsedGuests;
+          if (kDebugMode) {
+            print('Successfully parsed guests from string: $guests');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Error parsing guests: $e');
+        }
+      }
+    }
+
     if (guests.isEmpty) {
       return const Text('No members available');
     }
@@ -665,6 +728,11 @@ class DetailsPageState extends State<DetailsPage> {
       spacing: 6,
       runSpacing: 10,
       children: guests.map<Widget>((guest) {
+        // Debug individual guest
+        if (kDebugMode) {
+          print('Guest data: $guest');
+        }
+
         final String imageUrl = guest['img_name'] ?? '';
         final String name = guest['employee_name'] ?? 'Unknown';
 
@@ -675,7 +743,9 @@ class DetailsPageState extends State<DetailsPage> {
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundImage: NetworkImage(imageUrl),
+                backgroundImage: imageUrl.isNotEmpty
+                    ? NetworkImage(imageUrl)
+                    : NetworkImage(_defaultAvatarUrl()),
                 onBackgroundImageError: (_, __) => const Icon(Icons.error),
                 backgroundColor: Colors.grey[300],
               ),
@@ -890,13 +960,44 @@ class DetailsPageState extends State<DetailsPage> {
     final String type = widget.types.toLowerCase();
     final lowerStatus = widget.status.toLowerCase();
 
-    // Hide for "minutes of meeting" type
-    if (type == 'minutes of meeting' ||
-        lowerStatus == 'approved' ||
+    // Hide for completed/cancelled statuses
+    if (lowerStatus == 'approved' ||
         lowerStatus == 'disapproved' ||
         lowerStatus == 'cancel' ||
         lowerStatus == 'completed') {
       return const SizedBox.shrink();
+    }
+
+    // For minutes of meeting type, show Edit and Delete buttons
+    if (type == 'minutes of meeting') {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildStyledButton(
+                label: 'Delete',
+                icon: Icons.delete,
+                backgroundColor: Colors.red,
+                textColor: Colors.white,
+                onPressed:
+                    isFinalized ? null : () => _confirmDeleteMinutesMeeting(),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildStyledButton(
+                label: 'Edit',
+                icon: Icons.edit,
+                backgroundColor: const Color(0xFFDBB342),
+                textColor: Colors.white,
+                onPressed:
+                    isFinalized ? null : () => _handleEditMinutesMeeting(),
+              ),
+            ),
+          ],
+        ),
+      );
     }
 
     return Padding(
@@ -999,9 +1100,8 @@ class DetailsPageState extends State<DetailsPage> {
       if (kDebugMode) {
         debugPrint('Returned from Edit Page with result: $result');
       }
-      if (result == true) {
-        _fetchData();
-      }
+      // Always refresh data when returning from edit page, regardless of result value
+      _fetchData();
     });
 
     setState(() {
@@ -1114,8 +1214,22 @@ class DetailsPageState extends State<DetailsPage> {
           break;
 
         case 'minutes of meeting':
-          _showErrorDialog(
-              'Error', 'Delete for minutes of meeting not implemented.');
+          response = await http.delete(
+            Uri.parse(
+                '$baseUrl/api/office-administration/outmeeting/${data?["outmeeting_uid"] ?? id}'),
+            headers: {
+              'Authorization': 'Bearer $tokenValue',
+              'Content-Type': 'application/json',
+            },
+          );
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            _showSuccessDialog('Success', 'Minutes of meeting deleted.');
+          } else {
+            _showErrorDialog(
+                'Error',
+                'Failed to delete minutes of meeting: ${response.reasonPhrase}\n'
+                    'Response Body: ${response.body}');
+          }
           break;
 
         default:
@@ -1171,6 +1285,131 @@ class DetailsPageState extends State<DetailsPage> {
     return 'https://www.w3schools.com/howto/img_avatar.png';
   }
 
+  Future<void> _handleEditMinutesMeeting() async {
+    setState(() {
+      isFinalized = true;
+    });
+
+    final String id = data?['outmeeting_uid']?.toString() ?? widget.id;
+
+    try {
+      if (kDebugMode) {
+        print('Navigating to edit minutes of meeting with id: $id');
+      }
+
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OfficeBookingEventEditPage(
+            id: id,
+            type: 'minutes_of_meeting',
+          ),
+        ),
+      );
+
+      if (kDebugMode) {
+        print('Returned from Edit Page with result: $result');
+      }
+
+      // Always refresh data when returning from edit page, regardless of result value
+      _fetchData();
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error editing minutes of meeting: $e');
+      }
+      _showErrorDialog('Error', 'Failed to edit minutes of meeting: $e');
+    } finally {
+      setState(() {
+        isFinalized = false;
+      });
+    }
+  }
+
+  void _confirmDeleteMinutesMeeting() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirm Delete'),
+        content: const Text(
+            'Are you sure you want to delete this minutes of meeting?'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _handleDeleteMinutesMeeting();
+            },
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleDeleteMinutesMeeting() async {
+    final String id = data?['outmeeting_uid']?.toString() ?? widget.id;
+
+    if (id.isEmpty) {
+      _showErrorDialog('Invalid Data', 'Minutes of meeting ID is missing.');
+      return;
+    }
+
+    final String? tokenValue = await _getToken();
+    if (tokenValue == null) {
+      _showErrorDialog('Authentication Error', 'Token not found.');
+      return;
+    }
+
+    setState(() {
+      isFinalized = true;
+    });
+
+    try {
+      if (kDebugMode) {
+        print('Cancelling minutes of meeting with ID: $id');
+      }
+
+      final response = await http.put(
+        Uri.parse(
+            '$baseUrl/api/work-tracking/out-meeting/outmeeting/cancel/$id'),
+        headers: {
+          'Authorization': 'Bearer $tokenValue',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (kDebugMode) {
+        print('Delete response status: ${response.statusCode}');
+        print('Delete response body: ${response.body}');
+      }
+
+      if (response.statusCode == 200 ||
+          response.statusCode == 201 ||
+          response.statusCode == 202) {
+        _showSuccessDialog(
+            'Success', 'Minutes of meeting deleted successfully.');
+      } else {
+        _showErrorDialog('Error',
+            'Failed to delete minutes of meeting: ${response.reasonPhrase}\nResponse Body: ${response.body}');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error deleting minutes of meeting: $e');
+      }
+      _showErrorDialog('Error',
+          'An error occurred while deleting the minutes of meeting: $e');
+    } finally {
+      setState(() {
+        isFinalized = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1179,6 +1418,7 @@ class DetailsPageState extends State<DetailsPage> {
     final horizontalPadding = screenWidth < 360 ? 12.0 : 24.0;
 
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: _buildAppBar(context),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -1224,7 +1464,11 @@ class DetailsPageState extends State<DetailsPage> {
                                   const SizedBox(height: 18),
                                   _buildDetailsSection(),
                                   const SizedBox(height: 14),
-                                  _buildWorkflowSection(),
+                                  // Hide workflow section for minutes of meeting type
+                                  widget.types.toLowerCase() !=
+                                          'minutes of meeting'
+                                      ? _buildWorkflowSection()
+                                      : const SizedBox.shrink(),
                                   SizedBox(height: screenHeight * 0.02),
                                   _buildActionButtons(context),
                                 ],
