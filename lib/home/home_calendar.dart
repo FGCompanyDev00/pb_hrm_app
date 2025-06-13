@@ -682,16 +682,15 @@ class HomeCalendarState extends State<HomeCalendar>
         if (status == 'Cancelled') continue;
 
         final event = Events(
-          // title: item['title'] ?? 'Minutes Of Meeting',
           title: item['title'] ?? 'Add Meeting',
           start: startDateTime,
           end: endDateTime,
           desc: item['description'] ?? '',
           status: status,
           isMeeting: true,
-          location: item['location'] ?? '', // Assuming 'location' field exists
-          createdBy: item['create_by'] ?? '',
-          imgName: item['file_name'] ?? '',
+          location: item['location'] ?? '',
+          createdBy: item['created_by_name'] ?? item['create_by'] ?? '',
+          imgName: item['img_name'] ?? item['file_name'] ?? '',
           createdAt: item['created_at'] ?? '',
           uid: uid,
           isRepeat: item['is_repeat']?.toString(),

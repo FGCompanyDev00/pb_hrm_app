@@ -101,8 +101,18 @@ class MyProfilePageState extends State<MyProfilePage>
   }
 
   String formatDate(String dateStr) {
-    DateTime dateTime = DateTime.parse(dateStr);
-    return DateFormat('MMM dd, yyyy').format(dateTime);
+    // Handle invalid date formats like 'N/A'
+    if (dateStr == 'N/A' || dateStr.isEmpty) {
+      return 'N/A';
+    }
+    
+    try {
+      DateTime dateTime = DateTime.parse(dateStr);
+      return DateFormat('MMM dd, yyyy').format(dateTime);
+    } catch (e) {
+      // Return the original string if parsing fails
+      return dateStr;
+    }
   }
 
   Widget buildRolesSection(String roles) {
