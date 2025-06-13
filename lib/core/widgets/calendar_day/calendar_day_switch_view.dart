@@ -331,7 +331,7 @@ class CalendarDaySwitchView extends HookWidget {
                               builder: (context) => EventDetailView(
                                 event: {
                                   'title': event.title,
-                                  'description': eventsCalendar[itemIndex].desc,
+                                  'description': event.desc,
                                   'startDateTime':
                                       event.startDisplay.toString(),
                                   'endDateTime': event.endDisplay.toString(),
@@ -394,7 +394,7 @@ class CalendarDaySwitchView extends HookWidget {
                               builder: (context) => EventDetailView(
                                 event: {
                                   'title': event.title,
-                                  'description': eventsCalendar[itemIndex].desc,
+                                  'description': event.desc,
                                   'startDateTime':
                                       event.startDisplay.toString(),
                                   'endDateTime': event.endDisplay.toString(),
@@ -418,7 +418,7 @@ class CalendarDaySwitchView extends HookWidget {
                                   'members': event.members ?? [],
                                   'category': event.category,
                                   'leave_type':
-                                      eventsCalendar[itemIndex].leaveType,
+                                      eventsCalendar[itemIndex].leaveType ?? '',
                                 },
                               ),
                             ),

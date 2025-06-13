@@ -372,7 +372,6 @@ class EventDetailViewState extends State<EventDetailView>
   /// Extracts and formats necessary event details.
   Map<String, String> _getEventDetails() {
     String creatorName = widget.event['createdBy'] ??
-        widget.event['create_by'] ??
         widget.event['created_by_name'] ??
         widget.event['employee_name'] ??
         widget.event['requestor_name'] ??
