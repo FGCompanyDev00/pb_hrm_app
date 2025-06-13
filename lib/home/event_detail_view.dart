@@ -702,7 +702,7 @@ class EventDetailViewState extends State<EventDetailView>
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.only(bottom: 12),
           child: Text(
             AppLocalizations.of(context)!.requestor,
             style: const TextStyle(
@@ -868,7 +868,9 @@ class EventDetailViewState extends State<EventDetailView>
     String? title = widget.event['title'];
     String? location = widget.event['location'];
     String? leaveType = widget.event['leave_type'];
-    String? description = widget.event['description']; // Add this line
+    String? description = _eventType == 'Add Meeting'
+        ? widget.event['description'] ?? ''
+        : widget.event['description']; // Special handling for Add Meeting
     final startDate = DateTime.parse(widget.event['startDateTime']);
     final endDate = DateTime.parse(widget.event['endDateTime']);
     String startDisplay12 =
@@ -919,7 +921,9 @@ class EventDetailViewState extends State<EventDetailView>
             ),
           ),
         // Add description section
-        if (description != null && description.isNotEmpty)
+        if (_eventType == 'Add Meeting'
+            ? (description?.isNotEmpty ?? false)
+            : (description != null && description.isNotEmpty))
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Column(
@@ -954,7 +958,7 @@ class EventDetailViewState extends State<EventDetailView>
                     ),
                   ),
                   child: Text(
-                    description,
+                    description ?? '',
                     style: TextStyle(
                       fontSize: 14,
                       color: Theme.of(context).brightness == Brightness.dark
@@ -980,7 +984,7 @@ class EventDetailViewState extends State<EventDetailView>
     final size = MediaQuery.sizeOf(context);
 
     return Container(
-      padding: const EdgeInsets.only(top: 50),
+      padding: const EdgeInsets.only(top: 20),
       constraints: BoxConstraints(maxWidth: size.width * 0.8),
       child: SingleChildScrollView(
         child: isMinutesOfMeeting

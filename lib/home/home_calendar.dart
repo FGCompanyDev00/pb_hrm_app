@@ -628,14 +628,31 @@ class HomeCalendarState extends State<HomeCalendar>
 
     try {
       final data = json.decode(response.body);
+      debugPrint('=== Add Meeting API Response ===');
+      debugPrint('Status Code: ${response.statusCode}');
+      debugPrint('Raw Response: ${response.body}');
+      debugPrint('Decoded Data: $data');
 
       if (data == null || data['results'] == null || data['results'] is! List) {
+        debugPrint('Invalid data format or empty results');
         return;
       }
 
       final List<dynamic> results = data['results'];
+      debugPrint('Number of meetings: ${results.length}');
 
       for (var item in results) {
+        debugPrint('\n=== Processing Meeting ===');
+        debugPrint('Meeting ID: ${item['meeting_id']}');
+        debugPrint('Title: ${item['title']}');
+        debugPrint('Description: ${item['description']}');
+        debugPrint('From Date: ${item['fromdate']}');
+        debugPrint('To Date: ${item['todate']}');
+        debugPrint('Status: ${item['s_name']}');
+        debugPrint('Location: ${item['location']}');
+        debugPrint('Created By: ${item['created_by_name']}');
+        debugPrint('Members: ${item['guests']}');
+
         // Ensure necessary fields are present
         if (item['fromdate'] == null || item['todate'] == null) {
           showSnackBar('Missing date or time fields in meeting data.');
@@ -673,7 +690,7 @@ class HomeCalendarState extends State<HomeCalendar>
 
         // Handle possible nulls with default values
         final String uid =
-            item['meeting_id']?.toString() ?? UniqueKey().toString();
+            item['outmeeting_uid']?.toString() ?? UniqueKey().toString();
 
         String status = item['s_name'] != null
             ? mapEventStatus(item['s_name'].toString())
@@ -698,7 +715,7 @@ class HomeCalendarState extends State<HomeCalendar>
           backgroundColor: item['backgroundColor'] != null
               ? parseColor(item['backgroundColor'])
               : Colors.blue,
-          outmeetingUid: item['meeting_id']?.toString(),
+          outmeetingUid: item['outmeeting_uid']?.toString(),
           category: 'Add Meeting',
           members: item['guests'] != null
               ? List<Map<String, dynamic>>.from(item['guests'])

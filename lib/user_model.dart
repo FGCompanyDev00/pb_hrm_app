@@ -269,7 +269,6 @@ class UserProvider extends ChangeNotifier {
     final String? token = prefs.getToken();
 
     if (token == null) {
-      debugPrint('No token found');
       return;
     }
 
@@ -295,12 +294,14 @@ class UserProvider extends ChangeNotifier {
         );
 
         updateUser(loggedInUser);
-      } else {
-        debugPrint(
-            'Failed to fetch user data. Status code: ${response.statusCode}, Body: ${response.body}');
       }
     } catch (e) {
-      debugPrint('Error occurred while fetching user data: $e');
+      // Silently handle connection errors
+      if (!e.toString().contains('SocketException') &&
+          !e.toString().contains('Failed host lookup')) {
+        // Only log non-connection related errors
+        debugPrint('Error occurred while fetching user data: $e');
+      }
     }
   }
 

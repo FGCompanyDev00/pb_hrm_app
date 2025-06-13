@@ -23,12 +23,22 @@ Future<http.Response?> getRequest(String endpoint) async {
     if (response.statusCode == 200) {
       return response;
     } else {
-      showSnackBar(
-          'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      // Only show snackbar for non-connection related errors
+      if (response.statusCode != 503 && response.statusCode != 504) {
+        showSnackBar(
+            'We\'re unable to process your request at the moment. Please contact IT support for assistance.');
+      }
       return null;
     }
   } catch (e) {
+    // Silently handle connection errors
+    if (e.toString().contains('SocketException') ||
+        e.toString().contains('Failed host lookup')) {
+      return null;
+    }
 
+    // For other errors, show snackbar
+    showSnackBar('Network error occurred. Please check your connection.');
     return null;
   }
 }

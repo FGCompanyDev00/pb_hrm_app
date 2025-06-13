@@ -168,9 +168,16 @@ class CalendarDaySwitchView extends HookWidget {
       List<AdvancedDayEvent<String>> bookingCarEvents = [];
       List<AdvancedDayEvent<String>> minutesOfMeetingEvents = [];
 
+      // Create a Set to track unique event IDs for Add Meeting events
+      final Set<String> addMeetingIds = {};
+
       for (var i in currentEvents.value) {
         if (i.category == 'Add Meeting') {
-          addMeetingEvents.add(i);
+          // Only add the event if we haven't seen its ID before
+          if (!addMeetingIds.contains(i.value)) {
+            addMeetingIds.add(i.value);
+            addMeetingEvents.add(i);
+          }
         } else if (i.category == 'Leave') {
           leaveEvents.add(i);
         } else if (i.category == 'Meeting Room Bookings') {
@@ -181,6 +188,9 @@ class CalendarDaySwitchView extends HookWidget {
           minutesOfMeetingEvents.add(i);
         }
       }
+
+      // Clear existing events before adding
+      categoriesEvents.value.clear();
 
       categoriesEvents.value
         ..addAll(addMeetingEvents)
