@@ -2,6 +2,7 @@
 
 import 'dart:convert';
 import 'dart:async';
+import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +28,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pb_hrsystem/services/s3_image_service.dart';
 import 'dart:math' as math;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 // Flag to control all cache-related logging in this file
@@ -101,6 +103,12 @@ class DashboardState extends State<Dashboard>
   static const Duration _locationTimeout = Duration(seconds: 15);
   static const Duration _locationUpdateInterval = Duration(minutes: 5);
   DateTime? _lastLocationUpdate;
+
+  // Network error handling
+  int _profileUpdateErrorCount = 0;
+  DateTime? _lastProfileUpdateError;
+  static const Duration _errorBackoffDuration = Duration(minutes: 15);
+  bool _isProfileUpdating = false; // Flag to prevent concurrent updates
 
   // Animasi baru
   late AnimationController _bellAnimationController;
@@ -292,6 +300,7 @@ class DashboardState extends State<Dashboard>
   @override
   void dispose() {
     _isDisposed = true;
+    _isProfileUpdating = false; // Reset profile updating flag
     WidgetsBinding.instance.removeObserver(this);
     _positionStreamSubscription?.cancel();
     _pageController.dispose();
@@ -526,9 +535,21 @@ class DashboardState extends State<Dashboard>
   }
 
   Future<void> _checkForProfileUpdates({bool forceUpdate = false}) async {
-    if (_isDisposed) return;
+    if (_isDisposed || _isProfileUpdating) return;
+
+    _isProfileUpdating = true; // Set flag to prevent concurrent updates
 
     try {
+      // Check if we should back off due to recent errors
+      if (_lastProfileUpdateError != null && !forceUpdate) {
+        final timeSinceError =
+            DateTime.now().difference(_lastProfileUpdateError!);
+        if (timeSinceError < _errorBackoffDuration) {
+          // Still in backoff period, skip update
+          return;
+        }
+      }
+
       // Skip update check if we have a recent profile (unless forced)
       final cachedProfile = _getCachedData('userProfile') as UserProfile?;
       final cacheTimestamp = _getCacheTimestamp('userProfile');
@@ -541,7 +562,19 @@ class DashboardState extends State<Dashboard>
         }
       }
 
+      // Check network connectivity before making API calls
+      final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult == ConnectivityResult.none) {
+        // No internet connection, skip update silently
+        return;
+      }
+
       final newProfile = await _fetchProfileFromApi();
+
+      // Reset error count on successful fetch
+      _profileUpdateErrorCount = 0;
+      _lastProfileUpdateError = null;
+
       final oldProfile = _getCachedData('userProfile') as UserProfile?;
 
       // Check specifically for profile image changes
@@ -570,7 +603,28 @@ class DashboardState extends State<Dashboard>
         }
       }
     } catch (e) {
-      debugPrint('Error checking for profile updates: $e');
+      // Handle network errors with backoff mechanism
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('Failed host lookup') ||
+          e.toString().contains('TimeoutException') ||
+          e.toString().contains('ClientException') ||
+          e.toString().contains('Network error') ||
+          e.toString().contains('Timeout error') ||
+          e.toString().contains('Client error')) {
+        // Increment error count and set last error time
+        _profileUpdateErrorCount++;
+        _lastProfileUpdateError = DateTime.now();
+
+        // Silently fail for network errors to reduce log noise
+        return;
+      }
+
+      // Only log non-network errors in debug mode when necessary
+      if (kDebugMode && !e.toString().contains('Failed to fetch profile')) {
+        debugPrint('Error checking for profile updates: $e');
+      }
+    } finally {
+      _isProfileUpdating = false; // Reset flag regardless of success/failure
     }
   }
 
@@ -619,27 +673,35 @@ class DashboardState extends State<Dashboard>
       throw Exception('No token found');
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/display/me'),
-      headers: {
-        'Authorization': 'Bearer $token!',
-        'Content-Type': 'application/json',
-      },
-    ).timeout(const Duration(seconds: 10));
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/display/me'),
+        headers: {
+          'Authorization': 'Bearer $token!',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 10));
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseJson = jsonDecode(response.body);
-      final List<dynamic> results = responseJson['results'];
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseJson = jsonDecode(response.body);
+        final List<dynamic> results = responseJson['results'];
 
-      if (results.isNotEmpty) {
-        final userProfile = UserProfile.fromJson(results[0]);
-        _updateCache('userProfile', userProfile);
-        await userProfileBox.put(
-            'userProfile', jsonEncode(userProfile.toJson()));
-        return userProfile;
+        if (results.isNotEmpty) {
+          final userProfile = UserProfile.fromJson(results[0]);
+          _updateCache('userProfile', userProfile);
+          await userProfileBox.put(
+              'userProfile', jsonEncode(userProfile.toJson()));
+          return userProfile;
+        }
       }
+      throw Exception('Failed to fetch profile');
+    } on SocketException catch (e) {
+      throw Exception('Network error: ${e.message}');
+    } on TimeoutException catch (e) {
+      throw Exception('Timeout error: ${e.message}');
+    } on http.ClientException catch (e) {
+      throw Exception('Client error: ${e.message}');
     }
-    throw Exception('Failed to fetch profile');
   }
 
   // Optimized banner fetching with improved caching
