@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/assignment_section.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/processing_section.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/chat_section.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -33,6 +34,7 @@ class ProjectManagementPageState extends State<ProjectManagementPage>
   late TabController _tabController;
   String _currentUserId = '';
   bool _isRefreshing = false;
+  bool _isBackgroundLoading = false;
   Timer? _timer;
   late String projectId;
 
@@ -80,10 +82,12 @@ class ProjectManagementPageState extends State<ProjectManagementPage>
   Future<void> _refreshData() async {
     setState(() {
       _isRefreshing = true;
+      _isBackgroundLoading = true;
     });
     await _loadUserData();
     setState(() {
       _isRefreshing = false;
+      _isBackgroundLoading = false;
     });
   }
 
@@ -170,6 +174,12 @@ class ProjectManagementPageState extends State<ProjectManagementPage>
         onRefresh: _refreshData,
         child: Column(
           children: [
+            // Linear Loading Indicator under header
+            LinearLoadingIndicator(
+              isLoading: _isBackgroundLoading,
+              color: isDarkMode ? Colors.amber : Colors.green,
+            ),
+
             TabBar(
               isScrollable: true,
               controller: _tabController,

@@ -224,7 +224,7 @@ class DashboardState extends State<Dashboard>
             _initializeLocation();
           }
 
-          // Instead of full refresh, use cached data first then update in background
+          // Use cached data for immediate display, gentle background refresh
           _quickLoadThenRefresh();
         }
         break;
@@ -239,17 +239,19 @@ class DashboardState extends State<Dashboard>
 
   // Safe refresh method
   // Improved refresh method that forces updates from API
-  void _refreshDataSafely() {
+  void _refreshDataSafely({bool forceClearCache = false}) {
     if (!mounted || _isDisposed || _isPaused) return;
 
     try {
       // Force update checks when user returns to app
       _checkForProfileUpdates(forceUpdate: true);
 
-      // Clear the image cache to ensure fresh images
-      DefaultCacheManager().emptyCache();
-      PaintingBinding.instance.imageCache.clear();
-      PaintingBinding.instance.imageCache.clearLiveImages();
+      // Only clear image cache if explicitly requested (e.g., user pull-to-refresh)
+      if (forceClearCache) {
+        DefaultCacheManager().emptyCache();
+        PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
+      }
 
       // Fetch new data from API
       _fetchBannersFromApiAndUpdate(forceUpdate: true);
@@ -282,15 +284,19 @@ class DashboardState extends State<Dashboard>
         ),
       );
 
+      // Only refresh if the page explicitly requested it (result == true)
+      // For normal navigation returns, just use existing cached data
       if (result == true && mounted && !_isDisposed) {
         _quickLoadThenRefresh();
-      } else {
-        // Just ensure cached data is used on return
-        if (mounted && !_isDisposed) {
-          setState(() {
-            // Trigger rebuild with cached data
-          });
+      } else if (mounted && !_isDisposed) {
+        // For normal returns, just verify cached data is still valid
+        // without triggering expensive refreshes or cache clearing
+        final cachedProfile = _getCachedData('userProfile');
+        if (cachedProfile == null) {
+          // Only refresh if we somehow lost the cached data
+          _quickLoadThenRefresh();
         }
+        // Otherwise, do nothing - keep existing smooth UI
       }
     } catch (e) {
       debugPrint('Navigation error: $e');
@@ -1164,18 +1170,15 @@ class DashboardState extends State<Dashboard>
       if (cachedProfile != null &&
           cachedBanners != null &&
           cachedBanners.isNotEmpty) {
-        setState(() {
-          // Use cached data for immediate UI update
-        });
-
-        // Then refresh in background
+        // Data is already displayed, just do a gentle background refresh
+        // without forcing updates or clearing cache
         Future.microtask(() {
           _checkForProfileUpdates(forceUpdate: false);
           _fetchBannersFromApiAndUpdate(forceUpdate: false);
         });
       } else {
-        // If no cache, do a regular refresh
-        _refreshDataSafely();
+        // If no cache, do a gentle refresh without cache clearing
+        _refreshDataSafely(forceClearCache: false);
       }
     } catch (e) {
       debugPrint('Error in quick load: $e');
@@ -1268,7 +1271,7 @@ class DashboardState extends State<Dashboard>
                 if (isDarkMode) _buildDarkBackground(),
                 RefreshIndicator(
                   onRefresh: () async {
-                    _refreshDataSafely();
+                    _refreshDataSafely(forceClearCache: true);
                   },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),

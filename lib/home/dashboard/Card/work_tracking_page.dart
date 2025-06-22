@@ -6,11 +6,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
+import 'dart:convert';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/view_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/project_management_page.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -37,7 +39,8 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     'Finished'
   ];
   List<Map<String, dynamic>> _projects = [];
-  bool _isLoading = false;
+  bool _isInitialLoading = true;
+  bool _isBackgroundLoading = false;
   final WorkTrackingService _workTrackingService = WorkTrackingService();
 
   // Animation controllers
@@ -60,7 +63,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
       CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
     );
 
-    _fetchProjects();
+    _initializeData();
   }
 
   @override
@@ -87,13 +90,61 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     super.dispose();
   }
 
-  Future<void> _fetchProjects() async {
-    setState(() {
-      _isLoading = true;
-    });
+  /// Initialize data with smart caching strategy
+  Future<void> _initializeData() async {
+    // Check for cached data first
+    if (await _loadCachedData()) {
+      // If cache exists, show data immediately and fetch fresh data in background
+      _isInitialLoading = false;
+      _fadeController.forward();
+      setState(() {});
+      await _fetchFreshData();
+    } else {
+      // No cache, show loading and fetch data
+      await _fetchFreshData();
+    }
+  }
 
-    // Ensure loading animation shows for at least 2 seconds
-    final loadingTimer = Future.delayed(const Duration(seconds: 2));
+  /// Load cached project data
+  Future<bool> _loadCachedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey =
+          _isMyProjectsSelected ? 'cached_my_projects' : 'cached_all_projects';
+      final timestampKey = _isMyProjectsSelected
+          ? 'cached_my_projects_timestamp'
+          : 'cached_all_projects_timestamp';
+
+      final cachedData = prefs.getString(cacheKey);
+      final cachedTimestamp = prefs.getInt(timestampKey) ?? 0;
+
+      if (cachedData != null && cachedTimestamp > 0) {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final cacheAge = now - cachedTimestamp;
+        const cacheValidityDuration =
+            30 * 60 * 1000; // 30 minutes in milliseconds
+
+        if (cacheAge < cacheValidityDuration) {
+          final List<dynamic> decoded = json.decode(cachedData);
+          setState(() {
+            _projects = List<Map<String, dynamic>>.from(decoded);
+          });
+          debugPrint('Loaded ${_projects.length} projects from cache');
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error loading cached data: $e');
+      return false;
+    }
+  }
+
+  /// Fetch fresh data from API and cache it
+  Future<void> _fetchFreshData() async {
+    setState(() {
+      _isBackgroundLoading = true;
+    });
 
     try {
       List<Map<String, dynamic>> fetchedProjects = [];
@@ -135,26 +186,53 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
         return bDate.compareTo(aDate);
       });
 
-      // Wait for both the loading timer and data fetch
-      await loadingTimer;
+      // Cache the fresh data
+      await _cacheFreshData(fetchedProjects);
 
       if (mounted) {
         setState(() {
           _projects = fetchedProjects;
-          _isLoading = false;
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
         });
         _fadeController.forward(); // Start fade animation after data is loaded
       }
     } catch (e) {
-      debugPrint('Error in _fetchProjects: $e');
-      await loadingTimer; // Still wait for minimum loading time
+      debugPrint('Error in _fetchFreshData: $e');
       if (mounted) {
         _showErrorDialog('Failed to fetch projects: $e');
         setState(() {
-          _isLoading = false;
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
         });
       }
     }
+  }
+
+  /// Cache fresh data with timestamp
+  Future<void> _cacheFreshData(List<Map<String, dynamic>> projects) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cacheKey =
+          _isMyProjectsSelected ? 'cached_my_projects' : 'cached_all_projects';
+      final timestampKey = _isMyProjectsSelected
+          ? 'cached_my_projects_timestamp'
+          : 'cached_all_projects_timestamp';
+
+      await prefs.setString(cacheKey, json.encode(projects));
+      await prefs.setInt(timestampKey, DateTime.now().millisecondsSinceEpoch);
+      debugPrint('Cached ${projects.length} projects');
+    } catch (e) {
+      debugPrint('Error caching data: $e');
+    }
+  }
+
+  Future<void> _fetchProjects() async {
+    setState(() {
+      _isInitialLoading = true;
+    });
+
+    await _fetchFreshData();
   }
 
   void _refreshProjects() {
@@ -187,7 +265,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
-          // If a result is provided and it's a number, it's the index for the bottom navigation
+          // If a result is provided and it's the number, it's the index for the bottom navigation
           if (result != null && result is int) {
             Navigator.of(context).pop(result);
           } else {
@@ -199,18 +277,33 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
       child: Scaffold(
         backgroundColor: isDarkMode ? Colors.black : Colors.white,
         body: RefreshIndicator(
-          onRefresh: _fetchProjects,
+          onRefresh: () async {
+            // Clear cache and fetch fresh data on pull-to-refresh
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.remove('cached_my_projects');
+            await prefs.remove('cached_all_projects');
+            await prefs.remove('cached_my_projects_timestamp');
+            await prefs.remove('cached_all_projects_timestamp');
+            await _fetchProjects();
+          },
           child: Column(
             children: [
               _buildHeader(isDarkMode),
+
+              // Linear Loading Indicator under header
+              LinearLoadingIndicator(
+                isLoading: _isInitialLoading || _isBackgroundLoading,
+                color: isDarkMode ? Colors.amber : Colors.green,
+              ),
+
               const SizedBox(height: 10),
               _buildTabs(),
               const SizedBox(height: 8),
               _buildSearchBar(isDarkMode),
               const SizedBox(height: 8),
               Expanded(
-                child: _isLoading
-                    ? _buildLoading()
+                child: _isInitialLoading
+                    ? _buildInitialLoadingState(isDarkMode)
                     : _buildProjectsList(context, isDarkMode),
               ),
             ],
@@ -315,14 +408,14 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
           _buildTabButton('My Project', _isMyProjectsSelected, () {
             setState(() {
               _isMyProjectsSelected = true;
-              _fetchProjects();
             });
+            _initializeData(); // Reinitialize data for new tab
           }),
           _buildTabButton('All Project', !_isMyProjectsSelected, () {
             setState(() {
               _isMyProjectsSelected = false;
-              _fetchProjects();
             });
+            _initializeData(); // Reinitialize data for new tab
           }),
         ],
       ),
@@ -460,180 +553,42 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     );
   }
 
-  Widget _buildLoading() {
-    final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+  /// Clean initial loading state without complex animations
+  Widget _buildInitialLoadingState(bool isDarkMode) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: isDarkMode ? Colors.grey[850] : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: isDarkMode
-                      ? Colors.black.withOpacity(0.3)
-                      : Colors.grey.withOpacity(0.2),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+          Icon(
+            Icons.work_outline,
+            size: 64,
+            color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading Projects...',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Project Icon Animation Container
-                Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
-                    shape: BoxShape.circle,
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Outer rotating circle
-                      TweenAnimationBuilder(
-                        duration: const Duration(seconds: 2),
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        builder: (context, value, child) {
-                          return Transform.rotate(
-                            angle: value * 2 * 3.14159,
-                            child: child,
-                          );
-                        },
-                        child: Container(
-                          width: 70,
-                          height: 70,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isDarkMode
-                                  ? Colors.green[700]!
-                                  : Colors.green,
-                              width: 2,
-                              strokeAlign: BorderSide.strokeAlignOutside,
-                            ),
-                          ),
-                        ),
-                      ),
-                      // Project Icon with Pulse Animation
-                      TweenAnimationBuilder(
-                        duration: const Duration(milliseconds: 1500),
-                        tween: Tween(begin: 0.8, end: 1.0),
-                        builder: (context, value, child) {
-                          return Transform.scale(
-                            scale: value,
-                            child: child,
-                          );
-                        },
-                        child: Icon(
-                          Icons.work_outline,
-                          size: 40,
-                          color: isDarkMode
-                              ? Colors.green[700]
-                              : Colors.green[600],
-                        ),
-                      ),
-                      // Animated dots
-                      ...List.generate(
-                        8,
-                        (index) => Positioned(
-                          top: 35 + 25 * sin(index * 3.14159 / 4),
-                          left: 35 + 25 * cos(index * 3.14159 / 4),
-                          child: TweenAnimationBuilder(
-                            duration:
-                                Duration(milliseconds: 1000 + index * 100),
-                            tween: Tween(begin: 0.0, end: 1.0),
-                            builder: (context, value, child) {
-                              return Transform.scale(
-                                scale: value,
-                                child: Container(
-                                  width: 4,
-                                  height: 4,
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? Colors.green[700]?.withOpacity(value)
-                                        : Colors.green[600]?.withOpacity(value),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ).toList(),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                // Loading Text with Shimmer Effect
-                ShaderMask(
-                  shaderCallback: (bounds) => LinearGradient(
-                    colors: [
-                      isDarkMode ? Colors.grey[300]! : Colors.grey[800]!,
-                      isDarkMode ? Colors.grey[500]! : Colors.grey[600]!,
-                      isDarkMode ? Colors.grey[300]! : Colors.grey[800]!,
-                    ],
-                    stops: const [0.0, 0.5, 1.0],
-                    begin: Alignment.centerLeft,
-                    end: Alignment.centerRight,
-                    tileMode: TileMode.mirror,
-                  ).createShader(bounds),
-                  child: Text(
-                    'Fetching Projects Data',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Please wait a moment...',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Progress Dots
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(
-                    3,
-                    (index) => TweenAnimationBuilder(
-                      duration: Duration(milliseconds: 400 + (index * 200)),
-                      tween: Tween(begin: 0.0, end: 1.0),
-                      builder: (context, value, child) {
-                        return Opacity(
-                          opacity: value,
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            width: 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: isDarkMode
-                                  ? Colors.green[700]
-                                  : Colors.green[600],
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please wait a moment',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDarkMode ? Colors.grey[600] : Colors.grey[500],
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildLoading() {
+    return _buildInitialLoadingState(
+        Theme.of(context).brightness == Brightness.dark);
   }
 
   Widget _buildProjectsList(BuildContext context, bool isDarkMode) {

@@ -590,14 +590,12 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
     final bool isDarkMode = themeNotifier.isDarkMode;
     final Size screenSize = MediaQuery.of(context).size;
 
-    return WillPopScope(
-        onWillPop: () async {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const Dashboard()),
-            (route) => false,
-          );
-          return false;
+    return PopScope(
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) {
+            Navigator.of(context).pop();
+          }
+          return;
         },
         child: Scaffold(
           backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,

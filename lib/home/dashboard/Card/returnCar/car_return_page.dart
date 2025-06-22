@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page_details.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,7 +23,8 @@ class ReturnCarPageState extends State<ReturnCarPage>
     with SingleTickerProviderStateMixin {
   List<dynamic> events = [];
   List<dynamic> filteredEvents = [];
-  bool isLoading = true;
+  bool _isInitialLoading = true;
+  bool _isBackgroundLoading = false;
   TextEditingController searchController = TextEditingController();
   String searchOption = 'requestor_name';
   bool isSearchFocused = false;
@@ -42,7 +44,7 @@ class ReturnCarPageState extends State<ReturnCarPage>
   @override
   void initState() {
     super.initState();
-    fetchEvents();
+    _initializeData();
     searchController.addListener(_filterEvents);
     _loadRecentSearches();
 
@@ -73,41 +75,63 @@ class ReturnCarPageState extends State<ReturnCarPage>
     });
   }
 
-  Future<void> _loadRecentSearches() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      recentSearches = prefs.getStringList('recent_car_searches') ?? [];
-    });
-  }
-
-  Future<void> _saveRecentSearch(String query) async {
-    if (query.isEmpty) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    List<String> searches = prefs.getStringList('recent_car_searches') ?? [];
-
-    // Remove if already exists and add to the beginning
-    searches.remove(query);
-    searches.insert(0, query);
-
-    // Keep only the last 5 searches
-    if (searches.length > 5) {
-      searches = searches.sublist(0, 5);
+  /// Initialize data with smart caching strategy
+  Future<void> _initializeData() async {
+    // Check for cached data first
+    if (await _loadCachedData()) {
+      // If cache exists, show data immediately and fetch fresh data in background
+      _isInitialLoading = false;
+      setState(() {});
+      await _fetchFreshData();
+    } else {
+      // No cache, show loading and fetch data
+      await _fetchFreshData();
     }
-
-    await prefs.setStringList('recent_car_searches', searches);
-    setState(() {
-      recentSearches = searches;
-    });
   }
 
-  Future<void> fetchEvents() async {
+  /// Load cached car return data
+  Future<bool> _loadCachedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedData = prefs.getString('cached_car_returns');
+      final cachedTimestamp = prefs.getInt('cached_car_returns_timestamp') ?? 0;
+
+      if (cachedData != null && cachedTimestamp > 0) {
+        final now = DateTime.now().millisecondsSinceEpoch;
+        final cacheAge = now - cachedTimestamp;
+        const cacheValidityDuration =
+            30 * 60 * 1000; // 30 minutes in milliseconds
+
+        if (cacheAge < cacheValidityDuration) {
+          final List<dynamic> decoded = json.decode(cachedData);
+          setState(() {
+            events = decoded;
+            filteredEvents = events;
+          });
+          debugPrint('Loaded ${events.length} car returns from cache');
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error loading cached data: $e');
+      return false;
+    }
+  }
+
+  /// Fetch fresh data from API and cache it
+  Future<void> _fetchFreshData() async {
+    setState(() {
+      _isBackgroundLoading = true;
+    });
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
     if (token == null) {
       setState(() {
-        isLoading = false;
+        _isInitialLoading = false;
+        _isBackgroundLoading = false;
       });
       if (kDebugMode) {
         print('No token found');
@@ -115,28 +139,63 @@ class ReturnCarPageState extends State<ReturnCarPage>
       return;
     }
 
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/app/tasks/approvals/return'),
-      headers: {
-        'Authorization': 'Bearer $token',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/app/tasks/approvals/return'),
+        headers: {
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      setState(() {
-        events = data['results'];
-        filteredEvents = events;
-        isLoading = false;
-      });
-    } else {
-      setState(() {
-        isLoading = false;
-      });
-      if (kDebugMode) {
-        print('Failed to load events');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final List<dynamic> fetchedEvents = data['results'];
+
+        // Cache the fresh data
+        await _cacheFreshData(fetchedEvents);
+
+        setState(() {
+          events = fetchedEvents;
+          filteredEvents = events;
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
+        });
+      } else {
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
+        });
+        if (kDebugMode) {
+          print('Failed to load events');
+        }
       }
+    } catch (e) {
+      debugPrint('Error fetching car returns: $e');
+      setState(() {
+        _isInitialLoading = false;
+        _isBackgroundLoading = false;
+      });
     }
+  }
+
+  /// Cache fresh data with timestamp
+  Future<void> _cacheFreshData(List<dynamic> carReturns) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cached_car_returns', json.encode(carReturns));
+      await prefs.setInt('cached_car_returns_timestamp',
+          DateTime.now().millisecondsSinceEpoch);
+      debugPrint('Cached ${carReturns.length} car returns');
+    } catch (e) {
+      debugPrint('Error caching data: $e');
+    }
+  }
+
+  Future<void> fetchEvents() async {
+    setState(() {
+      _isInitialLoading = true;
+    });
+    await _fetchFreshData();
   }
 
   void _filterEvents() {
@@ -201,6 +260,34 @@ class ReturnCarPageState extends State<ReturnCarPage>
       default:
         return Colors.grey;
     }
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      recentSearches = prefs.getStringList('recent_car_searches') ?? [];
+    });
+  }
+
+  Future<void> _saveRecentSearch(String query) async {
+    if (query.isEmpty) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    List<String> searches = prefs.getStringList('recent_car_searches') ?? [];
+
+    // Remove if already exists and add to the beginning
+    searches.remove(query);
+    searches.insert(0, query);
+
+    // Keep only the last 5 searches
+    if (searches.length > 5) {
+      searches = searches.sublist(0, 5);
+    }
+
+    await prefs.setStringList('recent_car_searches', searches);
+    setState(() {
+      recentSearches = searches;
+    });
   }
 
   @override
@@ -272,10 +359,16 @@ class ReturnCarPageState extends State<ReturnCarPage>
           ),
         ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+      body: _isInitialLoading
+          ? _buildInitialLoadingState(isDarkMode)
           : Column(
               children: [
+                // Linear Loading Indicator under header
+                LinearLoadingIndicator(
+                  isLoading: _isBackgroundLoading,
+                  color: isDarkMode ? Colors.amber : Colors.green,
+                ),
+
                 // Modern Search Box with Animation
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
@@ -588,208 +681,252 @@ class ReturnCarPageState extends State<ReturnCarPage>
                   )
                 else
                   Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(8.0),
-                      itemCount: filteredEvents.length,
-                      itemBuilder: (context, index) {
-                        final event = filteredEvents[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    ReturnCarPageDetails(uid: event['uid']),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
+                    child: RefreshIndicator(
+                      onRefresh: () async {
+                        // Clear cache and fetch fresh data on pull-to-refresh
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.remove('cached_car_returns');
+                        await prefs.remove('cached_car_returns_timestamp');
+                        await fetchEvents();
+                      },
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(8.0),
+                        itemCount: filteredEvents.length,
+                        itemBuilder: (context, index) {
+                          final event = filteredEvents[index];
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      ReturnCarPageDetails(uid: event['uid']),
+                                ),
+                              );
+                            },
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors
+                                            .blueGrey // Dark mode border color
+                                        : Colors
+                                            .blueAccent, // Light mode border color
+                                  ),
                                   color: Theme.of(context).brightness ==
                                           Brightness.dark
                                       ? Colors
-                                          .blueGrey // Dark mode border color
+                                          .black45 // Dark mode background color
                                       : Colors
-                                          .blueAccent, // Light mode border color
+                                          .white, // Light mode background color
                                 ),
-                                color: Theme.of(context).brightness ==
-                                        Brightness.dark
-                                    ? Colors
-                                        .black45 // Dark mode background color
-                                    : Colors
-                                        .white, // Light mode background color
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Row(
-                                  children: [
-                                    // Left section for car image and text
-                                    Column(
-                                      children: [
-                                        Image.asset(
-                                          'assets/car.png',
-                                          width: 35,
-                                          height: 35,
-                                        ),
-                                        const SizedBox(height: 6),
-                                        const Text(
-                                          'Car',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.blueAccent,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Main content section
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Row(
+                                    children: [
+                                      // Left section for car image and text
+                                      Column(
                                         children: [
-                                          Text(
-                                            event['requestor_name'] ?? '',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
-                                              color: Theme.of(context)
-                                                          .brightness ==
-                                                      Brightness.dark
-                                                  ? Colors
-                                                      .white // Dark mode text color
-                                                  : Colors
-                                                      .black, // Light mode text color
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Date: ${event['date_out']} To ${event['date_in']}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Theme.of(context)
-                                                          .brightness ==
-                                                      Brightness.dark
-                                                  ? Colors
-                                                      .white70 // Lighter text in dark mode
-                                                  : Colors.grey[
-                                                      600], // Grey text in light mode
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Res ID: ${event['id']}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Theme.of(context)
-                                                          .brightness ==
-                                                      Brightness.dark
-                                                  ? Colors
-                                                      .white70 // Lighter text in dark mode
-                                                  : Colors.grey[
-                                                      600], // Grey text in light mode
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            'Tel: ${event['license_plate']}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Theme.of(context)
-                                                          .brightness ==
-                                                      Brightness.dark
-                                                  ? Colors
-                                                      .white70 // Lighter text in dark mode
-                                                  : Colors.grey[
-                                                      600], // Grey text in light mode
-                                            ),
+                                          Image.asset(
+                                            'assets/car.png',
+                                            width: 35,
+                                            height: 35,
                                           ),
                                           const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              const Text(
-                                                'Status: ',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 3),
-                                                decoration: BoxDecoration(
-                                                  color: _getStatusColor(
-                                                      event['status'] ?? ''),
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                ),
-                                                child: Text(
-                                                  event['status'] ?? '',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
+                                          const Text(
+                                            'Car',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.blueAccent,
+                                              fontSize: 12,
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    // Right section for image
-                                    Column(
-                                      children: [
-                                        ClipOval(
-                                          child: Image.network(
-                                            event['img_name'] ?? '',
-                                            width: 45,
-                                            height: 45,
-                                            fit: BoxFit.cover,
-                                          ),
+                                      const SizedBox(width: 12),
+                                      // Main content section
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              event['requestor_name'] ?? '',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: Theme.of(context)
+                                                            .brightness ==
+                                                        Brightness.dark
+                                                    ? Colors
+                                                        .white // Dark mode text color
+                                                    : Colors
+                                                        .black, // Light mode text color
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Date: ${event['date_out']} To ${event['date_in']}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Theme.of(context)
+                                                            .brightness ==
+                                                        Brightness.dark
+                                                    ? Colors
+                                                        .white70 // Lighter text in dark mode
+                                                    : Colors.grey[
+                                                        600], // Grey text in light mode
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Res ID: ${event['id']}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Theme.of(context)
+                                                            .brightness ==
+                                                        Brightness.dark
+                                                    ? Colors
+                                                        .white70 // Lighter text in dark mode
+                                                    : Colors.grey[
+                                                        600], // Grey text in light mode
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Tel: ${event['license_plate']}',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Theme.of(context)
+                                                            .brightness ==
+                                                        Brightness.dark
+                                                    ? Colors
+                                                        .white70 // Lighter text in dark mode
+                                                    : Colors.grey[
+                                                        600], // Grey text in light mode
+                                              ),
+                                            ),
+                                            const SizedBox(height: 6),
+                                            Row(
+                                              children: [
+                                                const Text(
+                                                  'Status: ',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 3),
+                                                  decoration: BoxDecoration(
+                                                    color: _getStatusColor(
+                                                        event['status'] ?? ''),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            8),
+                                                  ),
+                                                  child: Text(
+                                                    event['status'] ?? '',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(height: 8),
-                                        const Text(
-                                          'View Detail',
-                                          style: TextStyle(
-                                            color: Colors.orangeAccent,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Right section for image
+                                      Column(
+                                        children: [
+                                          ClipOval(
+                                            child: Image.network(
+                                              event['img_name'] ?? '',
+                                              width: 45,
+                                              height: 45,
+                                              fit: BoxFit.cover,
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'View Detail',
+                                            style: TextStyle(
+                                              color: Colors.orangeAccent,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ),
+                            ).animate(
+                              effects: [
+                                FadeEffect(
+                                    duration: 400.ms,
+                                    delay: 50.ms * index,
+                                    curve: Curves.easeOutQuad),
+                                SlideEffect(
+                                    begin: const Offset(0.1, 0),
+                                    end: const Offset(0, 0),
+                                    duration: 400.ms,
+                                    delay: 50.ms * index,
+                                    curve: Curves.easeOutQuad)
+                              ],
                             ),
-                          ).animate(
-                            effects: [
-                              FadeEffect(
-                                  duration: 400.ms,
-                                  delay: 50.ms * index,
-                                  curve: Curves.easeOutQuad),
-                              SlideEffect(
-                                  begin: const Offset(0.1, 0),
-                                  end: const Offset(0, 0),
-                                  duration: 400.ms,
-                                  delay: 50.ms * index,
-                                  curve: Curves.easeOutQuad)
-                            ],
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
               ],
             ),
+    );
+  }
+
+  /// Clean initial loading state without complex animations
+  Widget _buildInitialLoadingState(bool isDarkMode) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.car_rental,
+            size: 64,
+            color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading Car Returns...',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Please wait a moment',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDarkMode ? Colors.grey[600] : Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
