@@ -13,12 +13,14 @@ import 'package:pb_hrsystem/core/standard/extension.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/calendar_day/calendar_day_switch_view.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:pb_hrsystem/home/office_events/office_add_event.dart';
 import 'package:pb_hrsystem/home/timetable_page.dart';
 import 'package:pb_hrsystem/login/date.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:pb_hrsystem/services/http_service.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/intl.dart';
@@ -72,7 +74,9 @@ class HomeCalendarState extends State<HomeCalendar>
   Timer? _doubleTapTimer;
   static const int doubleTapDelay = 300;
 
-  // Loading State
+  // Loading States
+  bool _isInitialLoading = true;
+  bool _isBackgroundLoading = false;
 
   // Add at the top of the class after other variables
   final _eventCountsCache = <DateTime, Map<String, int>>{};
@@ -134,19 +138,8 @@ class HomeCalendarState extends State<HomeCalendar>
     );
 
     // Schedule data loading after the widget is fully mounted
-    // This fixes the "setState called in constructor" error
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // First load data from local storage before fetching from server
-      _loadLocalData().then((_) {
-        // After loading local data, check if we're online and fetch fresh data
-        if (mounted) {
-          connectivityResult.checkConnectivity().then((connectivity) {
-            if (!connectivity.contains(ConnectivityResult.none) && mounted) {
-              fetchData();
-            }
-          });
-        }
-      });
+      _fetchCalendarData();
     });
 
     // Clear cache when connectivity changes - with mounted checks
@@ -158,7 +151,7 @@ class HomeCalendarState extends State<HomeCalendar>
         await _loadLocalData();
       } else {
         // If online, fetch fresh data
-        fetchData();
+        _fetchCalendarData();
       }
     });
   }
@@ -235,14 +228,200 @@ class HomeCalendarState extends State<HomeCalendar>
     _eventsOffline();
   }
 
+  /// Smart caching strategy for calendar data
+  Future<void> _fetchCalendarData() async {
+    try {
+      // First check if we have cached data
+      final bool hasCachedData = await _loadCachedData();
+
+      if (hasCachedData) {
+        // If we have cached data, show it immediately and then fetch fresh data in background
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = true;
+        });
+
+        // Fetch fresh data silently in background
+        await _fetchFreshData();
+      } else {
+        // If no cached data, show loading and fetch fresh data
+        setState(() {
+          _isInitialLoading = true;
+        });
+
+        await _fetchFreshData();
+      }
+    } catch (e) {
+      debugPrint('Error in _fetchCalendarData: $e');
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
+        });
+      }
+    }
+  }
+
+  /// Load cached calendar data for immediate display
+  Future<bool> _loadCachedData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final cachedEvents = prefs.getString('cached_calendar_events');
+      final cacheTimestamp = prefs.getInt('calendar_cache_timestamp') ?? 0;
+
+      // Check if cache is valid (less than 30 minutes old)
+      final cacheAge = DateTime.now().millisecondsSinceEpoch - cacheTimestamp;
+      final isCacheValid = cacheAge < (30 * 60 * 1000); // 30 minutes
+
+      if (cachedEvents != null && isCacheValid) {
+        final List<dynamic> eventsList = jsonDecode(cachedEvents);
+        final List<Events> parsedEvents = eventsList.map((item) {
+          final Map<String, dynamic> eventData =
+              Map<String, dynamic>.from(item);
+          return Events.fromJson(eventData);
+        }).toList();
+
+        // Clear previous data before loading cached data
+        _clearCaches();
+        eventsForAll.clear();
+        events.value.clear();
+
+        // Add cached events
+        eventsForAll.addAll(parsedEvents);
+        addEventOffline(parsedEvents);
+        _filterAndSearchEvents();
+
+        debugPrint('Loaded ${parsedEvents.length} cached calendar events');
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('Error loading cached calendar data: $e');
+      return false;
+    }
+  }
+
+  /// Fetch fresh data from API and update cache
+  Future<void> _fetchFreshData() async {
+    try {
+      // Check connectivity
+      final connectivityStatus = await connectivityResult.checkConnectivity();
+      if (connectivityStatus.contains(ConnectivityResult.none)) {
+        // If offline, try to load from local storage
+        await _loadLocalData();
+        return;
+      }
+
+      // Store previous event count to compare after fetching
+      final Set<String> previousEventIds =
+          eventsForAll.map((e) => e.uid).toSet();
+
+      // Clear previous data before fetching new data
+      _clearCaches();
+      eventsForAll.clear();
+      events.value.clear();
+
+      await Future.wait([
+        _fetchMeetingData(),
+        _fetchLeaveRequests(),
+        _fetchMeetingRoomBookings(),
+        _fetchMeetingRoomInvite(),
+        _fetchCarBookings(),
+        _fetchCarBookingsInvite(),
+        _fetchMinutesOfMeeting(),
+        _fetchMeetingMembers(),
+      ]);
+
+      // Cache the fresh data
+      if (eventsForAll.isNotEmpty) {
+        await _cacheFreshData();
+        await offlineProvider.insertCalendar(eventsForAll);
+        debugPrint('Cached ${eventsForAll.length} fresh calendar events');
+
+        // Calculate new events statistics
+        final Set<String> currentEventIds =
+            eventsForAll.map((e) => e.uid).toSet();
+        final Set<String> newEventIds =
+            currentEventIds.difference(previousEventIds);
+
+        if (_isBackgroundLoading && newEventIds.isNotEmpty && mounted) {
+          _showUpdateInfoSnackbar(
+            updatedEventCount: newEventIds.length,
+            totalEventCount: eventsForAll.length,
+            updatedEventsByCategory: _calculateEventsByCategory(newEventIds),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching fresh calendar data: $e');
+      // If fetch fails, load from local storage as fallback
+      await _loadLocalData();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
+        });
+      }
+      _filterAndSearchEvents();
+    }
+  }
+
+  /// Cache fresh data to SharedPreferences
+  Future<void> _cacheFreshData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Convert events to JSON serializable format
+      final List<Map<String, dynamic>> eventsJson = eventsForAll.map((event) {
+        return event.toJson();
+      }).toList();
+
+      // Cache the data with timestamp
+      await prefs.setString('cached_calendar_events', jsonEncode(eventsJson));
+      await prefs.setInt(
+          'calendar_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
+    } catch (e) {
+      debugPrint('Error caching calendar data: $e');
+    }
+  }
+
+  /// Calculate events by category for new events
+  Map<String, int> _calculateEventsByCategory(Set<String> eventIds) {
+    final Map<String, int> eventsByCategory = {};
+    for (final event in eventsForAll) {
+      if (eventIds.contains(event.uid)) {
+        eventsByCategory[event.category] =
+            (eventsByCategory[event.category] ?? 0) + 1;
+      }
+    }
+    return eventsByCategory;
+  }
+
+  /// Clear cache and fetch fresh data
+  Future<void> _clearCacheAndRefresh() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_calendar_events');
+      await prefs.remove('calendar_cache_timestamp');
+
+      setState(() {
+        _isInitialLoading = true;
+      });
+
+      await _fetchFreshData();
+    } catch (e) {
+      debugPrint('Error clearing cache and refreshing: $e');
+    }
+  }
+
   /// Fetches all required data concurrently
   Future<void> fetchData({bool showUpdateInfo = false}) async {
     // Only call setState if mounted
     if (mounted) {
-      setState(() {
-      });
-    } else {
-    }
+      setState(() {});
+    } else {}
 
     try {
       // Store previous event count to compare after fetching
@@ -303,10 +482,8 @@ class HomeCalendarState extends State<HomeCalendar>
       await _loadLocalData();
     } finally {
       if (mounted) {
-        setState(() {
-        });
-      } else {
-      }
+        setState(() {});
+      } else {}
       _filterAndSearchEvents();
     }
   }
@@ -316,8 +493,7 @@ class HomeCalendarState extends State<HomeCalendar>
     try {
       // Only set loading state if widget is mounted
       if (mounted) {
-        setState(() {
-        });
+        setState(() {});
       } else {
 // Set the variable directly if not mounted
       }
@@ -348,8 +524,7 @@ class HomeCalendarState extends State<HomeCalendar>
       debugPrint('Error during fetchDataPass: $e');
     } finally {
       if (mounted) {
-        setState(() {
-        });
+        setState(() {});
       } else {
 // Set the variable directly if not mounted
       }
@@ -380,10 +555,8 @@ class HomeCalendarState extends State<HomeCalendar>
 
       // Check if mounted before calling setState
       if (mounted) {
-        setState(() {
-        });
-      } else {
-      }
+        setState(() {});
+      } else {}
 
       // Fetch everything fresh from APIs
       await fetchData(showUpdateInfo: false);
@@ -391,10 +564,8 @@ class HomeCalendarState extends State<HomeCalendar>
       debugPrint('Error during forced calendar refresh: $e');
       // Check if mounted before calling setState
       if (mounted) {
-        setState(() {
-        });
-      } else {
-      }
+        setState(() {});
+      } else {}
     }
   }
 
@@ -1211,60 +1382,23 @@ class HomeCalendarState extends State<HomeCalendar>
 
   /// Handles pull-to-refresh action with update information
   Future<void> _onRefresh() async {
-    _clearCaches(); // Clear caches on refresh
+    await _clearCacheAndRefresh();
 
-    try {
-      final connectivityStatus = await connectivityResult.checkConnectivity();
+    if (mounted) {
+      setState(() {
+        _refreshKey = UniqueKey();
+      });
 
-      if (connectivityStatus.contains(ConnectivityResult.none)) {
-        // If offline, load from local storage
-        await _loadLocalData();
-        if (mounted) {
-          setState(() {
-            _refreshKey = UniqueKey();
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Using offline calendar data",
-                style: TextStyle(color: Colors.white),
-              ),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      } else {
-        // If online, fetch new data without showing update information
-        await fetchData(showUpdateInfo: false);
-        if (mounted) {
-          setState(() {
-            _refreshKey = UniqueKey();
-          });
-
-          // Show simple success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                "Calendar refreshed successfully",
-                style: TextStyle(color: Colors.white),
-              ),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      debugPrint('Error during refresh: $e');
-      // Load from local storage as fallback if refresh fails
-      await _loadLocalData();
-      if (mounted) {
-        setState(() {
-          _refreshKey = UniqueKey();
-        });
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Calendar refreshed successfully",
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
+        ),
+      );
     }
   }
 
@@ -1771,8 +1905,7 @@ class HomeCalendarState extends State<HomeCalendar>
   /// Loads calendar data from local storage
   Future<void> _loadLocalData() async {
     try {
-      setState(() {
-      });
+      setState(() {});
 
       // Load events from local storage
       final localEvents = await offlineProvider.getCalendar();
@@ -1784,8 +1917,7 @@ class HomeCalendarState extends State<HomeCalendar>
     } catch (e) {
       debugPrint('Error loading local data: $e');
     } finally {
-      setState(() {
-      });
+      setState(() {});
     }
   }
 
@@ -1973,103 +2105,155 @@ class HomeCalendarState extends State<HomeCalendar>
         preferredSize: const Size.fromHeight(160),
         child: _buildCalendarHeader(isDarkMode),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          if (DateTime.now().toLocal().hour > 19) {
-            await _onRefresh();
-          } else {
-            await _onRefresh();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text(
-                    "Your calendar data has been refreshed successfully",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
+      body: Column(
+        children: [
+          // Linear Loading Indicator under header
+          LinearLoadingIndicator(
+            isLoading: _isInitialLoading || _isBackgroundLoading,
+            color: isDarkMode ? Colors.amber : Colors.green,
+          ),
+
+          // Main content
+          Expanded(
+            child: _isInitialLoading
+                ? _buildInitialLoadingState(isDarkMode)
+                : RefreshIndicator(
+                    onRefresh: _onRefresh,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildCalendar(context, isDarkMode),
+                          _buildSectionSeparator(),
+                          Center(
+                            child: Transform.translate(
+                              offset: const Offset(0, -14),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    DateFormat('EEEE')
+                                        .format(_selectedDay ?? DateTime.now()),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                  Text(
+                                    ', ${DateFormat('dd MMMM yyyy').format(_selectedDay ?? DateTime.now())}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDarkMode
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Transform.translate(
+                            offset: const Offset(0, -32),
+                            child: SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.50,
+                              child: eventsForDay.isEmpty
+                                  ? Center(
+                                      child: AnimatedBuilder(
+                                        animation: _typingAnimation,
+                                        builder: (context, child) {
+                                          final String message =
+                                              AppLocalizations.of(context)!
+                                                  .noEventsForThisDay;
+                                          final int length = (message.length *
+                                                  _typingAnimation.value)
+                                              .round();
+                                          return Text(
+                                            message.substring(
+                                                0,
+                                                length.clamp(
+                                                    0, message.length)),
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: isDarkMode
+                                                  ? Colors.grey.shade300
+                                                  : Colors.grey.shade700,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          );
+                                        },
+                                      ),
+                                    )
+                                  : CalendarDaySwitchView(
+                                      selectedDay: _selectedDay,
+                                      passDefaultCurrentHour: 0,
+                                      passDefaultEndHour: 25,
+                                      eventsCalendar: eventsForDay,
+                                    ),
+                            ),
+                          )
+                        ],
+                      ),
                     ),
                   ),
-                  behavior: SnackBarBehavior.floating,
-                  backgroundColor: isDarkMode ? Colors.orange : Colors.green,
-                  margin: const EdgeInsets.all(20),
-                  duration: const Duration(seconds: 4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build initial loading state with professional design
+  Widget _buildInitialLoadingState(bool isDarkMode) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.grey[850] : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: isDarkMode
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
-              );
-            }
-          }
-        },
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              _buildCalendar(context, isDarkMode),
-              _buildSectionSeparator(),
-              Center(
-                child: Transform.translate(
-                  offset: const Offset(0, -14),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        DateFormat('EEEE')
-                            .format(_selectedDay ?? DateTime.now()),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black,
-                        ),
-                      ),
-                      Text(
-                        ', ${DateFormat('dd MMMM yyyy').format(_selectedDay ?? DateTime.now())}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                        ),
-                      ),
-                    ],
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.calendar_month,
+                  size: 64,
+                  color: isDarkMode ? Colors.amber[700] : Colors.green[600],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Loading Calendar Events',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
                   ),
                 ),
-              ),
-              Transform.translate(
-                offset: const Offset(0, -32),
-                child: SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.50,
-                  child: eventsForDay.isEmpty
-                      ? Center(
-                          child: AnimatedBuilder(
-                            animation: _typingAnimation,
-                            builder: (context, child) {
-                              final String message =
-                                  AppLocalizations.of(context)!
-                                      .noEventsForThisDay;
-                              final int length =
-                                  (message.length * _typingAnimation.value)
-                                      .round();
-                              return Text(
-                                message.substring(
-                                    0, length.clamp(0, message.length)),
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: isDarkMode
-                                      ? Colors.grey.shade300
-                                      : Colors.grey.shade700,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              );
-                            },
-                          ),
-                        )
-                      : CalendarDaySwitchView(
-                          selectedDay: _selectedDay,
-                          passDefaultCurrentHour: 0,
-                          passDefaultEndHour: 25,
-                          eventsCalendar: eventsForDay,
-                        ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please wait while we fetch your events...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
                 ),
-              )
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

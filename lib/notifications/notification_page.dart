@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pb_hrsystem/core/utils/auth_utils.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
+import 'package:pb_hrsystem/services/notification_cache_service.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -28,6 +30,7 @@ class NotificationPageState extends State<NotificationPage> {
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
   bool _isLoading = true;
+  bool _isBackgroundLoading = false; // For silent background updates
   final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
   Map<int, String> _leaveTypesMap = {};
 
@@ -44,15 +47,111 @@ class NotificationPageState extends State<NotificationPage> {
     _fetchInitialData();
   }
 
-  /// Initializes data fetching for leave types, pending items, meeting invites, and history items
+  /// Initializes data fetching with smart caching - displays cached data immediately, updates silently
   Future<void> _fetchInitialData() async {
-    setState(() {
-      _isLoading = true;
-      // Reset expansion states when refreshing data
-      _isMeetingExpanded = false;
-      _isApprovalExpanded = false;
-    });
+    // Check if we have cached data
+    final hasCachedData = await NotificationCacheService.hasCachedData();
 
+    if (hasCachedData) {
+      // Load cached data immediately for fast display
+      await _loadCachedData();
+      setState(() {
+        _isLoading = false; // Show UI immediately with cached data
+        _isBackgroundLoading = true; // Start background loading
+      });
+
+      // Fetch fresh data silently in background
+      _fetchFreshDataInBackground();
+    } else {
+      // No cached data, show loading and fetch everything
+      setState(() {
+        _isLoading = true;
+        _isMeetingExpanded = false;
+        _isApprovalExpanded = false;
+      });
+
+      await _fetchAllDataAndCache();
+
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  /// Load cached data for immediate display
+  Future<void> _loadCachedData() async {
+    try {
+      // Load cached leave types
+      final cachedLeaveTypes =
+          await NotificationCacheService.getCachedLeaveTypes();
+      if (cachedLeaveTypes != null) {
+        setState(() {
+          _leaveTypesMap = cachedLeaveTypes;
+        });
+      }
+
+      // Load cached meeting invites
+      final cachedMeetings =
+          await NotificationCacheService.getCachedMeetingInvites();
+      if (cachedMeetings != null) {
+        setState(() {
+          _meetingInvites = cachedMeetings;
+        });
+      }
+
+      // Load cached pending items
+      final cachedPending =
+          await NotificationCacheService.getCachedPendingItems();
+      if (cachedPending != null) {
+        setState(() {
+          _pendingItems = cachedPending;
+        });
+      }
+
+      // Load cached history items
+      final cachedHistory =
+          await NotificationCacheService.getCachedHistoryItems();
+      if (cachedHistory != null) {
+        setState(() {
+          _historyItems = cachedHistory;
+        });
+      }
+
+      if (kDebugMode) {
+        debugPrint('Cached data loaded successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error loading cached data: $e');
+      }
+    }
+  }
+
+  /// Fetch fresh data in background and update cache
+  Future<void> _fetchFreshDataInBackground() async {
+    try {
+      await _fetchAllDataAndCache();
+
+      setState(() {
+        _isBackgroundLoading = false;
+      });
+
+      if (kDebugMode) {
+        debugPrint('Background data update completed');
+      }
+    } catch (e) {
+      setState(() {
+        _isBackgroundLoading = false;
+      });
+
+      if (kDebugMode) {
+        debugPrint('Background data update failed: $e');
+      }
+    }
+  }
+
+  /// Fetch all data and update cache
+  Future<void> _fetchAllDataAndCache() async {
     try {
       await _fetchLeaveTypes();
       await Future.wait([
@@ -60,18 +159,39 @@ class NotificationPageState extends State<NotificationPage> {
         _fetchMeetingInvites(),
         _fetchHistoryItems(),
       ]);
+
+      // Update cache with fresh data
+      await _updateAllCaches();
+
       if (kDebugMode) {
-        debugPrint('Initial data fetched successfully.');
+        debugPrint('All data fetched and cached successfully.');
       }
     } catch (e, stackTrace) {
-      if (kDebugMode) {}
       if (kDebugMode) {
+        debugPrint('Error fetching data: $e');
         debugPrint(stackTrace.toString());
       }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      rethrow;
+    }
+  }
+
+  /// Update all caches with current data
+  Future<void> _updateAllCaches() async {
+    try {
+      await Future.wait([
+        NotificationCacheService.cacheLeaveTypes(_leaveTypesMap),
+        NotificationCacheService.cacheMeetingInvites(_meetingInvites),
+        NotificationCacheService.cachePendingItems(_pendingItems),
+        NotificationCacheService.cacheHistoryItems(_historyItems),
+      ]);
+
+      if (kDebugMode) {
+        debugPrint('All caches updated successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error updating caches: $e');
+      }
     }
   }
 
@@ -88,22 +208,7 @@ class NotificationPageState extends State<NotificationPage> {
         throw Exception('User not authenticated');
       }
 
-      // Try to load from cache first
-      final cachedLeaveTypes = prefs.getString('notification_leave_types');
-      if (cachedLeaveTypes != null) {
-        final Map<String, dynamic> leaveTypesData =
-            jsonDecode(cachedLeaveTypes);
-        setState(() {
-          _leaveTypesMap = Map<int, String>.from(leaveTypesData
-              .map((key, value) => MapEntry(int.parse(key), value.toString())));
-        });
-
-        // Fetch in background to update cache
-        _fetchAndCacheLeaveTypes(prefs, token!, leaveTypesApiUrl);
-        return;
-      }
-
-      // No cache, fetch directly
+      // Fetch directly and update state (cache is handled in _updateAllCaches)
       await _fetchAndCacheLeaveTypes(prefs, token!, leaveTypesApiUrl);
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -119,7 +224,7 @@ class NotificationPageState extends State<NotificationPage> {
     }
   }
 
-  /// Fetches leave types from API and caches them
+  /// Fetches leave types from API and updates state
   Future<void> _fetchAndCacheLeaveTypes(
       SharedPreferences prefs, String token, String leaveTypesApiUrl) async {
     try {
@@ -145,15 +250,6 @@ class NotificationPageState extends State<NotificationPage> {
             for (var item in leaveTypesData)
               item['leave_type_id'] as int: item['name'].toString()
           };
-
-          // Convert integer keys to strings for JSON serialization
-          final Map<String, String> serializableMap = newLeaveTypesMap.map(
-            (key, value) => MapEntry(key.toString(), value),
-          );
-
-          // Cache the serializable map
-          await prefs.setString(
-              'notification_leave_types', jsonEncode(serializableMap));
 
           setState(() {
             _leaveTypesMap = newLeaveTypesMap;
@@ -523,34 +619,99 @@ class NotificationPageState extends State<NotificationPage> {
       body: Column(
         children: [
           _buildHeader(isDarkMode, screenSize),
+          // Linear loading indicator under header
+          LinearLoadingIndicator(
+            isLoading: _isLoading || _isBackgroundLoading,
+            color: isDarkMode ? Colors.amber.shade700 : Colors.amber,
+            height: 3.0,
+          ),
           SizedBox(height: screenSize.height * 0.01),
           _buildTabBar(screenSize),
           SizedBox(height: screenSize.height * 0.008),
           _isLoading
-              ? const Expanded(
-                  child: Center(child: CircularProgressIndicator()),
+              ? Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.notifications_outlined,
+                          size: screenSize.width * 0.15,
+                          color: isDarkMode
+                              ? Colors.grey.shade600
+                              : Colors.grey.shade400,
+                        ),
+                        SizedBox(height: screenSize.height * 0.02),
+                        Text(
+                          'Loading notifications...',
+                          style: TextStyle(
+                            fontSize: screenSize.width * 0.04,
+                            color: isDarkMode
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 )
               : Expanded(
                   child: RefreshIndicator(
-                    onRefresh: _fetchInitialData, // Refreshes all data
+                    onRefresh: () async {
+                      // Clear cache and fetch fresh data for manual refresh
+                      await NotificationCacheService.clearAllCache();
+                      await _fetchInitialData();
+                    },
                     child: _isMeetingSelected
                         ? _meetingInvites.isEmpty
                             ? Center(
-                                child: Text(
-                                  'No Meeting Invites',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.045,
-                                  ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.meeting_room_outlined,
+                                      size: screenSize.width * 0.15,
+                                      color: isDarkMode
+                                          ? Colors.grey.shade600
+                                          : Colors.grey.shade400,
+                                    ),
+                                    SizedBox(height: screenSize.height * 0.02),
+                                    Text(
+                                      'No Meeting Invites',
+                                      style: TextStyle(
+                                        fontSize: screenSize.width * 0.045,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             : _buildMeetingList(screenSize)
                         : (_pendingItems.isEmpty && _historyItems.isEmpty)
                             ? Center(
-                                child: Text(
-                                  'No Approval',
-                                  style: TextStyle(
-                                    fontSize: screenSize.width * 0.045,
-                                  ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.approval_outlined,
+                                      size: screenSize.width * 0.15,
+                                      color: isDarkMode
+                                          ? Colors.grey.shade600
+                                          : Colors.grey.shade400,
+                                    ),
+                                    SizedBox(height: screenSize.height * 0.02),
+                                    Text(
+                                      'No Approval',
+                                      style: TextStyle(
+                                        fontSize: screenSize.width * 0.045,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade400
+                                            : Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               )
                             : _buildApprovalList(screenSize),

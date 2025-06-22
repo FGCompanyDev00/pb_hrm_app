@@ -5,6 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_details_page.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -27,7 +28,10 @@ class HistoryPageState extends State<HistoryPage>
   List<Map<String, dynamic>> _pendingItems = [];
   List<Map<String, dynamic>> _historyItems = [];
   Map<int, String> _leaveTypes = {};
-  bool _isLoading = true;
+
+  // Loading states
+  bool _isInitialLoading = true;
+  bool _isBackgroundLoading = false;
   bool _showContent = false;
 
   // Animation controllers
@@ -46,7 +50,6 @@ class HistoryPageState extends State<HistoryPage>
   // Variables to control button visibility
   bool _showPendingViewMoreButton = false;
   bool _showHistoryViewMoreButton = false;
-
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -131,13 +134,48 @@ class HistoryPageState extends State<HistoryPage>
     }
   }
 
-  /// Fetches leave types, pending items, and history items from the API
+  /// Smart caching strategy for history data
   Future<void> _fetchHistoryData() async {
-    setState(() {
-      _isLoading = true;
-      _showContent = false;
-    });
+    try {
+      // First check if we have cached data
+      final bool hasCachedData = await _loadCachedData();
 
+      if (hasCachedData) {
+        // If we have cached data, show it immediately and then fetch fresh data in background
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = true;
+          _showContent = true;
+        });
+
+        // Start fade animation
+        _fadeController.forward();
+
+        // Fetch fresh data silently in background
+        await _fetchFreshData();
+      } else {
+        // If no cached data, show loading and fetch fresh data
+        setState(() {
+          _isInitialLoading = true;
+          _showContent = false;
+        });
+
+        await _fetchFreshData();
+      }
+    } catch (e) {
+      debugPrint('Error in _fetchHistoryData: $e');
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
+          _showContent = true;
+        });
+      }
+    }
+  }
+
+  /// Fetch fresh data from API and update cache
+  Future<void> _fetchFreshData() async {
     final String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
     final String historyApiUrl = '$baseUrl/api/app/users/history';
     final String leaveTypesUrl = '$baseUrl/api/leave-types';
@@ -150,43 +188,50 @@ class HistoryPageState extends State<HistoryPage>
         throw Exception('User not authenticated');
       }
 
-      // Try to load cached data first for immediate display
-      final bool hasCachedData = await _loadCachedData();
+      // Fetch data from API
+      await _fetchDataFromApi(
+          prefs, token, pendingApiUrl, historyApiUrl, leaveTypesUrl);
+    } catch (e) {
+      debugPrint('Error fetching fresh data: $e');
 
-      // Always fetch fresh data from API in the background
-      try {
-        await _fetchDataFromApi(
-            prefs, token, pendingApiUrl, historyApiUrl, leaveTypesUrl);
-      } catch (apiError) {
-        debugPrint('Error fetching data from API: $apiError');
-
-        // Only show error if we don't have cached data
-        if (!hasCachedData && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error fetching data: $apiError')),
-          );
-
-          // If no cache and API failed, show error state
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _showContent = true;
-            });
-          }
-        }
-      }
-    } catch (e, stackTrace) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _showContent = true;
-        });
-        debugPrint('Error fetching data: $e');
-        debugPrint(stackTrace.toString());
+      // Only show error if we don't have cached data
+      if (_isInitialLoading && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error fetching data: $e')),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
+          _showContent = true;
+        });
+
+        // Ensure animation runs if it hasn't already
+        if (!_fadeController.isCompleted) {
+          _fadeController.forward();
+        }
+      }
+    }
+  }
+
+  /// Clear cache and fetch fresh data
+  Future<void> _clearCacheAndRefresh() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('cached_leave_types');
+      await prefs.remove('cached_pending_items');
+      await prefs.remove('cached_history_items');
+
+      setState(() {
+        _isInitialLoading = true;
+        _showContent = false;
+      });
+
+      await _fetchFreshData();
+    } catch (e) {
+      debugPrint('Error clearing cache and refreshing: $e');
     }
   }
 
@@ -305,7 +350,8 @@ class HistoryPageState extends State<HistoryPage>
       // If we have cached data, update UI immediately
       if (hasCachedData) {
         setState(() {
-          _isLoading = false;
+          _isInitialLoading = false;
+          _isBackgroundLoading = true;
           _showContent = true;
         });
         // Start fade in animation after data is loaded
@@ -498,7 +544,8 @@ class HistoryPageState extends State<HistoryPage>
           if (tempLeaveTypes.isNotEmpty) _leaveTypes = tempLeaveTypes;
           _pendingItems = tempPendingItems;
           _historyItems = tempHistoryItems;
-          _isLoading = false;
+          _isInitialLoading = false;
+          _isBackgroundLoading = true;
           _showContent = true;
         });
 
@@ -510,9 +557,10 @@ class HistoryPageState extends State<HistoryPage>
     } catch (e) {
       debugPrint('Error fetching data from API: $e');
       // If we're still loading (no cached data was available), show error state
-      if (_isLoading && mounted) {
+      if (_isInitialLoading && mounted) {
         setState(() {
-          _isLoading = false;
+          _isInitialLoading = false;
+          _isBackgroundLoading = false;
           _showContent = true;
         });
       }
@@ -681,7 +729,6 @@ class HistoryPageState extends State<HistoryPage>
     }
   }
 
-
   /// Returns icon based on type
   IconData _getIconForType(String type) {
     switch (type.toLowerCase()) {
@@ -718,212 +765,28 @@ class HistoryPageState extends State<HistoryPage>
         body: Column(
           children: [
             _buildHeader(isDarkMode, screenSize),
+
+            // Linear Loading Indicator under header
+            LinearLoadingIndicator(
+              isLoading: _isInitialLoading || _isBackgroundLoading,
+              color: isDarkMode ? Colors.amber : Colors.green,
+            ),
+
             SizedBox(height: screenSize.height * 0.005),
             _buildTabBar(screenSize),
             SizedBox(height: screenSize.height * 0.005),
-            _isLoading
+
+            // Main content
+            _isInitialLoading
                 ? Expanded(
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(
-                              color:
-                                  isDarkMode ? Colors.grey[850] : Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: isDarkMode
-                                      ? Colors.black.withOpacity(0.3)
-                                      : Colors.grey.withOpacity(0.2),
-                                  blurRadius: 15,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                // People Icon Animation Container
-                                Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: isDarkMode
-                                        ? Colors.grey[800]
-                                        : Colors.grey[100],
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      // Outer rotating circle
-                                      TweenAnimationBuilder(
-                                        duration: const Duration(seconds: 2),
-                                        tween: Tween(begin: 0.0, end: 1.0),
-                                        builder: (context, value, child) {
-                                          return Transform.rotate(
-                                            angle: value * 2 * 3.14159,
-                                            child: child,
-                                          );
-                                        },
-                                        child: Container(
-                                          width: 70,
-                                          height: 70,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: isDarkMode
-                                                  ? Colors.amber[700]!
-                                                  : Colors.amber,
-                                              width: 2,
-                                              strokeAlign:
-                                                  BorderSide.strokeAlignOutside,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // People Icon with Pulse Animation
-                                      TweenAnimationBuilder(
-                                        duration:
-                                            const Duration(milliseconds: 1500),
-                                        tween: Tween(begin: 0.8, end: 1.0),
-                                        builder: (context, value, child) {
-                                          return Transform.scale(
-                                            scale: value,
-                                            child: child,
-                                          );
-                                        },
-                                        child: Icon(
-                                          Icons.people_outline,
-                                          size: 40,
-                                          color: isDarkMode
-                                              ? Colors.amber[700]
-                                              : Colors.amber[600],
-                                        ),
-                                      ),
-                                      // Animated dots
-                                      ...List.generate(
-                                        8,
-                                        (index) => Positioned(
-                                          top: 35 +
-                                              25 * sin(index * 3.14159 / 4),
-                                          left: 35 +
-                                              25 * cos(index * 3.14159 / 4),
-                                          child: TweenAnimationBuilder(
-                                            duration: Duration(
-                                                milliseconds:
-                                                    1000 + index * 100),
-                                            tween: Tween(begin: 0.0, end: 1.0),
-                                            builder: (context, value, child) {
-                                              return Transform.scale(
-                                                scale: value,
-                                                child: Container(
-                                                  width: 4,
-                                                  height: 4,
-                                                  decoration: BoxDecoration(
-                                                    color: isDarkMode
-                                                        ? Colors.amber[700]
-                                                            ?.withOpacity(value)
-                                                        : Colors.amber[600]
-                                                            ?.withOpacity(
-                                                                value),
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                // Loading Text with Shimmer Effect
-                                ShaderMask(
-                                  shaderCallback: (bounds) => LinearGradient(
-                                    colors: [
-                                      isDarkMode
-                                          ? Colors.grey[300]!
-                                          : Colors.grey[800]!,
-                                      isDarkMode
-                                          ? Colors.grey[500]!
-                                          : Colors.grey[600]!,
-                                      isDarkMode
-                                          ? Colors.grey[300]!
-                                          : Colors.grey[800]!,
-                                    ],
-                                    stops: const [0.0, 0.5, 1.0],
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                    tileMode: TileMode.mirror,
-                                  ).createShader(bounds),
-                                  child: const Text(
-                                    'Fetching History Data',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Please wait a moment...',
-                                  style: TextStyle(
-                                    color: isDarkMode
-                                        ? Colors.grey[500]
-                                        : Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                // Progress Dots
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    3,
-                                    (index) => TweenAnimationBuilder(
-                                      duration: Duration(
-                                          milliseconds: 400 + (index * 200)),
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      builder: (context, value, child) {
-                                        return Opacity(
-                                          opacity: value,
-                                          child: Container(
-                                            margin: const EdgeInsets.symmetric(
-                                                horizontal: 4),
-                                            width: 8,
-                                            height: 8,
-                                            decoration: BoxDecoration(
-                                              color: isDarkMode
-                                                  ? Colors.amber[700]
-                                                  : Colors.amber[600],
-                                              shape: BoxShape.circle,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
+                    child: _buildInitialLoadingState(isDarkMode, screenSize))
                 : Expanded(
                     child: AnimatedOpacity(
                       opacity: _showContent ? 1.0 : 0.0,
                       duration: const Duration(milliseconds: 500),
                       curve: Curves.easeInOut,
                       child: RefreshIndicator(
-                        onRefresh: _onRefresh,
+                        onRefresh: _clearCacheAndRefresh,
                         child: _isPendingSelected
                             ? _pendingItems.isEmpty
                                 ? _buildEmptyState(
@@ -1028,6 +891,60 @@ class HistoryPageState extends State<HistoryPage>
                   ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Build initial loading state with professional design
+  Widget _buildInitialLoadingState(bool isDarkMode, Size screenSize) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.grey[850] : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: isDarkMode
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.grey.withOpacity(0.2),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.history,
+                  size: 64,
+                  color: isDarkMode ? Colors.amber[700] : Colors.blue[600],
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Loading History Data',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Please wait while we fetch your history...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1526,53 +1443,5 @@ class HistoryPageState extends State<HistoryPage>
         );
       },
     );
-  }
-
-  Future<void> _onRefresh() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not authenticated')),
-        );
-      }
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final String pendingApiUrl = '$baseUrl/api/app/users/history/pending';
-    final String historyApiUrl = '$baseUrl/api/app/users/history';
-    final String leaveTypesUrl = '$baseUrl/api/leave-types';
-
-    try {
-      // Directly fetch from API, bypassing cache
-      await _fetchDataFromApi(
-          prefs, token, pendingApiUrl, historyApiUrl, leaveTypesUrl);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Data refreshed successfully')),
-        );
-      }
-    } catch (e) {
-      debugPrint('Error refreshing data: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error refreshing data: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _showContent = true;
-        });
-      }
-    }
   }
 }
