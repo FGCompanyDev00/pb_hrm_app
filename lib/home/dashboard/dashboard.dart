@@ -149,7 +149,15 @@ class DashboardState extends State<Dashboard>
   @override
   bool get wantKeepAlive => true;
 
-  String get baseUrl => dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
+  String get baseUrl {
+    final url = dotenv.env['BASE_URL'];
+    if (url == null || url.isEmpty) {
+      debugPrint('Warning: BASE_URL not found in environment variables');
+      throw Exception('BASE_URL not configured');
+    }
+    debugPrint('Using BASE_URL: $url');
+    return url;
+  }
 
   @override
   void initState() {
@@ -338,11 +346,23 @@ class DashboardState extends State<Dashboard>
     try {
       setState(() => _isLoading = true);
 
-      // Initialize Hive boxes first
-      await _initializeHiveBoxes();
+      // Initialize Hive boxes first - critical for caching
+      try {
+        await _initializeHiveBoxes();
+        debugPrint('Hive boxes initialized successfully');
+      } catch (hiveError) {
+        debugPrint('Hive initialization error: $hiveError');
+        // Continue without Hive if it fails
+      }
 
-      // Initialize secure storage safely
-      await _initializeSecureStorage();
+      // Initialize secure storage safely - not critical for core functionality
+      try {
+        await _initializeSecureStorage();
+        debugPrint('Secure storage initialized successfully');
+      } catch (secureStorageError) {
+        debugPrint('Secure storage initialization error: $secureStorageError');
+        // Continue without secure storage if it fails
+      }
 
       // Check if we have cached data for immediate display
       bool hasCachedProfile = false;
@@ -357,25 +377,44 @@ class DashboardState extends State<Dashboard>
         hasCachedBanners =
             cachedBanners != null && (cachedBanners as List).isNotEmpty;
 
-        // If no memory cache, check Hive
-        if (!hasCachedProfile) {
-          final profileJson = _userProfileBox?.get('userProfile');
-          hasCachedProfile = profileJson != null;
-
-          // Preload profile to memory cache if available
-          if (hasCachedProfile) {
-            final profile = UserProfile.fromJson(jsonDecode(profileJson));
-            _updateCache('userProfile', profile);
+        // If no memory cache, check Hive (only if Hive was initialized)
+        if (!hasCachedProfile && _userProfileBox != null) {
+          try {
+            final profileJson = _userProfileBox!.get('userProfile');
+            if (profileJson != null && profileJson.isNotEmpty) {
+              final profile = UserProfile.fromJson(jsonDecode(profileJson));
+              _updateCache('userProfile', profile);
+              hasCachedProfile = true;
+              debugPrint('Loaded cached profile from Hive: ${profile.name}');
+            }
+          } catch (parseError) {
+            debugPrint('Error parsing cached profile: $parseError');
+            // Clear invalid cache
+            try {
+              await _userProfileBox!.delete('userProfile');
+            } catch (deleteError) {
+              debugPrint('Error deleting invalid profile cache: $deleteError');
+            }
           }
         }
 
-        if (!hasCachedBanners) {
-          final banners = _bannersBox?.get('banners');
-          hasCachedBanners = banners != null && banners.isNotEmpty;
-
-          // Preload banners to memory cache if available
-          if (hasCachedBanners) {
-            _updateCache('banners', banners);
+        if (!hasCachedBanners && _bannersBox != null) {
+          try {
+            final banners = _bannersBox!.get('banners');
+            if (banners != null && banners.isNotEmpty) {
+              _updateCache('banners', banners);
+              hasCachedBanners = true;
+              debugPrint(
+                  'Loaded cached banners from Hive: ${banners.length} items');
+            }
+          } catch (parseError) {
+            debugPrint('Error parsing cached banners: $parseError');
+            // Clear invalid cache
+            try {
+              await _bannersBox!.delete('banners');
+            } catch (deleteError) {
+              debugPrint('Error deleting invalid banner cache: $deleteError');
+            }
           }
         }
       } catch (cacheError) {
@@ -383,13 +422,22 @@ class DashboardState extends State<Dashboard>
       }
 
       // Initialize futures based on cache status
-      futureUserProfile = hasCachedProfile
-          ? Future.value(_getCachedData('userProfile') as UserProfile)
-          : fetchUserProfile();
+      if (hasCachedProfile) {
+        futureUserProfile =
+            Future.value(_getCachedData('userProfile') as UserProfile);
+        debugPrint('Using cached profile for immediate display');
+      } else {
+        futureUserProfile = fetchUserProfile();
+        debugPrint('Fetching profile from API');
+      }
 
-      futureBanners = hasCachedBanners
-          ? Future.value(_getCachedData('banners') as List<String>)
-          : fetchBanners();
+      if (hasCachedBanners) {
+        futureBanners = Future.value(_getCachedData('banners') as List<String>);
+        debugPrint('Using cached banners for immediate display');
+      } else {
+        futureBanners = fetchBanners();
+        debugPrint('Fetching banners from API');
+      }
 
       if (!_isDisposed) {
         setState(() {
@@ -400,31 +448,53 @@ class DashboardState extends State<Dashboard>
         // If we used cached data, refresh in background after UI is displayed
         if (hasCachedProfile || hasCachedBanners) {
           Future.microtask(() {
-            if (hasCachedProfile) _checkForProfileUpdates(forceUpdate: false);
+            if (hasCachedProfile) {
+              debugPrint('Starting background profile update check');
+              _checkForProfileUpdates(forceUpdate: false);
+            }
             if (hasCachedBanners) {
+              debugPrint('Starting background banner update check');
               _fetchBannersFromApiAndUpdate(forceUpdate: false);
             }
           });
         }
       }
     } catch (e) {
-      debugPrint('Initialization error: $e');
+      debugPrint('Critical initialization error: $e');
       if (!_isDisposed) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isLoading = false;
+          _isInitialized =
+              true; // Allow app to continue even with initialization errors
+        });
+
+        // Try to initialize with minimal functionality
+        try {
+          futureUserProfile = fetchUserProfile();
+          futureBanners = fetchBanners();
+        } catch (fallbackError) {
+          debugPrint('Fallback initialization also failed: $fallbackError');
+          // Create empty futures as last resort
+          futureUserProfile = Future.error('Unable to load profile data');
+          futureBanners = Future.value(<String>[]);
+        }
       }
-      rethrow;
     }
   }
 
   Future<void> _initializeSecureStorage() async {
     try {
+      // Use simpler AndroidOptions for better compatibility
       const storage = FlutterSecureStorage(
         iOptions: IOSOptions(
           accessibility: KeychainAccessibility.first_unlock,
-          synchronizable: true,
+          synchronizable: false, // Changed to false for stability
         ),
         aOptions: AndroidOptions(
-          encryptedSharedPreferences: true,
+          encryptedSharedPreferences:
+              false, // Changed to false for Android compatibility
+          sharedPreferencesName: 'pb_hrm_secure_prefs',
+          preferencesKeyPrefix: 'pb_',
         ),
       );
 
@@ -446,7 +516,14 @@ class DashboardState extends State<Dashboard>
           }
         } catch (e) {
           debugPrint('Error handling secure storage key ${entry.key}: $e');
-          // Try to recover by deleting and rewriting if there's a keychain error
+          // For Android, just skip problematic keys instead of trying to recover
+          if (Platform.isAndroid) {
+            debugPrint(
+                'Skipping secure storage key ${entry.key} on Android due to error');
+            continue;
+          }
+
+          // Try to recover by deleting and rewriting if there's a keychain error (iOS only)
           if (e.toString().contains('-25299')) {
             try {
               await storage.delete(key: entry.key);
@@ -464,6 +541,7 @@ class DashboardState extends State<Dashboard>
     } catch (e) {
       debugPrint('Error initializing secure storage: $e');
       // Continue initialization even if secure storage fails
+      // This is especially important for Android where secure storage can be problematic
     }
   }
 
@@ -674,39 +752,81 @@ class DashboardState extends State<Dashboard>
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
 
-    // Use centralized auth validation with redirect
-    if (!await AuthUtils.validateTokenAndRedirect(token)) {
+    if (token == null || token.isEmpty) {
+      debugPrint('No token found, redirecting to login');
       throw Exception('No token found');
     }
 
+    // Validate token format but don't redirect automatically on Android
+    if (token.length < 10) {
+      debugPrint('Invalid token format, redirecting to login');
+      throw Exception('Invalid token format');
+    }
+
     try {
+      debugPrint('Fetching profile from: $baseUrl/api/display/me');
+
       final response = await http.get(
         Uri.parse('$baseUrl/api/display/me'),
         headers: {
-          'Authorization': 'Bearer $token!',
+          'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 30)); // Increased timeout for Android
+
+      debugPrint('Profile API response status: ${response.statusCode}');
+      debugPrint('Profile API response body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseJson = jsonDecode(response.body);
-        final List<dynamic> results = responseJson['results'];
 
-        if (results.isNotEmpty) {
-          final userProfile = UserProfile.fromJson(results[0]);
-          _updateCache('userProfile', userProfile);
-          await userProfileBox.put(
-              'userProfile', jsonEncode(userProfile.toJson()));
-          return userProfile;
+        // Check if response has the expected structure
+        if (responseJson.containsKey('results') &&
+            responseJson['results'] is List) {
+          final List<dynamic> results = responseJson['results'];
+
+          if (results.isNotEmpty) {
+            final userProfile = UserProfile.fromJson(results[0]);
+            _updateCache('userProfile', userProfile);
+            await userProfileBox.put(
+                'userProfile', jsonEncode(userProfile.toJson()));
+            debugPrint('Profile fetched successfully: ${userProfile.name}');
+            return userProfile;
+          } else {
+            debugPrint('Empty results array in profile response');
+            throw Exception('No profile data found');
+          }
+        } else {
+          debugPrint('Invalid response structure: ${responseJson.keys}');
+          throw Exception('Invalid response format');
         }
+      } else if (response.statusCode == 401) {
+        debugPrint('Unauthorized - token may be expired');
+        // Clear invalid token
+        await prefs.remove('token');
+        throw Exception('Authentication failed');
+      } else {
+        debugPrint(
+            'Profile API error: ${response.statusCode} - ${response.body}');
+        throw Exception('Server error: ${response.statusCode}');
       }
-      throw Exception('Failed to fetch profile');
     } on SocketException catch (e) {
-      throw Exception('Network error: ${e.message}');
+      debugPrint('Network error fetching profile: ${e.message}');
+      throw Exception(
+          'Network connection failed. Please check your internet connection.');
     } on TimeoutException catch (e) {
-      throw Exception('Timeout error: ${e.message}');
+      debugPrint('Timeout error fetching profile: ${e.message}');
+      throw Exception('Request timed out. Please try again.');
     } on http.ClientException catch (e) {
-      throw Exception('Client error: ${e.message}');
+      debugPrint('Client error fetching profile: ${e.message}');
+      throw Exception('Connection error. Please try again.');
+    } on FormatException catch (e) {
+      debugPrint('JSON parsing error: ${e.message}');
+      throw Exception('Invalid response format from server.');
+    } catch (e) {
+      debugPrint('Unexpected error fetching profile: $e');
+      throw Exception('Failed to load profile. Please try again.');
     }
   }
 
@@ -1255,13 +1375,33 @@ class DashboardState extends State<Dashboard>
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return _buildAppBarPlaceholder();
                   } else if (snapshot.hasError) {
-                    return _buildErrorAppBar(snapshot.error.toString());
+                    // Try to get cached profile on error
+                    final cachedProfile =
+                        _getCachedData('userProfile') as UserProfile?;
+                    if (cachedProfile != null) {
+                      debugPrint(
+                          'Using cached profile due to API error: ${snapshot.error}');
+                      return _buildAppBar(cachedProfile, isDarkMode);
+                    } else {
+                      debugPrint(
+                          'AppBar error with no cache: ${snapshot.error}');
+                      return _buildErrorAppBar(
+                          'Unable to load profile. Please check your connection.');
+                    }
                   } else if (snapshot.hasData) {
                     return _buildAppBar(snapshot.data!, isDarkMode);
                   } else {
-                    return _buildErrorAppBar(
-                      standardErrorMessage,
-                    );
+                    // Try to get cached profile when no data
+                    final cachedProfile =
+                        _getCachedData('userProfile') as UserProfile?;
+                    if (cachedProfile != null) {
+                      debugPrint('Using cached profile - no data from API');
+                      return _buildAppBar(cachedProfile, isDarkMode);
+                    } else {
+                      return _buildErrorAppBar(
+                        'No profile data available. Please try refreshing.',
+                      );
+                    }
                   }
                 },
               ),
