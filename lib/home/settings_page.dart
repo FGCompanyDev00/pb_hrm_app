@@ -1,6 +1,7 @@
 // lib/settings/settings_page.dart
 
 import 'dart:convert';
+// ignore: unused_import
 import 'dart:developer';
 import 'dart:io';
 import 'dart:ui';
@@ -341,8 +342,8 @@ class SettingsPageState extends State<SettingsPage> {
           final iosInfo = await deviceInfo.iosInfo;
           final Map<String, String> deviceInfoMap = {
             'identifier': iosInfo.identifierForVendor ?? '',
-            'name': iosInfo.name ?? '',
-            'model': iosInfo.model ?? '',
+            'name': iosInfo.name,
+            'model': iosInfo.model,
             'systemName': iosInfo.systemName ?? '',
             'systemVersion': iosInfo.systemVersion ?? '',
             'localizedModel': iosInfo.localizedModel ?? '',

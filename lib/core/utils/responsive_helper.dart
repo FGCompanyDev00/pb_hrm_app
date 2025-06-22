@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable
+
 import 'package:flutter/material.dart';
 
 /// A utility class to make responsive UI easy in Flutter, inspired by Bootstrap
@@ -171,11 +173,11 @@ class ResponsiveLayout extends StatelessWidget {
   final Widget? desktop;
 
   const ResponsiveLayout({
-    Key? key,
+    super.key,
     required this.mobile,
     this.tablet,
     this.desktop,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +209,7 @@ class ResponsiveText extends StatelessWidget {
 
   const ResponsiveText(
     this.text, {
-    Key? key,
+    super.key,
     this.style,
     this.textAlign,
     this.overflow,
@@ -215,7 +217,7 @@ class ResponsiveText extends StatelessWidget {
     this.minFontSize,
     this.fontSize = 14,
     this.autoScale = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -250,7 +252,7 @@ class ResponsivePadding extends StatelessWidget {
   final double? bottom;
 
   const ResponsivePadding({
-    Key? key,
+    super.key,
     required this.child,
     this.horizontal,
     this.vertical,
@@ -259,7 +261,7 @@ class ResponsivePadding extends StatelessWidget {
     this.top,
     this.right,
     this.bottom,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +293,7 @@ class ResponsiveGridView extends StatelessWidget {
   final ScrollPhysics? physics;
 
   const ResponsiveGridView({
-    Key? key,
+    super.key,
     required this.children,
     this.spacing = 10,
     this.aspectRatio,
@@ -299,7 +301,7 @@ class ResponsiveGridView extends StatelessWidget {
     this.padding,
     this.shrinkWrap = true,
     this.physics,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -352,7 +354,7 @@ class ResponsiveContainer extends StatelessWidget {
   final Color? color;
 
   const ResponsiveContainer({
-    Key? key,
+    super.key,
     required this.child,
     this.width,
     this.maxWidth,
@@ -364,7 +366,7 @@ class ResponsiveContainer extends StatelessWidget {
     this.margin,
     this.decoration,
     this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

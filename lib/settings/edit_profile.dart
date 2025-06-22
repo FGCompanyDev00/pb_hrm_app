@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -65,7 +66,8 @@ class EditProfilePageState extends State<EditProfilePage> {
     });
 
     if (!await _isConnected()) {
-      _showDialog('No Internet', 'Please check your internet connection and try again.');
+      _showDialog('No Internet',
+          'Please check your internet connection and try again.');
       setState(() {
         _isLoading = false;
       });
@@ -76,8 +78,10 @@ class EditProfilePageState extends State<EditProfilePage> {
       final prefs = await SharedPreferences.getInstance();
       final String? token = prefs.getString('token');
 
-      if (token == null) {
-        _showDialog('Authentication Error', 'Authentication token not found. Please log in again.');
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token,
+          customMessage:
+              'Authentication token not found. Please log in again.')) {
         return;
       }
 
@@ -91,7 +95,8 @@ class EditProfilePageState extends State<EditProfilePage> {
       ).timeout(const Duration(seconds: 10));
 
       if (profileResponse.statusCode == 200) {
-        final Map<String, dynamic> userProfile = jsonDecode(profileResponse.body)['results'];
+        final Map<String, dynamic> userProfile =
+            jsonDecode(profileResponse.body)['results'];
         setState(() {
           _initialProvince = userProfile['employee_province'] ?? '';
           _province = _initialProvince;
@@ -103,20 +108,23 @@ class EditProfilePageState extends State<EditProfilePage> {
           _phoneNumber = _initialPhoneNumber;
         });
       } else if (profileResponse.statusCode == 401) {
-        _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
+        _showDialog(
+            'Unauthorized', 'Your session has expired. Please log in again.');
       } else {
         _showDialog('Error', 'Failed to load profile');
       }
 
       // Fetch profile image
-      await _fetchUserProfile(token);
+      await _fetchUserProfile(token!);
     } on http.ClientException catch (e) {
-      _showDialog('Network Error', 'Failed to connect to the server. Please try again.');
+      _showDialog('Network Error',
+          'Failed to connect to the server. Please try again.');
       if (kDebugMode) {
         print('ClientException: $e');
       }
     } on SocketException catch (e) {
-      _showDialog('Network Error', 'No internet connection. Please check your settings.');
+      _showDialog('Network Error',
+          'No internet connection. Please check your settings.');
       if (kDebugMode) {
         print('SocketException: $e');
       }
@@ -156,27 +164,33 @@ class EditProfilePageState extends State<EditProfilePage> {
           });
         }
       } else if (imageResponse.statusCode == 401) {
-        _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
+        _showDialog(
+            'Unauthorized', 'Your session has expired. Please log in again.');
       } else {
-        _showDialog('Error', 'Failed to fetch profile image. (${imageResponse.statusCode})');
+        _showDialog('Error',
+            'Failed to fetch profile image. (${imageResponse.statusCode})');
       }
     } on http.ClientException catch (e) {
-      _showDialog('Network Error', 'Failed to connect to the server for image.');
+      _showDialog(
+          'Network Error', 'Failed to connect to the server for image.');
       if (kDebugMode) {
         print('ClientException: $e');
       }
     } on SocketException catch (e) {
-      _showDialog('Network Error', 'No internet connection while fetching image.');
+      _showDialog(
+          'Network Error', 'No internet connection while fetching image.');
       if (kDebugMode) {
         print('SocketException: $e');
       }
     } on TimeoutException catch (e) {
-      _showDialog('Timeout', 'The image request timed out. Please try again later.');
+      _showDialog(
+          'Timeout', 'The image request timed out. Please try again later.');
       if (kDebugMode) {
         print('TimeoutException: $e');
       }
     } catch (e) {
-      _showDialog('Error', 'An unexpected error occurred while fetching image.');
+      _showDialog(
+          'Error', 'An unexpected error occurred while fetching image.');
       if (kDebugMode) {
         print('Unknown error: $e');
       }
@@ -200,14 +214,16 @@ class EditProfilePageState extends State<EditProfilePage> {
           if (compressedFile != null) {
             final compressedSize = await compressedFile.length();
             if (compressedSize > 5 * 1024 * 1024) {
-              _showDialog('File Size Error', 'The selected image is too large even after compression. Please select an image under 5MB.');
+              _showDialog('File Size Error',
+                  'The selected image is too large even after compression. Please select an image under 5MB.');
             } else {
               setState(() {
                 _image = compressedFile as File?;
               });
             }
           } else {
-            _showDialog('Compression Error', 'Failed to compress the image. Please try another image.');
+            _showDialog('Compression Error',
+                'Failed to compress the image. Please try another image.');
           }
         } else {
           setState(() {
@@ -259,7 +275,11 @@ class EditProfilePageState extends State<EditProfilePage> {
       return;
     }
 
-    if (_province == _initialProvince && _city == _initialCity && _village == _initialVillage && _phoneNumber == _initialPhoneNumber && _image == null) {
+    if (_province == _initialProvince &&
+        _city == _initialCity &&
+        _village == _initialVillage &&
+        _phoneNumber == _initialPhoneNumber &&
+        _image == null) {
       _showDialog('Info', 'No changes to update.');
       return;
     }
@@ -269,7 +289,8 @@ class EditProfilePageState extends State<EditProfilePage> {
     });
 
     if (!await _isConnected()) {
-      _showDialog('No Internet', 'Please check your internet connection and try again.');
+      _showDialog('No Internet',
+          'Please check your internet connection and try again.');
       setState(() {
         _isLoading = false;
       });
@@ -281,7 +302,8 @@ class EditProfilePageState extends State<EditProfilePage> {
       final String? token = prefs.getString('token');
 
       if (token == null) {
-        _showDialog('Authentication Error', 'Authentication token not found. Please log in again.');
+        _showDialog('Authentication Error',
+            'Authentication token not found. Please log in again.');
         return;
       }
 
@@ -311,7 +333,8 @@ class EditProfilePageState extends State<EditProfilePage> {
 
       // Add image if selected
       if (_image != null) {
-        request.files.add(await http.MultipartFile.fromPath('images', _image!.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('images', _image!.path));
       }
 
       if (request.fields.isEmpty && request.files.isEmpty) {
@@ -322,7 +345,8 @@ class EditProfilePageState extends State<EditProfilePage> {
         return;
       }
 
-      final streamedResponse = await request.send().timeout(const Duration(seconds: 15));
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 15));
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 201) {
@@ -334,22 +358,28 @@ class EditProfilePageState extends State<EditProfilePage> {
             _image = null;
           });
         } else {
-          _showDialog('Error', 'Failed to update profile: ${responseBody['message'] ?? 'Unknown error.'}');
+          _showDialog('Error',
+              'Failed to update profile: ${responseBody['message'] ?? 'Unknown error.'}');
         }
       } else if (response.statusCode == 413) {
-        _showDialog('File Size Error', 'The uploaded image is too large. Please select an image under 5MB.');
+        _showDialog('File Size Error',
+            'The uploaded image is too large. Please select an image under 5MB.');
       } else if (response.statusCode == 401) {
-        _showDialog('Unauthorized', 'Your session has expired. Please log in again.');
+        _showDialog(
+            'Unauthorized', 'Your session has expired. Please log in again.');
       } else {
-        _showDialog('Error', 'Failed to update profile. (${response.statusCode})');
+        _showDialog(
+            'Error', 'Failed to update profile. (${response.statusCode})');
       }
     } on http.ClientException catch (e) {
-      _showDialog('Network Error', 'Failed to connect to the server. Please try again.');
+      _showDialog('Network Error',
+          'Failed to connect to the server. Please try again.');
       if (kDebugMode) {
         print('ClientException: $e');
       }
     } on SocketException catch (e) {
-      _showDialog('Network Error', 'No internet connection. Please check your settings.');
+      _showDialog('Network Error',
+          'No internet connection. Please check your settings.');
       if (kDebugMode) {
         print('SocketException: $e');
       }
@@ -359,7 +389,8 @@ class EditProfilePageState extends State<EditProfilePage> {
         print('TimeoutException: $e');
       }
     } catch (e) {
-      _showDialog('Error', 'An unexpected error occurred while saving profile.');
+      _showDialog(
+          'Error', 'An unexpected error occurred while saving profile.');
       if (kDebugMode) {
         print('Unknown error: $e');
       }
@@ -376,18 +407,31 @@ class EditProfilePageState extends State<EditProfilePage> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           title: Row(
             children: [
               Icon(
                 title == 'Success'
                     ? Icons.check_circle
-                    : title == 'Error' || title == 'Network Error' || title == 'Authentication Error' || title == 'Timeout' || title == 'No Internet' || title == 'File Size Error' || title == 'Compression Error'
+                    : title == 'Error' ||
+                            title == 'Network Error' ||
+                            title == 'Authentication Error' ||
+                            title == 'Timeout' ||
+                            title == 'No Internet' ||
+                            title == 'File Size Error' ||
+                            title == 'Compression Error'
                         ? Icons.error
                         : Icons.info,
                 color: title == 'Success'
                     ? Colors.green
-                    : title == 'Error' || title == 'Network Error' || title == 'Authentication Error' || title == 'Timeout' || title == 'No Internet' || title == 'File Size Error' || title == 'Compression Error'
+                    : title == 'Error' ||
+                            title == 'Network Error' ||
+                            title == 'Authentication Error' ||
+                            title == 'Timeout' ||
+                            title == 'No Internet' ||
+                            title == 'File Size Error' ||
+                            title == 'Compression Error'
                         ? Colors.red
                         : Colors.blue,
               ),
@@ -413,7 +457,13 @@ class EditProfilePageState extends State<EditProfilePage> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: title == 'Success'
                     ? Colors.green
-                    : title == 'Error' || title == 'Network Error' || title == 'Authentication Error' || title == 'Timeout' || title == 'No Internet' || title == 'File Size Error' || title == 'Compression Error'
+                    : title == 'Error' ||
+                            title == 'Network Error' ||
+                            title == 'Authentication Error' ||
+                            title == 'Timeout' ||
+                            title == 'No Internet' ||
+                            title == 'File Size Error' ||
+                            title == 'Compression Error'
                         ? Colors.red
                         : Colors.blue,
                 shape: RoundedRectangleBorder(
@@ -469,7 +519,9 @@ class EditProfilePageState extends State<EditProfilePage> {
               height: appBarHeight,
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
+                  image: AssetImage(isDarkMode
+                      ? 'assets/darkbg.png'
+                      : 'assets/background.png'),
                   fit: BoxFit.cover,
                 ),
                 borderRadius: const BorderRadius.only(
@@ -533,7 +585,14 @@ class EditProfilePageState extends State<EditProfilePage> {
                                 children: [
                                   CircleAvatar(
                                     radius: 45,
-                                    backgroundImage: _image != null ? FileImage(_image!) : (_profileImageUrl != null && _profileImageUrl!.isNotEmpty ? NetworkImage(_profileImageUrl!) as ImageProvider : const AssetImage('assets/avatar_placeholder.png')),
+                                    backgroundImage: _image != null
+                                        ? FileImage(_image!)
+                                        : (_profileImageUrl != null &&
+                                                _profileImageUrl!.isNotEmpty
+                                            ? NetworkImage(_profileImageUrl!)
+                                                as ImageProvider
+                                            : const AssetImage(
+                                                'assets/avatar_placeholder.png')),
                                   ),
                                   Positioned(
                                     bottom: 0,
@@ -616,20 +675,27 @@ class EditProfilePageState extends State<EditProfilePage> {
                             ElevatedButton(
                               onPressed: _isLoading ? null : _saveProfile,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Theme.of(context).brightness == Brightness.dark
-                                    ? const Color(0xFFDBB342) // Keep same color for dark mode
-                                    : const Color(0xFFE3B200), // A different color for light mode if needed
+                                backgroundColor: Theme.of(context).brightness ==
+                                        Brightness.dark
+                                    ? const Color(
+                                        0xFFDBB342) // Keep same color for dark mode
+                                    : const Color(
+                                        0xFFE3B200), // A different color for light mode if needed
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30.0),
                                 ),
-                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 12, horizontal: 24),
                               ),
                               child: Text(
                                 'Update Profile',
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.white
+                                      : Colors.black,
                                 ),
                               ),
                             ),

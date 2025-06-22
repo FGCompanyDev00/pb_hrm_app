@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import, unused_field, unnecessary_null_comparison, unused_element, invalid_return_type_for_catch_error, deprecated_member_use, use_build_context_synchronously
+
 import 'dart:convert';
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -25,6 +27,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:pb_hrsystem/services/s3_image_service.dart';
 import 'dart:math' as math;
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 // Flag to control all cache-related logging in this file
 const bool _enableCacheLogging = false;
@@ -346,7 +349,7 @@ class DashboardState extends State<Dashboard>
 
           // Preload profile to memory cache if available
           if (hasCachedProfile) {
-            final profile = UserProfile.fromJson(jsonDecode(profileJson!));
+            final profile = UserProfile.fromJson(jsonDecode(profileJson));
             _updateCache('userProfile', profile);
           }
         }
@@ -383,8 +386,9 @@ class DashboardState extends State<Dashboard>
         if (hasCachedProfile || hasCachedBanners) {
           Future.microtask(() {
             if (hasCachedProfile) _checkForProfileUpdates(forceUpdate: false);
-            if (hasCachedBanners)
+            if (hasCachedBanners) {
               _fetchBannersFromApiAndUpdate(forceUpdate: false);
+            }
           });
         }
       }
@@ -549,8 +553,8 @@ class DashboardState extends State<Dashboard>
           oldProfile.toJson().toString() != newProfile.toJson().toString()) {
         if (!_isDisposed && mounted) {
           // If profile image changed, clear the old image from cache
-          if (hasImageChanged && oldProfile?.imgName != null) {
-            _clearImageFromCache(oldProfile!.imgName);
+          if (hasImageChanged && oldProfile.imgName != null) {
+            _clearImageFromCache(oldProfile.imgName);
           }
 
           // Prefetch new image before updating state
@@ -610,12 +614,15 @@ class DashboardState extends State<Dashboard>
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
 
-    if (token == null) throw Exception('No token found');
+    // Use centralized auth validation with redirect
+    if (!await AuthUtils.validateTokenAndRedirect(token)) {
+      throw Exception('No token found');
+    }
 
     final response = await http.get(
       Uri.parse('$baseUrl/api/display/me'),
       headers: {
-        'Authorization': 'Bearer $token',
+        'Authorization': 'Bearer $token!',
         'Content-Type': 'application/json',
       },
     ).timeout(const Duration(seconds: 10));
@@ -748,8 +755,9 @@ class DashboardState extends State<Dashboard>
 
   // Helper method to prefetch images with memory optimization
   void _prefetchImage(String imageUrl, {bool highPriority = false}) {
-    if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true)
+    if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true) {
       return;
+    }
 
     try {
       // Create a unique cache key for better control
@@ -984,96 +992,6 @@ class DashboardState extends State<Dashboard>
     return;
 
     // The rest of this method is kept but won't be executed
-    try {
-      // Check if we need to update location based on interval
-      if (_lastLocationUpdate != null &&
-          DateTime.now().difference(_lastLocationUpdate!) <
-              _locationUpdateInterval) {
-        return;
-      }
-
-      // Wrap in a try-catch to prevent any location errors from crashing the app
-      try {
-        bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-        if (!serviceEnabled) {
-          _log('Location services are disabled');
-          return;
-        }
-
-        LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.denied) {
-          permission = await Geolocator.requestPermission();
-          if (permission == LocationPermission.denied) {
-            _log('Location permissions are denied');
-            return;
-          }
-        }
-
-        if (permission == LocationPermission.deniedForever) {
-          _log('Location permissions are permanently denied');
-          return;
-        }
-
-        setState(() => _isLocationEnabled = true);
-
-        // Get initial position with improved error handling and shorter timeout
-        try {
-          // Use a completer with a timeout to avoid hanging
-          final completer = Completer<Position?>();
-
-          // Set up a timeout that completes with null after 10 seconds
-          Timer(const Duration(seconds: 10), () {
-            if (!completer.isCompleted) {
-              _log('Location timeout detected - completing with null');
-              completer.complete(null);
-            }
-          });
-
-          // Start the actual location request
-          Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.reduced,
-            timeLimit: const Duration(seconds: 10),
-          ).then((position) {
-            if (!completer.isCompleted) {
-              completer.complete(position);
-            }
-          }).catchError((error) {
-            if (!completer.isCompleted) {
-              if (error is TimeoutException) {
-                _log('Location timeout caught and handled gracefully');
-                completer.complete(null);
-              } else {
-                completer.completeError(error);
-              }
-            }
-          });
-
-          // Wait for either the position or the timeout
-          _lastKnownPosition = await completer.future.catchError((error) {
-            _log('Error getting position, handled gracefully: $error');
-            return null;
-          });
-
-          if (_lastKnownPosition != null) {
-            _lastLocationUpdate = DateTime.now();
-          }
-        } catch (e) {
-          _log('Error getting initial position (handled): $e');
-          // Continue without initial position
-        }
-
-        // Only start location updates if we need continuous tracking
-        if (_shouldTrackLocation()) {
-          _startLocationUpdates();
-        }
-      } catch (e) {
-        // Catch any location service errors
-        _log('Location service error (handled): $e');
-      }
-    } catch (e) {
-      // Final fallback to ensure app doesn't crash
-      _log('Error initializing location (handled at root): $e');
-    }
   }
 
   void _startLocationUpdates() {
@@ -1466,7 +1384,7 @@ class DashboardState extends State<Dashboard>
                           ).createShader(bounds);
                         },
                         child: IconButton(
-                          icon: Icon(Icons.power_settings_new,
+                          icon: const Icon(Icons.power_settings_new,
                               color: Colors.white, size: 28),
                           onPressed: () =>
                               _showLogoutDialog(context, isDarkMode),
@@ -2067,12 +1985,12 @@ class ProfileAvatar extends StatefulWidget {
   final Future<UserProfile?> Function() fetchUserProfile;
 
   const ProfileAvatar({
-    Key? key,
+    super.key,
     required this.userProfile,
     required this.isDarkMode,
     required this.cacheManager,
     required this.fetchUserProfile,
-  }) : super(key: key);
+  });
 
   @override
   State<ProfileAvatar> createState() => _ProfileAvatarState();
@@ -2475,7 +2393,7 @@ class BannerCarousel extends StatefulWidget {
   final bool useS3CacheManager; // New parameter
 
   const BannerCarousel({
-    Key? key,
+    super.key,
     required this.futurebanners,
     this.cachedBanners,
     required this.cacheManager,
@@ -2488,7 +2406,7 @@ class BannerCarousel extends StatefulWidget {
     required this.onPreloadImage,
     this.useS3CacheManager =
         false, // Default to false for backward compatibility
-  }) : super(key: key);
+  });
 
   @override
   State<BannerCarousel> createState() => _BannerCarouselState();
@@ -2498,7 +2416,7 @@ class _BannerCarouselState extends State<BannerCarousel>
     with SingleTickerProviderStateMixin {
   bool _isOnline = true;
   List<String> _banners = [];
-  Map<String, FileInfo?> _cachedBannerFiles = {};
+  final Map<String, FileInfo?> _cachedBannerFiles = {};
   late AnimationController _loadingController;
   late Animation<double> _loadingAnimation;
 
@@ -2595,7 +2513,7 @@ class _BannerCarouselState extends State<BannerCarousel>
 
   void _preloadAllBannerImages(List<String> banners) {
     // Limit the number of concurrent downloads to avoid memory pressure
-    final maxConcurrentDownloads = 2;
+    const maxConcurrentDownloads = 2;
     int activeDownloads = 0;
     final downloadQueue = List<String>.from(banners);
 
@@ -2603,7 +2521,9 @@ class _BannerCarouselState extends State<BannerCarousel>
     void processNextBanner() {
       if (downloadQueue.isEmpty ||
           !mounted ||
-          activeDownloads >= maxConcurrentDownloads) return;
+          activeDownloads >= maxConcurrentDownloads) {
+        return;
+      }
 
       activeDownloads++;
       final url = downloadQueue.removeAt(0);

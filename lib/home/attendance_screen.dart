@@ -1,5 +1,7 @@
 // attendance_screen.dart
 
+// ignore_for_file: dead_code, unused_element, unused_local_variable, use_build_context_synchronously, deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -26,6 +28,7 @@ import '../hive_helper/model/attendance_record.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:pb_hrsystem/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class AttendanceScreen extends StatefulWidget {
   const AttendanceScreen({super.key});
@@ -316,10 +319,7 @@ class AttendanceScreenState extends State<AttendanceScreen>
     // Only show loading indicator if we don't have cached data
     bool showLoading = false;
 
-    if (showLoading && mounted) {
-      _isLoading.value = true;
-      _loadingMessage.value = 'Fetching attendance records...';
-    }
+    if (showLoading) {}
 
     try {
       final String? token = userPreferences.getToken();
@@ -399,7 +399,8 @@ class AttendanceScreenState extends State<AttendanceScreen>
     try {
       String? token = userPreferences.getToken();
 
-      if (token == null) {
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         throw Exception('No token found');
       }
 

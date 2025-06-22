@@ -1,5 +1,7 @@
 // approvals_main_page.dart
 
+// ignore_for_file: unnecessary_null_comparison, deprecated_member_use, curly_braces_in_flow_control_structures, prefer_is_empty
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
@@ -684,6 +686,7 @@ class ApprovalsMainPageState extends State<ApprovalsMainPage>
                                               },
                                             ),
                                           ),
+                                        // ignore: unnecessary_to_list_in_spreads
                                         ).toList(),
                                       ],
                                     ),

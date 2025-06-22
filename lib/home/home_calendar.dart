@@ -1,3 +1,5 @@
+// ignore_for_file: empty_catches, use_build_context_synchronously, deprecated_member_use
+
 import 'dart:convert';
 import 'dart:async';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
@@ -71,7 +73,6 @@ class HomeCalendarState extends State<HomeCalendar>
   static const int doubleTapDelay = 300;
 
   // Loading State
-  bool _isLoading = false;
 
   // Add at the top of the class after other variables
   final _eventCountsCache = <DateTime, Map<String, int>>{};
@@ -239,15 +240,12 @@ class HomeCalendarState extends State<HomeCalendar>
     // Only call setState if mounted
     if (mounted) {
       setState(() {
-        _isLoading = true;
       });
     } else {
-      _isLoading = true;
     }
 
     try {
       // Store previous event count to compare after fetching
-      final int previousEventCount = eventsForAll.length;
       final Set<String> previousEventIds =
           eventsForAll.map((e) => e.uid).toSet();
 
@@ -306,10 +304,8 @@ class HomeCalendarState extends State<HomeCalendar>
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
         });
       } else {
-        _isLoading = false;
       }
       _filterAndSearchEvents();
     }
@@ -321,10 +317,9 @@ class HomeCalendarState extends State<HomeCalendar>
       // Only set loading state if widget is mounted
       if (mounted) {
         setState(() {
-          _isLoading = true;
         });
       } else {
-        _isLoading = true; // Set the variable directly if not mounted
+// Set the variable directly if not mounted
       }
 
       // Use Future.wait to fetch all data in parallel for better performance
@@ -354,10 +349,9 @@ class HomeCalendarState extends State<HomeCalendar>
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
         });
       } else {
-        _isLoading = false; // Set the variable directly if not mounted
+// Set the variable directly if not mounted
       }
     }
   }
@@ -387,10 +381,8 @@ class HomeCalendarState extends State<HomeCalendar>
       // Check if mounted before calling setState
       if (mounted) {
         setState(() {
-          _isLoading = true;
         });
       } else {
-        _isLoading = true;
       }
 
       // Fetch everything fresh from APIs
@@ -400,10 +392,8 @@ class HomeCalendarState extends State<HomeCalendar>
       // Check if mounted before calling setState
       if (mounted) {
         setState(() {
-          _isLoading = false;
         });
       } else {
-        _isLoading = false;
       }
     }
   }
@@ -1235,13 +1225,13 @@ class HomeCalendarState extends State<HomeCalendar>
           });
 
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(
                 "Using offline calendar data",
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.white),
               ),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
+              duration: Duration(seconds: 3),
             ),
           );
         }
@@ -1255,13 +1245,13 @@ class HomeCalendarState extends State<HomeCalendar>
 
           // Show simple success message
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(
                 "Calendar refreshed successfully",
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: Colors.white),
               ),
               backgroundColor: Colors.green,
-              duration: const Duration(seconds: 3),
+              duration: Duration(seconds: 3),
             ),
           );
         }
@@ -1782,7 +1772,6 @@ class HomeCalendarState extends State<HomeCalendar>
   Future<void> _loadLocalData() async {
     try {
       setState(() {
-        _isLoading = true;
       });
 
       // Load events from local storage
@@ -1796,7 +1785,6 @@ class HomeCalendarState extends State<HomeCalendar>
       debugPrint('Error loading local data: $e');
     } finally {
       setState(() {
-        _isLoading = false;
       });
     }
   }

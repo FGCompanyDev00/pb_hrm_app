@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class NotificationPage extends StatefulWidget {
   const NotificationPage({super.key});
@@ -82,7 +83,8 @@ class NotificationPageState extends State<NotificationPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
-      if (token == null) {
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         throw Exception('User not authenticated');
       }
 
@@ -97,12 +99,12 @@ class NotificationPageState extends State<NotificationPage> {
         });
 
         // Fetch in background to update cache
-        _fetchAndCacheLeaveTypes(prefs, token, leaveTypesApiUrl);
+        _fetchAndCacheLeaveTypes(prefs, token!, leaveTypesApiUrl);
         return;
       }
 
       // No cache, fetch directly
-      await _fetchAndCacheLeaveTypes(prefs, token, leaveTypesApiUrl);
+      await _fetchAndCacheLeaveTypes(prefs, token!, leaveTypesApiUrl);
     } catch (e, stackTrace) {
       if (kDebugMode) {
         debugPrint('Error fetching leave types: $e');
@@ -186,7 +188,8 @@ class NotificationPageState extends State<NotificationPage> {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
-      if (token == null) {
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         throw Exception('User not authenticated');
       }
 
@@ -194,10 +197,10 @@ class NotificationPageState extends State<NotificationPage> {
 
       // Fetch Meeting invites
       await _fetchDataFromEndpoint(
-          meetingEndpoint, token, allPendingItems, 'meeting');
+          meetingEndpoint, token!, allPendingItems, 'meeting');
 
       // Fetch Car permits
-      await _fetchDataFromEndpoint(carEndpoint, token, allPendingItems, 'car');
+      await _fetchDataFromEndpoint(carEndpoint, token!, allPendingItems, 'car');
 
       setState(() {
         _pendingItems = allPendingItems;

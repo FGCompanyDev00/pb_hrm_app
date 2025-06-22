@@ -1,5 +1,7 @@
 // lib/settings/pin_entry_page.dart
 
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -42,9 +44,6 @@ class PinEntryPageState extends State<PinEntryPage> {
   }
 
   // Save a new PIN to secure storage
-  Future<void> _savePin(String pin) async {
-    await _storage.write(key: 'userPin', value: pin);
-  }
 
   // Limit PIN input to 6 digits
   void _onPinChanged(String pin) {

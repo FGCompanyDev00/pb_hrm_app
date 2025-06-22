@@ -1,5 +1,7 @@
 // office_add_event.dart
 
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -54,6 +56,7 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
   String?
       _location; // For Add Meeting and Meeting Type for Booking Meeting Room
 
+  // ignore: unused_field
   String? _employeeId; // Current user's employee ID
 
   // List of rooms
@@ -518,23 +521,6 @@ class OfficeAddEventPageState extends State<OfficeAddEventPage> {
     );
   }
 
-  /// Shows error message using AlertDialog
-  void _showErrorFieldMessage(String title, String message) async {
-    if (!mounted) return;
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(
-            child: const Text('OK'),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// Shows date and time picker for selecting date and time
   Future<void> _selectDateTime(

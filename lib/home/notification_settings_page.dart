@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -7,7 +9,6 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:platform/platform.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
@@ -27,7 +28,6 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
   final ApiService _apiService = ApiService();
   final LocalAuthentication auth = LocalAuthentication();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
-  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
   final DeviceInfoPlugin _deviceInfo = DeviceInfoPlugin();
 
   // Add a global key for loading dialog
@@ -91,7 +91,7 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
           'product': androidInfo.product,
           'hardware': androidInfo.hardware,
           'manufacturer': androidInfo.manufacturer,
-          'serialNumber': androidInfo.serialNumber ?? '',
+          'serialNumber': androidInfo.serialNumber,
         };
 
         // Filter out empty values and join with underscore
@@ -124,27 +124,37 @@ class NotificationSettingsPageState extends State<NotificationSettingsPage> {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS) {
         String? apnsToken = await FirebaseMessaging.instance.getAPNSToken();
-        print("Retrieved APNs Token: $apnsToken"); // Print here
+        if (kDebugMode) {
+          print("Retrieved APNs Token: $apnsToken");
+        } // Print here
         if (apnsToken != null) {
           setState(() {
             _deviceToken = apnsToken;
           });
         } else {
-          print("APNs token is null. Check APNs setup in Firebase.");
+          if (kDebugMode) {
+            print("APNs token is null. Check APNs setup in Firebase.");
+          }
         }
       } else if (defaultTargetPlatform == TargetPlatform.android) {
         String? fcmToken = await FirebaseMessaging.instance.getToken();
-        print("Retrieved FCM Token: $fcmToken"); // Print here
+        if (kDebugMode) {
+          print("Retrieved FCM Token: $fcmToken");
+        } // Print here
         if (fcmToken != null) {
           setState(() {
             _deviceToken = fcmToken;
           });
         }
       } else {
-        print("Unsupported platform.");
+        if (kDebugMode) {
+          print("Unsupported platform.");
+        }
       }
     } catch (e) {
-      print("Error getting device token: $e");
+      if (kDebugMode) {
+        print("Error getting device token: $e");
+      }
     }
   }
 

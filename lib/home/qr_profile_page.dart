@@ -1,5 +1,7 @@
 // qr_profile_page.dart
 
+// ignore_for_file: unused_field
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
@@ -9,7 +11,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/models/qr_profile_page.dart';
 import 'package:saver_gallery/saver_gallery.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
@@ -142,7 +143,6 @@ class ProfileScreenState extends State<ProfileScreen>
   bool _isQRCodeLoaded = false;
 
   // Memoization for better performance
-  String? _cachedVCardData;
   Map<String, dynamic>? _cachedData;
 
   // Custom cache manager for profile images
@@ -392,39 +392,6 @@ class ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  Future<void> _shareQRCode() async {
-    try {
-      final RenderRepaintBoundary? boundary =
-          qrKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
-
-      if (boundary == null) {
-        Fluttertoast.showToast(
-          msg: AppLocalizations.of(context)!.qrCodeNotRendered,
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-        );
-        return;
-      }
-
-      final image = await boundary.toImage(pixelRatio: 4.0);
-      final byteData = await image.toByteData(format: ImageByteFormat.png);
-      final uint8List = byteData!.buffer.asUint8List();
-
-      final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/qr_code.png').create();
-      await file.writeAsBytes(uint8List);
-
-      await Share.shareXFiles([XFile(file.path)],
-          text: AppLocalizations.of(context)!.shareQRCodeText);
-    } catch (e) {
-      debugPrint('Error sharing QR code: $e');
-      Fluttertoast.showToast(
-        msg: AppLocalizations.of(context)!.errorSharingQRCode,
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-      );
-    }
-  }
 
   Future<void> _downloadQRCode() async {
     try {

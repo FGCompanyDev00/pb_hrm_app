@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -7,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class LeaveManagementPage extends HookWidget {
   const LeaveManagementPage({super.key});
@@ -36,8 +39,10 @@ class LeaveManagementPage extends HookWidget {
     final isLoadingLeaveTypes = useState<bool>(false);
     final isSubmitting = useState<bool>(false);
 
-    final startDateDisplayController = useTextEditingController(); // Display format
-    final endDateDisplayController = useTextEditingController();   // Display format
+    final startDateDisplayController =
+        useTextEditingController(); // Display format
+    final endDateDisplayController =
+        useTextEditingController(); // Display format
 
     // BaseUrl ENV initialization for debug and production
     String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -80,7 +85,8 @@ class LeaveManagementPage extends HookWidget {
     // Function to update the end date based on the days input
     void updateEndDateBasedOnDays() {
       if (startDateController.text.isNotEmpty) {
-        final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
+        final startDate =
+            DateFormat('yyyy-MM-dd').parse(startDateController.text);
         double days = double.tryParse(daysController.text) ?? 0.0;
         if (days > 0) {
           final endDate = startDate.add(Duration(days: (days * 1).toInt()));
@@ -92,9 +98,11 @@ class LeaveManagementPage extends HookWidget {
     }
 
 // When user manually types in the "Days" field, auto calculate the end date after a delay
+    // ignore: unused_element
     void handleManualDaysChange() {
       Future.delayed(const Duration(seconds: 2), () {
-        if (daysController.text.isNotEmpty && startDateController.text.isNotEmpty) {
+        if (daysController.text.isNotEmpty &&
+            startDateController.text.isNotEmpty) {
           updateEndDateBasedOnDays();
         }
       });
@@ -135,8 +143,10 @@ class LeaveManagementPage extends HookWidget {
                         ),
                       ),
                       onChanged: (value) {
-                        filteredLeaveTypes.value = allLeaveTypes.value.where((type) {
-                          final typeName = type['name'].toString().toLowerCase();
+                        filteredLeaveTypes.value =
+                            allLeaveTypes.value.where((type) {
+                          final typeName =
+                              type['name'].toString().toLowerCase();
                           return typeName.contains(value.toLowerCase());
                         }).toList();
                       },
@@ -147,27 +157,32 @@ class LeaveManagementPage extends HookWidget {
                       child: isLoadingLeaveTypes.value
                           ? const Center(child: CircularProgressIndicator())
                           : filteredLeaveTypes.value.isEmpty
-                          ? const Center(child: Text('No leave types available'))
-                          : ListView.builder(
-                        controller: scrollController,
-                        itemCount: filteredLeaveTypes.value.length,
-                        itemBuilder: (context, index) {
-                          final leaveType = filteredLeaveTypes.value[index];
-                          return ListTile(
-                            title: Text(
-                              leaveType['name'],
-                              style: TextStyle(
-                                color: isDarkMode ? Colors.white : Colors.black,
-                              ),
-                            ),
-                            onTap: () {
-                              typeController.text = leaveType['name'];
-                              leaveTypeId.value = leaveType['leave_type_id'];
-                              Navigator.pop(context);
-                            },
-                          );
-                        },
-                      ),
+                              ? const Center(
+                                  child: Text('No leave types available'))
+                              : ListView.builder(
+                                  controller: scrollController,
+                                  itemCount: filteredLeaveTypes.value.length,
+                                  itemBuilder: (context, index) {
+                                    final leaveType =
+                                        filteredLeaveTypes.value[index];
+                                    return ListTile(
+                                      title: Text(
+                                        leaveType['name'],
+                                        style: TextStyle(
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        typeController.text = leaveType['name'];
+                                        leaveTypeId.value =
+                                            leaveType['leave_type_id'];
+                                        Navigator.pop(context);
+                                      },
+                                    );
+                                  },
+                                ),
                     ),
                   ],
                 ),
@@ -184,8 +199,8 @@ class LeaveManagementPage extends HookWidget {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
-      if (token == null) {
-        showCustomDialog(context, 'Error', 'User not authenticated');
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         isLoadingLeaveTypes.value = false;
         return [];
       }
@@ -195,7 +210,7 @@ class LeaveManagementPage extends HookWidget {
           Uri.parse('$baseUrl/api/leave-types'),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
+            'Authorization': 'Bearer $token!',
           },
         );
 
@@ -204,17 +219,18 @@ class LeaveManagementPage extends HookWidget {
 
           if (data.containsKey('results')) {
             List<Map<String, dynamic>> types =
-            List<Map<String, dynamic>>.from(data['results']);
+                List<Map<String, dynamic>>.from(data['results']);
             isLoadingLeaveTypes.value = false;
             return types;
           } else {
-            showCustomDialog(context, 'Error', 'Unexpected API response structure.');
+            showCustomDialog(
+                context, 'Error', 'Unexpected API response structure.');
             isLoadingLeaveTypes.value = false;
             return [];
           }
         } else if (response.statusCode == 401) {
-          showCustomDialog(
-              context, 'Unauthorized', 'Your session has expired. Please log in again.');
+          showCustomDialog(context, 'Unauthorized',
+              'Your session has expired. Please log in again.');
           isLoadingLeaveTypes.value = false;
           return [];
         } else {
@@ -240,11 +256,11 @@ class LeaveManagementPage extends HookWidget {
 
     // Date Picker Method
     Future<void> pickDate(
-        BuildContext context,
-        TextEditingController controller,
-        TextEditingController displayController, // Added display controller
-        bool isStartDate,
-        ) async {
+      BuildContext context,
+      TextEditingController controller,
+      TextEditingController displayController, // Added display controller
+      bool isStartDate,
+    ) async {
       DateTime initialDate = DateTime.now();
       DateTime firstDate = DateTime(2000);
       DateTime lastDate = DateTime(2100);
@@ -258,21 +274,21 @@ class LeaveManagementPage extends HookWidget {
           return Theme(
             data: isDarkMode
                 ? ThemeData.dark().copyWith(
-              colorScheme: ColorScheme.dark(
-                primary: Colors.orange,
-                onPrimary: Colors.white,
-                surface: Colors.grey[800]!,
-                onSurface: Colors.white,
-              ),
-            )
+                    colorScheme: ColorScheme.dark(
+                      primary: Colors.orange,
+                      onPrimary: Colors.white,
+                      surface: Colors.grey[800]!,
+                      onSurface: Colors.white,
+                    ),
+                  )
                 : ThemeData.light().copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: Colors.orange,
-                onPrimary: Colors.white,
-                surface: Colors.white,
-                onSurface: Colors.black,
-              ),
-            ),
+                    colorScheme: const ColorScheme.light(
+                      primary: Colors.orange,
+                      onPrimary: Colors.white,
+                      surface: Colors.white,
+                      onSurface: Colors.black,
+                    ),
+                  ),
             child: child!,
           );
         },
@@ -290,7 +306,8 @@ class LeaveManagementPage extends HookWidget {
         // Validate date logic
         if (isStartDate) {
           if (endDateController.text.isNotEmpty) {
-            final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
+            final endDate =
+                DateFormat('yyyy-MM-dd').parse(endDateController.text);
             if (pickedDate.isAfter(endDate)) {
               showCustomDialog(
                 context,
@@ -302,7 +319,8 @@ class LeaveManagementPage extends HookWidget {
           }
         } else {
           if (startDateController.text.isNotEmpty) {
-            final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
+            final startDate =
+                DateFormat('yyyy-MM-dd').parse(startDateController.text);
             if (pickedDate.isBefore(startDate)) {
               showCustomDialog(
                 context,
@@ -315,9 +333,13 @@ class LeaveManagementPage extends HookWidget {
         }
 
         // Auto-calculate days if applicable
-        if (!isFractionalDay.value && startDateController.text.isNotEmpty && endDateController.text.isNotEmpty) {
-          final startDate = DateFormat('yyyy-MM-dd').parse(startDateController.text);
-          final endDate = DateFormat('yyyy-MM-dd').parse(endDateController.text);
+        if (!isFractionalDay.value &&
+            startDateController.text.isNotEmpty &&
+            endDateController.text.isNotEmpty) {
+          final startDate =
+              DateFormat('yyyy-MM-dd').parse(startDateController.text);
+          final endDate =
+              DateFormat('yyyy-MM-dd').parse(endDateController.text);
           final difference = endDate.difference(startDate).inDays + 1;
           daysController.text = difference.toString();
         }
@@ -326,6 +348,7 @@ class LeaveManagementPage extends HookWidget {
 
     // This method shows a dialog or bottom sheet
     // for picking a fractional day: 0.25, 0.5, or 0.75
+    // ignore: unused_element
     void showFractionalDayOptions() {
       if (startDateController.text.isEmpty) {
         showCustomDialog(
@@ -495,7 +518,7 @@ class LeaveManagementPage extends HookWidget {
             keyboardType: keyboardType,
             decoration: InputDecoration(
               contentPadding:
-              const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
+                  const EdgeInsets.symmetric(vertical: 15.0, horizontal: 10.0),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
@@ -519,16 +542,15 @@ class LeaveManagementPage extends HookWidget {
             color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
-        backgroundColor: isDarkMode
-            ? Colors.black.withOpacity(0.8)
-            : Colors.transparent,
+        backgroundColor:
+            isDarkMode ? Colors.black.withOpacity(0.8) : Colors.transparent,
         elevation: 0,
         toolbarHeight: 80,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             image: DecorationImage(
-              image:
-              AssetImage(isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
+              image: AssetImage(
+                  isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
             borderRadius: const BorderRadius.only(
@@ -566,7 +588,7 @@ class LeaveManagementPage extends HookWidget {
                             label: const Text("Submit"),
                             style: ElevatedButton.styleFrom(
                               foregroundColor:
-                              isDarkMode ? Colors.white : Colors.black,
+                                  isDarkMode ? Colors.white : Colors.black,
                               backgroundColor: isDarkMode
                                   ? Colors.green
                                   : const Color(0xFFDBB342),
@@ -616,7 +638,8 @@ class LeaveManagementPage extends HookWidget {
                             Expanded(
                               child: buildTextField(
                                 label: "Start Date*",
-                                controller: startDateDisplayController, // Use display controller
+                                controller:
+                                    startDateDisplayController, // Use display controller
                                 readOnly: true,
                                 prefixIcon: const Icon(Icons.calendar_today),
                                 validator: (value) {
@@ -625,14 +648,19 @@ class LeaveManagementPage extends HookWidget {
                                   }
                                   return null;
                                 },
-                                onTap: () => pickDate(context, startDateController, startDateDisplayController, true), // Pass both controllers
+                                onTap: () => pickDate(
+                                    context,
+                                    startDateController,
+                                    startDateDisplayController,
+                                    true), // Pass both controllers
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: buildTextField(
                                 label: "End Date*",
-                                controller: endDateDisplayController, // Use display controller
+                                controller:
+                                    endDateDisplayController, // Use display controller
                                 readOnly: true,
                                 prefixIcon: const Icon(Icons.calendar_today),
                                 validator: (value) {
@@ -641,7 +669,11 @@ class LeaveManagementPage extends HookWidget {
                                   }
                                   return null;
                                 },
-                                onTap: () => pickDate(context, endDateController, endDateDisplayController, false), // Pass both controllers
+                                onTap: () => pickDate(
+                                    context,
+                                    endDateController,
+                                    endDateDisplayController,
+                                    false), // Pass both controllers
                               ),
                             ),
                           ],
@@ -666,22 +698,27 @@ class LeaveManagementPage extends HookWidget {
                                   IconButton(
                                     onPressed: startDateController.text.isEmpty
                                         ? () {
-                                      showCustomDialog(
-                                        context,
-                                        'Start Date Required',
-                                        'Please choose a start date first before using the plus/minus buttons.',
-                                      );
-                                    }
+                                            showCustomDialog(
+                                              context,
+                                              'Start Date Required',
+                                              'Please choose a start date first before using the plus/minus buttons.',
+                                            );
+                                          }
                                         : () {
-                                      double currentDays = double.tryParse(daysController.text) ?? 0.0;
-                                      if (currentDays > 0.25) {
-                                        daysController.text = (currentDays - 0.25).toStringAsFixed(2);
-                                        updateEndDateBasedOnDays();
-                                      } else if (currentDays == 0.25) {
-                                        daysController.text = '0';
-                                        updateEndDateBasedOnDays();
-                                      }
-                                    },
+                                            double currentDays =
+                                                double.tryParse(
+                                                        daysController.text) ??
+                                                    0.0;
+                                            if (currentDays > 0.25) {
+                                              daysController.text =
+                                                  (currentDays - 0.25)
+                                                      .toStringAsFixed(2);
+                                              updateEndDateBasedOnDays();
+                                            } else if (currentDays == 0.25) {
+                                              daysController.text = '0';
+                                              updateEndDateBasedOnDays();
+                                            }
+                                          },
                                     icon: const Icon(Icons.remove),
                                     tooltip: 'Decrease days',
                                   ),
@@ -689,7 +726,8 @@ class LeaveManagementPage extends HookWidget {
                                   Expanded(
                                     child: TextFormField(
                                       controller: daysController,
-                                      readOnly: startDateController.text.isEmpty, // Disable editing if no start date
+                                      readOnly: startDateController.text
+                                          .isEmpty, // Disable editing if no start date
                                       textAlign: TextAlign.center,
                                       decoration: const InputDecoration(
                                         border: InputBorder.none,
@@ -703,20 +741,26 @@ class LeaveManagementPage extends HookWidget {
                                           return 'Days cannot be empty';
                                         }
                                         final dVal = double.tryParse(value);
-                                        if (dVal == null || (dVal != dVal.roundToDouble() && dVal % 0.25 != 0)) {
+                                        if (dVal == null ||
+                                            (dVal != dVal.roundToDouble() &&
+                                                dVal % 0.25 != 0)) {
                                           return 'Invalid number of days. Use only whole numbers or 0.25 increments.';
                                         }
                                         return null;
                                       },
                                       onChanged: (value) {
                                         final dVal = double.tryParse(value);
-                                        if (dVal != null && (dVal % 0.25 == 0 || dVal == dVal.roundToDouble())) {
+                                        if (dVal != null &&
+                                            (dVal % 0.25 == 0 ||
+                                                dVal == dVal.roundToDouble())) {
                                           // Auto update based on input
-                                          daysController.text = dVal.toStringAsFixed(2);
+                                          daysController.text =
+                                              dVal.toStringAsFixed(2);
                                           updateEndDateBasedOnDays();
                                         } else {
                                           // If the user enters invalid value, reset to the last valid one
-                                          daysController.text = (dVal ?? 0.0).toStringAsFixed(2);
+                                          daysController.text =
+                                              (dVal ?? 0.0).toStringAsFixed(2);
                                         }
                                       },
                                     ),
@@ -725,17 +769,22 @@ class LeaveManagementPage extends HookWidget {
                                   IconButton(
                                     onPressed: startDateController.text.isEmpty
                                         ? () {
-                                      showCustomDialog(
-                                        context,
-                                        'Start Date Required',
-                                        'Please choose a start date first before using the plus/minus buttons.',
-                                      );
-                                    }
+                                            showCustomDialog(
+                                              context,
+                                              'Start Date Required',
+                                              'Please choose a start date first before using the plus/minus buttons.',
+                                            );
+                                          }
                                         : () {
-                                      double currentDays = double.tryParse(daysController.text) ?? 0.0;
-                                      daysController.text = (currentDays + 0.25).toStringAsFixed(2);
-                                      updateEndDateBasedOnDays();
-                                    },
+                                            double currentDays =
+                                                double.tryParse(
+                                                        daysController.text) ??
+                                                    0.0;
+                                            daysController.text =
+                                                (currentDays + 0.25)
+                                                    .toStringAsFixed(2);
+                                            updateEndDateBasedOnDays();
+                                          },
                                     icon: const Icon(Icons.add),
                                     tooltip: 'Increase days',
                                   ),

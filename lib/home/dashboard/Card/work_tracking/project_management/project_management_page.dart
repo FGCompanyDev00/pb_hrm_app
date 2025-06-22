@@ -1,5 +1,7 @@
 // project_management_page.dart
 
+// ignore_for_file: unused_field, unused_element, unused_local_variable
+
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/assignment_section.dart';

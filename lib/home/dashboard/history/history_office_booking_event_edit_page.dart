@@ -1,5 +1,7 @@
 // office_booking_event_edit_page.dart
 
+// ignore_for_file: unused_field, unused_element, use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -83,7 +85,7 @@ class OfficeBookingEventEditPageState
       TextEditingController();
   final TextEditingController _minutesOfMeetingLocationController =
       TextEditingController();
-  String _minutesOfMeetingStatus = 'public'; // Default status
+  final String _minutesOfMeetingStatus = 'public'; // Default status
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -442,7 +444,9 @@ class OfficeBookingEventEditPageState
               .format(dateTimeIn); // Only the date part in dd-MM-yyyy format
         } catch (e) {
           // If parsing fails, handle gracefully
-          print("Error parsing date_in: $e");
+          if (kDebugMode) {
+            print("Error parsing date_in: $e");
+          }
           _carDateInController.text =
               ''; // Default empty value if parsing fails
         }
@@ -461,7 +465,9 @@ class OfficeBookingEventEditPageState
               .format(dateTimeOut); // Only the date part in dd-MM-yyyy format
         } catch (e) {
           // If parsing fails, handle gracefully
-          print("Error parsing date_out: $e");
+          if (kDebugMode) {
+            print("Error parsing date_out: $e");
+          }
           _carDateOutController.text =
               ''; // Default empty value if parsing fails
         }
@@ -1000,7 +1006,7 @@ class OfficeBookingEventEditPageState
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final screenSize = MediaQuery.of(context).size;
 
-    return Container(
+    return SizedBox(
       width: screenSize.width * 0.6, // 60% of screen width
       height: screenSize.height * 0.05, // 5% of screen height
 
@@ -1018,7 +1024,7 @@ class OfficeBookingEventEditPageState
             ? Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  SizedBox(
+                  const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
@@ -1026,7 +1032,7 @@ class OfficeBookingEventEditPageState
                       strokeWidth: 2.0,
                     ),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Text(
                     'Updating...',
                     style: TextStyle(
@@ -1045,7 +1051,7 @@ class OfficeBookingEventEditPageState
                     color: Colors.white,
                     size: screenSize.width * 0.05,
                   ),
-                  SizedBox(width: 8),
+                  const SizedBox(width: 8),
                   Text(
                     AppLocalizations.of(context)!.updateLabel,
                     style: TextStyle(
@@ -1317,7 +1323,7 @@ class OfficeBookingEventEditPageState
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.error_outline,
                             color: Colors.red,
                             size: 60,

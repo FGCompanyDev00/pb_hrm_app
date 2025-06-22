@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class MyProfilePage extends StatefulWidget {
   const MyProfilePage({super.key});
@@ -55,7 +56,8 @@ class MyProfilePageState extends State<MyProfilePage>
     final prefs = await SharedPreferences.getInstance();
     final String? token = prefs.getString('token');
 
-    if (token == null) {
+    // Use centralized auth validation with redirect
+    if (!await AuthUtils.validateTokenAndRedirect(token)) {
       throw Exception(AppLocalizations.of(context)!.noTokenFound);
     }
 
@@ -105,7 +107,7 @@ class MyProfilePageState extends State<MyProfilePage>
     if (dateStr == 'N/A' || dateStr.isEmpty) {
       return 'N/A';
     }
-    
+
     try {
       DateTime dateTime = DateTime.parse(dateStr);
       return DateFormat('MMM dd, yyyy').format(dateTime);

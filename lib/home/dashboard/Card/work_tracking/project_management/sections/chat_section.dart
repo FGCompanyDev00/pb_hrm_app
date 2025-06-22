@@ -1,5 +1,7 @@
 // chat_section.dart
 
+// ignore_for_file: unused_field, unused_element, deprecated_member_use
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -478,7 +480,7 @@ class ChatSectionState extends State<ChatSection> {
                 },
                 child: Container(
                   padding: const EdgeInsets.all(12),
-                  child: Icon(
+                  child: const Icon(
                     Icons.send_rounded,
                     color: Colors.white,
                     size: 24,

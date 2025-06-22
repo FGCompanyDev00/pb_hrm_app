@@ -1,5 +1,7 @@
 // approvals_details_page.dart
 
+// ignore_for_file: unused_local_variable, deprecated_member_use, use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +9,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/comment_approvals
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class ApprovalsDetailsPage extends StatefulWidget {
   final String id;
@@ -63,9 +66,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
 
     try {
       final String? token = await _getToken();
-      if (token == null) {
-        _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log out and then log in again.');
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         return;
       }
 
@@ -133,8 +135,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
           });
           debugPrint('Approval details loaded successfully.');
         } else {
-          throw Exception(
-              standardErrorMessage);
+          throw Exception(standardErrorMessage);
         }
       } else if (response.statusCode == 403) {
         throw Exception('Access forbidden: $standardErrorMessage');
@@ -327,7 +328,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     try {
       final String? token = await _getToken();
       if (token == null) {
-        throw Exception('Authentication Error: Token not found. Please log out and then log in again');
+        throw Exception(
+            'Authentication Error: Token not found. Please log out and then log in again');
       }
 
       final response = await http.get(
@@ -1646,8 +1648,7 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     } catch (e, stackTrace) {
       debugPrint('Error rejecting car: $e');
       debugPrint(stackTrace.toString());
-      _showErrorDialog(
-          'Error', standardErrorMessage);
+      _showErrorDialog('Error', standardErrorMessage);
     } finally {
       setState(() {
         isFinalized = false;
@@ -1868,8 +1869,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
     const String baseUrl = 'https://demo-application-api.flexiflows.co';
     final String? token = await _getToken();
     if (token == null) {
-      _showErrorDialog(
-          'Authentication Error', 'Token not found. Please log out and then log in again.');
+      _showErrorDialog('Authentication Error',
+          'Token not found. Please log out and then log in again.');
       setState(() {
         isFinalized = false;
       });
@@ -1902,7 +1903,8 @@ class ApprovalsDetailsPageState extends State<ApprovalsDetailsPage> {
         "types": widget.type,
       };
     } else {
-      _showErrorDialog('Error', 'Invalid request type. Please contact IT support for assistance.');
+      _showErrorDialog('Error',
+          'Invalid request type. Please contact IT support for assistance.');
       setState(() {
         isFinalized = false;
       });

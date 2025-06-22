@@ -7,6 +7,7 @@ import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/comment_approvals
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class NotificationDetailPage extends StatefulWidget {
   final String id;
@@ -60,9 +61,8 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
 
     try {
       final String? token = await _getToken();
-      if (token == null) {
-        _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log in again.');
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         return;
       }
 
@@ -138,8 +138,7 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
       } else if (response.statusCode == 404) {
         throw Exception('Approval details not found: ${response.statusCode}');
       } else {
-        throw Exception(
-            'Failed to load approval details');
+        throw Exception('Failed to load approval details');
       }
     } catch (e, stackTrace) {
       debugPrint('Error fetching approval details: $e');
@@ -153,9 +152,8 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
 
   Future<void> _handleMerge(BuildContext context) async {
     final String? token = await _getToken();
-    if (token == null) {
-      _showErrorDialog(
-          'Authentication Error', 'Token not found. Please log in again.');
+    // Use centralized auth validation with redirect
+    if (!await AuthUtils.validateTokenAndRedirect(token)) {
       return;
     }
 
@@ -231,9 +229,8 @@ class NotificationDetailPageState extends State<NotificationDetailPage> {
 
     try {
       final String? token = await _getToken();
-      if (token == null) {
-        _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log in again.');
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         return;
       }
 

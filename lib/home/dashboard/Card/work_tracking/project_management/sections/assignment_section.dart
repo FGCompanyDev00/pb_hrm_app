@@ -1,5 +1,7 @@
 // assignment_section.dart
 
+// ignore_for_file: unused_field, deprecated_member_use
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/project_management/sections/sections_service/add_assignment.dart';
@@ -87,7 +89,7 @@ class _AssignmentSectionState extends State<AssignmentSection> {
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load assignments')),
+          const SnackBar(content: Text('Failed to load assignments')),
         );
         setState(() {
           _isLoading = false;

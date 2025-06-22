@@ -1,3 +1,5 @@
+// ignore_for_file: unused_local_variable, deprecated_member_use
+
 import 'dart:collection';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';

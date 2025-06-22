@@ -1,10 +1,8 @@
 // event_detail_view.dart
 
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
@@ -407,66 +405,6 @@ class EventDetailViewState extends State<EventDetailView>
     };
   }
 
-  Future<void> _downloadFiles() async {
-    if (widget.event['file_name'] == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No files to download')),
-      );
-      return;
-    }
-
-    bool allSuccess = true;
-
-    String fileUrl = widget.event['file_name']?.toString() ?? '';
-    String fileName = 'unknown_file';
-
-    if (fileUrl.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Invalid URL for file: $fileName')),
-        );
-      }
-      allSuccess = false;
-
-      try {
-        final response = await http.get(Uri.parse(fileUrl));
-        final directory = await getApplicationDocumentsDirectory();
-        final path = '${directory.path}/$fileName';
-        if (response.statusCode == 200) {
-          final fileToSave = File(path);
-          await fileToSave.writeAsBytes(response.bodyBytes);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to download $fileName')),
-            );
-          }
-          allSuccess = false;
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error downloading $fileName: $e')),
-          );
-        }
-        allSuccess = false;
-      }
-    }
-
-    if (allSuccess) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All files downloaded successfully')),
-        );
-      }
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Some files failed to download')),
-        );
-      }
-    }
-  }
 
   Widget _buildMembersList(List<dynamic> members) {
     if (members.isEmpty) return const SizedBox.shrink();

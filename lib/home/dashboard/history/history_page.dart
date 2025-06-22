@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
@@ -45,12 +47,6 @@ class HistoryPageState extends State<HistoryPage>
   bool _showPendingViewMoreButton = false;
   bool _showHistoryViewMoreButton = false;
 
-  static const Map<String, IconData> _typeIcons = {
-    'meeting': Icons.meeting_room,
-    'leave': Icons.event,
-    'car': Icons.directions_car,
-    'minutes of meeting': Icons.sticky_note_2,
-  };
 
   // BaseUrl ENV initialization for debug and production
   String baseUrl = dotenv.env['BASE_URL'] ?? 'https://fallback-url.com';
@@ -685,22 +681,6 @@ class HistoryPageState extends State<HistoryPage>
     }
   }
 
-  Widget _getIconWidgetForType(String type, double size, Color color) {
-    if (type.toLowerCase() == 'minutes of meeting') {
-      return Image.asset(
-        'assets/room.png',
-        width: size,
-        height: size,
-        color: color,
-      );
-    } else {
-      return Icon(
-        _getIconForType(type),
-        color: color,
-        size: size,
-      );
-    }
-  }
 
   /// Returns icon based on type
   IconData _getIconForType(String type) {
@@ -857,7 +837,7 @@ class HistoryPageState extends State<HistoryPage>
                                             },
                                           ),
                                         ),
-                                      ).toList(),
+                                      ),
                                     ],
                                   ),
                                 ),

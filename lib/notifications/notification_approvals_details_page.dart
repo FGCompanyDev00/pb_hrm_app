@@ -5,6 +5,7 @@ import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class NotificationApprovalsDetailsPage extends StatefulWidget {
   final String id;
@@ -70,16 +71,15 @@ class NotificationApprovalsDetailsPageState
 
     try {
       final String? token = await _getToken();
-      if (token == null) {
-        _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log in again.');
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         return;
       }
 
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: {
-          'Authorization': 'Bearer $token',
+          'Authorization': 'Bearer $token!',
           'Content-Type': 'application/json',
         },
       );
@@ -525,12 +525,8 @@ class NotificationApprovalsDetailsPageState
 
     try {
       final String? token = await _getToken();
-      if (token == null) {
-        _showErrorDialog(
-            'Authentication Error', 'Token not found. Please log in again.');
-        setState(() {
-          isFinalized = false;
-        });
+      // Use centralized auth validation with redirect
+      if (!await AuthUtils.validateTokenAndRedirect(token)) {
         return;
       }
 
