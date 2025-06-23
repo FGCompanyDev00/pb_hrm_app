@@ -1,6 +1,6 @@
 // qr_profile_page.dart
 
-// ignore_for_file: unused_field
+// ignore_for_file: unused_field, use_build_context_synchronously, deprecated_member_use, non_constant_identifier_names
 
 import 'dart:convert';
 import 'dart:io';

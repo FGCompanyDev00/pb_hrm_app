@@ -1,8 +1,9 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:pb_hrsystem/services/update_service.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 class UpdateDialog extends StatefulWidget {
   const UpdateDialog({super.key});

@@ -723,15 +723,9 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
   }
 
   Widget _buildBody(bool isDarkMode) {
-    final screenWidth = MediaQuery.of(context).size.width;
     final screenHeight = MediaQuery.of(context).size.height;
 
     // Responsive padding based on screen size
-    final horizontalPadding = screenWidth < 360
-        ? 12.0
-        : screenWidth < 414
-            ? 16.0
-            : 20.0;
     final topPadding = screenHeight < 700 ? 12.0 : 18.0;
 
     return SingleChildScrollView(
@@ -829,11 +823,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 12),
             // Linear loading indicator for banner loading
-            Container(
+            const SizedBox(
               width: 120,
               child: LinearLoadingIndicator(
                 isLoading: true,
-                color: const Color(0xFFDBB342),
+                color: Color(0xFFDBB342),
                 height: 2.0,
               ),
             ),
@@ -970,11 +964,11 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 16),
                     // Linear loading indicator for individual image loading
-                    Container(
+                    const SizedBox(
                       width: 100,
                       child: LinearLoadingIndicator(
                         isLoading: true,
-                        color: const Color(0xFFDBB342),
+                        color: Color(0xFFDBB342),
                         height: 2.0,
                       ),
                     ),

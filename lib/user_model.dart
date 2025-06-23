@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:io' show Platform;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:hive/hive.dart';
@@ -154,7 +153,7 @@ class UserProvider extends ChangeNotifier {
   bool get isSessionAboutToExpire {
     if (_loginTime == null) return false;
     final Duration timeLeft =
-        Duration(hours: 8) - DateTime.now().difference(_loginTime!);
+        const Duration(hours: 8) - DateTime.now().difference(_loginTime!);
     return timeLeft.inMinutes > 0 && timeLeft.inMinutes < 30;
   }
 
@@ -162,7 +161,7 @@ class UserProvider extends ChangeNotifier {
   int get remainingSessionTimeInMinutes {
     if (_loginTime == null) return 0;
     final Duration timeLeft =
-        Duration(hours: 8) - DateTime.now().difference(_loginTime!);
+        const Duration(hours: 8) - DateTime.now().difference(_loginTime!);
     return timeLeft.inMinutes > 0 ? timeLeft.inMinutes : 0;
   }
 
@@ -196,7 +195,7 @@ class UserProvider extends ChangeNotifier {
               'Your session has expired. Please log in again.'),
           actions: <Widget>[
             TextButton(
-              child: Text('OK'),
+              child: const Text('OK'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -247,7 +246,7 @@ class UserProvider extends ChangeNotifier {
     await flutterLocalNotificationsPlugin.show(
       sessionExpiryNotificationId,
       'Session Expiring Soon',
-      'Your session will expire in ${remainingSessionTimeInMinutes} minutes. Please save your work.',
+      'Your session will expire in $remainingSessionTimeInMinutes minutes. Please save your work.',
       platformChannelSpecifics,
     );
   }

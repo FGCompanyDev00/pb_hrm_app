@@ -1,3 +1,5 @@
+// ignore_for_file: unused_import, unnecessary_import, library_private_types_in_public_api
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -7,7 +9,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../login/location_information_page.dart';
 
 class NotificationPermissionPage extends StatefulWidget {
-  const NotificationPermissionPage({Key? key}) : super(key: key);
+  const NotificationPermissionPage({super.key});
 
   @override
   _NotificationPermissionPageState createState() =>
@@ -71,7 +73,6 @@ class _NotificationPermissionPageState
       }
     } else {
       // Existing Android permission flow
-      final status = await Permission.notification.status;
       // ... rest of the Android code ...
     }
   }

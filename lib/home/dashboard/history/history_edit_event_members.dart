@@ -1,3 +1,5 @@
+// ignore_for_file: library_private_types_in_public_api, empty_catches
+
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -43,7 +45,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
           prefs.getString('employee_id'); // Get current user id
 
       if (token == null || currentUserId == null) {
-        print('No token or employee id found in SharedPreferences.');
         return;
       }
 
@@ -94,10 +95,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
           });
         }
       } else {
-        print('Failed to load members');
       }
     } catch (error) {
-      print('Error fetching members: $error');
     }
   }
 
@@ -123,7 +122,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
         });
       }
     } else {
-      print('Failed to load meeting members');
     }
   }
 
@@ -170,7 +168,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
           });
         }
       } else {
-        print('Failed to load car members');
       }
     }
   }
@@ -203,8 +200,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
               data['results']['guests'] is List) {
             List guests = data['results']['guests'];
 
-            print('Fetched ${guests.length} guests for minutes of meeting');
-            print('Guest data: ${guests}');
 
             // Add existing guests to selectedMembers
             List<Map<String, dynamic>> existingMembers =
@@ -229,11 +224,8 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
           }
         }
       } else {
-        print(
-            'Failed to load minutes of meeting members, status: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching minutes of meeting members: $e');
     }
   }
 
@@ -343,8 +335,6 @@ class _EditEventMembersPageState extends State<EditEventMembersPage> {
                             .toList();
 
                     // Print debug info before returning
-                    print(
-                        'Returning selected members: $selectedMembersToReturn');
 
                     // Return selected members to previous page
                     Navigator.pop(context, selectedMembersToReturn);

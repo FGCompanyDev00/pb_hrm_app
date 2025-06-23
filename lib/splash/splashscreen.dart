@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
@@ -6,8 +8,6 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:pb_hrsystem/widgets/update_dialog.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pb_hrsystem/core/utils/image_utils.dart';
 
@@ -23,16 +23,11 @@ class SplashScreenState extends State<SplashScreen>
   late final AnimationController _controller;
   late final AnimationController _pulseController;
   late final AnimationController _particleController;
-  late final Animation<double> _fadeAnimation;
-  late final Animation<double> _scaleAnimation;
-  late final Animation<double> _rotateAnimation;
-  late final Animation<double> _slideAnimation;
   bool _isDisposed = false;
 
   // Memoize values that don't change
   static const Duration _splashDuration = Duration(seconds: 6);
   static const Duration _animationDuration = Duration(seconds: 2);
-  static const Duration _transitionDuration = Duration(seconds: 1);
 
   // Memoize transition builder
   static Widget _buildTransition(
@@ -78,43 +73,9 @@ class SplashScreenState extends State<SplashScreen>
       vsync: this,
     )..repeat();
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-    );
 
-    _scaleAnimation = TweenSequence([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 0.5, end: 1.2)
-            .chain(CurveTween(curve: Curves.easeOut)),
-        weight: 40.0,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.2, end: 1.0)
-            .chain(CurveTween(curve: Curves.bounceOut)),
-        weight: 60.0,
-      ),
-    ]).animate(_controller);
 
-    _rotateAnimation = Tween<double>(
-      begin: 0.0,
-      end: 2 * 3.14159, // 360 degrees in radians
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.7, curve: Curves.easeInOut),
-      ),
-    );
 
-    _slideAnimation = Tween<double>(
-      begin: -50.0,
-      end: 0.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.3, 1.0, curve: Curves.elasticOut),
-      ),
-    );
 
     _controller.forward();
     _checkSessionAfterSplash();
@@ -193,21 +154,8 @@ class SplashScreenState extends State<SplashScreen>
     }
   }
 
-  void _navigateToNextScreen() async {
-    // Check for updates when navigating from splash screen
-    await Future.delayed(const Duration(seconds: 2));
-
-    if (mounted) {
-      _checkForUpdates();
-    }
-  }
 
   // Add the update checking method
-  Future<void> _checkForUpdates() async {
-    if (mounted) {
-      await UpdateDialogService.showUpdateDialog(context);
-    }
-  }
 
   // Memoize font size calculation
   static double _getResponsiveFontSize(double baseSize, double screenWidth) {
@@ -244,8 +192,6 @@ class SplashScreenState extends State<SplashScreen>
     final double welcomeFontSize = _getResponsiveFontSize(30, screenWidth);
     final double subtitleFontSize = _getResponsiveFontSize(18, screenWidth);
 
-    final Color welcomeTextColor =
-        isDarkMode ? Colors.white70 : const Color(0xFF333333);
     final Color subtitleTextColor =
         isDarkMode ? Colors.white60 : const Color(0xFF666666);
 

@@ -1,5 +1,7 @@
 // services/offline_service.dart
 
+// ignore_for_file: unnecessary_null_comparison
+
 import 'dart:convert';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -17,11 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../hive_helper/model/attendance_record.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:flutter/foundation.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
 import 'dart:io';
 
 class OfflineProvider extends ChangeNotifier {
@@ -103,7 +101,7 @@ class OfflineProvider extends ChangeNotifier {
           debugPrint('Calendar database successfully recreated');
         } catch (e) {
           debugPrint('Failed to recreate database after corruption: $e');
-          throw e; // Rethrow for outer handler
+          rethrow; // Rethrow for outer handler
         }
       }
     } catch (e) {
@@ -127,7 +125,7 @@ class OfflineProvider extends ChangeNotifier {
 
       // Create a safe copy of events and filter out any null or invalid events
       final List<Events> eventsCopy = List<Events>.from(
-        events.where((event) => event != null && event.uid != null),
+        events.where((event) => event.uid != null),
       );
 
       if (eventsCopy.isEmpty) {
@@ -231,7 +229,7 @@ class OfflineProvider extends ChangeNotifier {
         } catch (e) {
           debugPrint(
               'Failed to recreate history database after corruption: $e');
-          throw e; // Rethrow for outer handler
+          rethrow; // Rethrow for outer handler
         }
       }
     } catch (e) {

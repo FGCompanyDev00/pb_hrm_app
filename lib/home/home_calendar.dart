@@ -75,7 +75,6 @@ class HomeCalendarState extends State<HomeCalendar>
   static const int doubleTapDelay = 300;
 
   // Loading States
-  bool _isInitialLoading = true;
   bool _isBackgroundLoading = false;
 
   // Add at the top of the class after other variables
@@ -138,7 +137,6 @@ class HomeCalendarState extends State<HomeCalendar>
     );
 
     // INSTANT LOADING: No initial loading state, immediately show content
-    _isInitialLoading = false;
     _isBackgroundLoading = false;
 
     // Load cache synchronously and start background refresh
@@ -378,16 +376,12 @@ class HomeCalendarState extends State<HomeCalendar>
   }
 
   /// Smart caching strategy for calendar data (legacy method - now using instant loading)
+  // ignore: unused_element
   Future<void> _fetchCalendarData() async {
     // This method is kept for compatibility but now just calls the instant loading
     await _instantLoadAndBackgroundRefresh();
   }
 
-  /// Load cached calendar data for immediate display (legacy method)
-  Future<bool> _loadCachedData() async {
-    // Redirect to the instant loading method
-    return await _loadCachedDataInstantly();
-  }
 
   /// Fetch fresh data from API and update cache (optimized for background loading)
   Future<void> _fetchFreshData() async {
@@ -415,39 +409,7 @@ class HomeCalendarState extends State<HomeCalendar>
     }
   }
 
-  /// Calculate events by category for new events
-  Map<String, int> _calculateEventsByCategory(Set<String> eventIds) {
-    final Map<String, int> eventsByCategory = {};
-    for (final event in eventsForAll) {
-      if (eventIds.contains(event.uid)) {
-        eventsByCategory[event.category] =
-            (eventsByCategory[event.category] ?? 0) + 1;
-      }
-    }
-    return eventsByCategory;
-  }
 
-  /// Clear cache and fetch fresh data
-  Future<void> _clearCacheAndRefresh() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('cached_calendar_events');
-      await prefs.remove('calendar_cache_timestamp');
-
-      // Clear in-memory caches
-      _clearCaches();
-      eventsForAll.clear();
-      events.value.clear();
-
-      setState(() {
-        _isInitialLoading = true;
-      });
-
-      await _fetchFreshData();
-    } catch (e) {
-      debugPrint('Error clearing cache and refreshing: $e');
-    }
-  }
 
   /// Fetches all required data concurrently
   Future<void> fetchData({bool showUpdateInfo = false}) async {
@@ -2144,19 +2106,6 @@ class HomeCalendarState extends State<HomeCalendar>
     }
   }
 
-  /// Check if cache is still fresh enough to skip API calls
-  Future<bool> _isCacheFresh() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final cacheTimestamp = prefs.getInt('calendar_cache_timestamp') ?? 0;
-      final cacheAge = DateTime.now().millisecondsSinceEpoch - cacheTimestamp;
-
-      // Consider cache fresh if less than 10 minutes old
-      return cacheAge < (10 * 60 * 1000);
-    } catch (e) {
-      return false;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

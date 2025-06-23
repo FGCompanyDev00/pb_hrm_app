@@ -1,6 +1,8 @@
 // linear_loading_indicator.dart
 // Google Calendar-style linear loading indicator for smooth data fetching feedback
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 
 class LinearLoadingIndicator extends StatefulWidget {
@@ -140,9 +142,6 @@ class _LinearLoadingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
 
     // Create multiple moving segments for smooth loading effect
     const double segmentWidth = 100.0;

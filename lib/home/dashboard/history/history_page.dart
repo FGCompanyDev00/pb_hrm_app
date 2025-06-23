@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_details_page.dart';
 import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:provider/provider.dart';
@@ -12,7 +11,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'dart:math' show sin, cos;
 import 'package:flutter/foundation.dart';
 
 class HistoryPage extends StatefulWidget {

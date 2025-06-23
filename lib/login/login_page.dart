@@ -1,5 +1,7 @@
 // lib/login_page.dart
 
+// ignore_for_file: unused_element, use_build_context_synchronously, deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -120,9 +122,10 @@ class LoginPageState extends State<LoginPage>
     final String password = _passwordController.text.trim();
 
     if (username.isEmpty || password.isEmpty) {
-      if (mounted)
+      if (mounted) {
         _showCustomDialog(AppLocalizations.of(context)!.loginFailed,
             AppLocalizations.of(context)!.emptyFieldsMessage);
+      }
       return;
     }
 
@@ -438,9 +441,10 @@ class LoginPageState extends State<LoginPage>
     );
 
     if (pickedDate != null) {
-      if (context.mounted)
+      if (context.mounted) {
         Provider.of<DateProvider>(context, listen: false)
             .updateSelectedDate(pickedDate);
+      }
     }
   }
 

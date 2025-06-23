@@ -1,7 +1,8 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -547,6 +548,7 @@ class NotificationApprovalsDetailsPageState
         });
         _showSuccessDialog('Success',
             'You have successfully ${action == 'join' ? 'joined' : 'declined'} the invitation.');
+        // ignore: use_build_context_synchronously
         Navigator.of(context).pop(true);
       } else {
         final responseBody = jsonDecode(response.body);

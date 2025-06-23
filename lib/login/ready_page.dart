@@ -1,5 +1,7 @@
 // ready_page.dart
 
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:pb_hrsystem/main.dart';

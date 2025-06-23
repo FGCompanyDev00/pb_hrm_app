@@ -1,9 +1,12 @@
 // notification_meeting_detail_page.dart
 
+// ignore_for_file: avoid_print, use_build_context_synchronously, deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -249,9 +252,12 @@ class NotificationMeetingDetailsPageState
 
   @override
   Widget build(BuildContext context) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
-      backgroundColor: Colors.white, // Pure white background
-      appBar: _buildAppBar(context, darkModeGlobal),
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
+      appBar: _buildAppBar(context, isDarkMode),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -261,11 +267,11 @@ class NotificationMeetingDetailsPageState
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   const SizedBox(height: 30),
-                  _buildRequestorSection(darkModeGlobal),
+                  _buildRequestorSection(isDarkMode),
                   const SizedBox(height: 20),
-                  _buildBlueSection(darkModeGlobal),
+                  _buildBlueSection(isDarkMode),
                   const SizedBox(height: 40),
-                  _buildMeetingDetails(darkModeGlobal),
+                  _buildMeetingDetails(isDarkMode),
                   const SizedBox(height: 30),
                   widget.isOutMeeting
                       ? _buildOutMeetingActionButtons()
@@ -276,13 +282,13 @@ class NotificationMeetingDetailsPageState
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context, bool darkModeGlobal) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isDarkMode) {
     return AppBar(
       flexibleSpace: Container(
         decoration: BoxDecoration(
           image: DecorationImage(
             image: AssetImage(
-                darkModeGlobal ? 'assets/darkbg.png' : 'assets/background.png'),
+                isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
             fit: BoxFit.cover,
           ),
           borderRadius: const BorderRadius.only(
@@ -295,11 +301,11 @@ class NotificationMeetingDetailsPageState
       title: Text(
         'Meeting Details',
         style: TextStyle(
-            color: darkModeGlobal ? Colors.white : Colors.black, fontSize: 20),
+            color: isDarkMode ? Colors.white : Colors.black, fontSize: 20),
       ),
       leading: IconButton(
         icon: Icon(Icons.arrow_back_ios_new,
-            color: darkModeGlobal ? Colors.white : Colors.black, size: 20),
+            color: isDarkMode ? Colors.white : Colors.black, size: 20),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -310,7 +316,7 @@ class NotificationMeetingDetailsPageState
     );
   }
 
-  Widget _buildRequestorSection(bool darkModeGlobal) {
+  Widget _buildRequestorSection(bool isDarkMode) {
     String requestorName = meetingData?['created_by_name'] ?? 'No Name';
     String submittedOn = formatDate(meetingData?['created_at']);
     String profileImage = requestorImage ??
@@ -321,7 +327,7 @@ class NotificationMeetingDetailsPageState
       children: [
         Text('Organizer',
             style: TextStyle(
-              color: darkModeGlobal ? Colors.white : Colors.black,
+              color: isDarkMode ? Colors.white : Colors.black,
               fontWeight: FontWeight.bold,
               fontSize: 18,
             )),
@@ -332,7 +338,7 @@ class NotificationMeetingDetailsPageState
             CircleAvatar(
               backgroundImage: NetworkImage(profileImage),
               radius: 30,
-              backgroundColor: Colors.grey[300],
+              backgroundColor: isDarkMode ? Colors.grey[700] : Colors.grey[300],
               onBackgroundImageError: (error, stackTrace) {},
             ),
             const SizedBox(width: 12),
@@ -343,7 +349,7 @@ class NotificationMeetingDetailsPageState
                   Text(
                     requestorName,
                     style: TextStyle(
-                      color: darkModeGlobal ? Colors.white : Colors.black,
+                      color: isDarkMode ? Colors.white : Colors.black,
                       fontSize: 16,
                     ),
                   ),
@@ -352,7 +358,7 @@ class NotificationMeetingDetailsPageState
                     'Submitted on $submittedOn',
                     style: TextStyle(
                       fontSize: 14,
-                      color: darkModeGlobal ? Colors.white70 : Colors.black54,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
                   ),
                 ],
@@ -364,11 +370,11 @@ class NotificationMeetingDetailsPageState
     );
   }
 
-  Widget _buildBlueSection(bool darkModeGlobal) {
+  Widget _buildBlueSection(bool isDarkMode) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
       decoration: BoxDecoration(
-        color: darkModeGlobal
+        color: isDarkMode
             ? Colors.blueGrey.withOpacity(0.3)
             : Colors.lightBlueAccent.withOpacity(0.3),
         borderRadius: BorderRadius.circular(20),
@@ -379,14 +385,14 @@ class NotificationMeetingDetailsPageState
             : 'MEETING ROOM BOOKING REQUEST',
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: darkModeGlobal ? Colors.white : Colors.black,
+          color: isDarkMode ? Colors.white : Colors.black,
           fontSize: 16,
         ),
       ),
     );
   }
 
-  Widget _buildMeetingDetails(bool darkModeGlobal) {
+  Widget _buildMeetingDetails(bool isDarkMode) {
     if (widget.isOutMeeting) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,46 +402,34 @@ class NotificationMeetingDetailsPageState
               meetingData?['outmeeting_uid']?.toString() ?? 'N/A',
               Icons.meeting_room,
               Colors.purple,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow('Title', meetingData?['title'] ?? 'N/A', Icons.title,
-              Colors.blue, darkModeGlobal),
+              Colors.blue, isDarkMode),
           _buildInfoRow('Description', meetingData?['description'] ?? 'N/A',
-              Icons.description, Colors.teal, darkModeGlobal),
+              Icons.description, Colors.teal, isDarkMode),
           _buildInfoRow('From Date', formatDate(meetingData?['fromdate']),
-              Icons.calendar_today, Colors.blue, darkModeGlobal),
+              Icons.calendar_today, Colors.blue, isDarkMode),
           _buildInfoRow('To Date', formatDate(meetingData?['todate']),
-              Icons.calendar_today, Colors.blue, darkModeGlobal),
-          // _buildInfoRow(
-          //     'Location',
-          //     meetingData?['location']?.toString() ?? 'N/A',
-          //     Icons.location_on,
-          //     Colors.orange,
-          //     darkModeGlobal),
-          // _buildInfoRow(
-          //     'Video Conference',
-          //     meetingData?['video_conference']?.toString() ?? 'N/A',
-          //     Icons.video_call,
-          //     Colors.amber,
-          //     darkModeGlobal),
+              Icons.calendar_today, Colors.blue, isDarkMode),
           _buildInfoRow(
               'Notification',
               '${meetingData?['notification'] ?? 'N/A'} minutes',
               Icons.notifications,
               Colors.pink,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow(
               'Status',
               meetingData?['status']?.toString() ?? 'Pending',
               Icons.info,
               Colors.red,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow(
               'Created By',
               meetingData?['created_by_name']?.toString() ?? 'N/A',
               Icons.person,
               Colors.indigo,
-              darkModeGlobal),
-          _buildOutMeetingMembersSection(darkModeGlobal),
+              isDarkMode),
+          _buildOutMeetingMembersSection(isDarkMode),
         ],
       );
     } else {
@@ -447,45 +441,45 @@ class NotificationMeetingDetailsPageState
               meetingData?['meeting_id']?.toString() ?? 'N/A',
               Icons.meeting_room,
               Colors.green,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow('Title', meetingData?['title'] ?? 'N/A', Icons.title,
-              Colors.blue, darkModeGlobal),
+              Colors.blue, isDarkMode),
           _buildInfoRow('From Date', formatDate(meetingData?['from_date_time']),
-              Icons.calendar_today, Colors.blue, darkModeGlobal),
+              Icons.calendar_today, Colors.blue, isDarkMode),
           _buildInfoRow('To Date', formatDate(meetingData?['to_date_time']),
-              Icons.calendar_today, Colors.blue, darkModeGlobal),
+              Icons.calendar_today, Colors.blue, isDarkMode),
           _buildInfoRow(
               'Room Name',
               meetingData?['room_name']?.toString() ?? 'N/A',
               Icons.room,
               Colors.orange,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow(
               'Floor',
               meetingData?['room_floor']?.toString() ?? 'N/A',
               Icons.layers,
               Colors.orange,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow(
               'Branch Name',
               meetingData?['branch_name']?.toString() ?? 'N/A',
               Icons.business,
               Colors.red,
-              darkModeGlobal),
+              isDarkMode),
           _buildInfoRow(
               'Status',
               meetingData?['status']?.toString() ?? 'Pending',
               Icons.stairs,
               Colors.red,
-              darkModeGlobal),
-          _buildMembersSection(darkModeGlobal),
+              isDarkMode),
+          _buildMembersSection(isDarkMode),
         ],
       );
     }
   }
 
   Widget _buildInfoRow(String title, String content, IconData icon, Color color,
-      bool darkModeGlobal) {
+      bool isDarkMode) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
@@ -499,9 +493,7 @@ class NotificationMeetingDetailsPageState
               '$title: $content',
               style: TextStyle(
                 fontSize: 14,
-                color: darkModeGlobal
-                    ? Colors.white
-                    : Colors.black, // Text color changes based on dark mode
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
           ),
@@ -510,16 +502,20 @@ class NotificationMeetingDetailsPageState
     );
   }
 
-  Widget _buildMembersSection(bool darkModeGlobal) {
+  Widget _buildMembersSection(bool isDarkMode) {
     List<dynamic> members = meetingData?['members'] ?? [];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        const Text(
+        Text(
           'Members:',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
         const SizedBox(height: 6),
         ...members.map((member) {
@@ -533,9 +529,8 @@ class NotificationMeetingDetailsPageState
             child: ListTile(
               leading: CircleAvatar(
                 backgroundImage: NetworkImage(memberImage),
-                backgroundColor: darkModeGlobal
-                    ? Colors.grey[700]
-                    : Colors.grey[300], // Adjust avatar background color
+                backgroundColor:
+                    isDarkMode ? Colors.grey[700] : Colors.grey[300],
                 radius: 20,
                 onBackgroundImageError: (error, stackTrace) {},
               ),
@@ -543,18 +538,14 @@ class NotificationMeetingDetailsPageState
                 memberName,
                 style: TextStyle(
                   fontSize: 14,
-                  color: darkModeGlobal
-                      ? Colors.white
-                      : Colors.black, // Text color for dark mode
+                  color: isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
               subtitle: Text(
                 'Status: $status',
                 style: TextStyle(
                   fontSize: 12,
-                  color: darkModeGlobal
-                      ? Colors.white70
-                      : Colors.black54, // Subtitle text color
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
                 ),
               ),
               contentPadding: EdgeInsets.zero,
@@ -751,15 +742,28 @@ class NotificationMeetingDetailsPageState
   }
 
   void _showErrorDialog(String title, String message) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
+        backgroundColor: isDarkMode ? Colors.grey[850] : Colors.white,
+        title: Text(
+          title,
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: TextStyle(color: isDarkMode ? Colors.amber : Colors.blue),
+            ),
           ),
         ],
       ),
@@ -767,18 +771,31 @@ class NotificationMeetingDetailsPageState
   }
 
   void _showSuccessDialog(String title, String message) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
+        backgroundColor: isDarkMode ? Colors.grey[850] : Colors.white,
+        title: Text(
+          title,
+          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+        ),
+        content: Text(
+          message,
+          style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black87),
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(true);
             },
-            child: const Text('OK'),
+            child: Text(
+              'OK',
+              style: TextStyle(color: isDarkMode ? Colors.green : Colors.blue),
+            ),
           ),
         ],
       ),
@@ -931,7 +948,7 @@ class NotificationMeetingDetailsPageState
   }
 
   // New widget to build the members section for out-meeting
-  Widget _buildOutMeetingMembersSection(bool darkModeGlobal) {
+  Widget _buildOutMeetingMembersSection(bool isDarkMode) {
     List<dynamic> members = meetingData?['members'] ?? [];
 
     return Column(
@@ -947,7 +964,7 @@ class NotificationMeetingDetailsPageState
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
-                color: darkModeGlobal ? Colors.white : Colors.black,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
           ],
@@ -964,7 +981,7 @@ class NotificationMeetingDetailsPageState
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
             elevation: 2,
-            color: Colors.white, // Pure white card background
+            color: isDarkMode ? Colors.grey[850] : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(10),
               side: BorderSide(
@@ -978,7 +995,8 @@ class NotificationMeetingDetailsPageState
                 children: [
                   CircleAvatar(
                     backgroundImage: NetworkImage(memberImage),
-                    backgroundColor: Colors.grey[300],
+                    backgroundColor:
+                        isDarkMode ? Colors.grey[700] : Colors.grey[300],
                     radius: 20,
                     onBackgroundImageError: (error, stackTrace) {},
                   ),
@@ -992,7 +1010,7 @@ class NotificationMeetingDetailsPageState
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: darkModeGlobal ? Colors.white : Colors.black,
+                            color: isDarkMode ? Colors.white : Colors.black,
                           ),
                         ),
                         if (department.isNotEmpty || branch.isNotEmpty)
@@ -1000,9 +1018,8 @@ class NotificationMeetingDetailsPageState
                             '$department${department.isNotEmpty && branch.isNotEmpty ? ' - ' : ''}$branch',
                             style: TextStyle(
                               fontSize: 12,
-                              color: darkModeGlobal
-                                  ? Colors.white70
-                                  : Colors.black54,
+                              color:
+                                  isDarkMode ? Colors.white70 : Colors.black54,
                             ),
                           ),
                       ],
@@ -1028,7 +1045,7 @@ class NotificationMeetingDetailsPageState
               ),
             ),
           );
-        }).toList(),
+        }),
       ],
     );
   }

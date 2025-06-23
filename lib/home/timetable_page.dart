@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';

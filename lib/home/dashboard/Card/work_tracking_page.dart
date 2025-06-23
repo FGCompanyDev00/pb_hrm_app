@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
-import 'dart:math';
 import 'dart:convert';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/add_project.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking/edit_project.dart';
@@ -586,10 +585,6 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
     );
   }
 
-  Widget _buildLoading() {
-    return _buildInitialLoadingState(
-        Theme.of(context).brightness == Brightness.dark);
-  }
 
   Widget _buildProjectsList(BuildContext context, bool isDarkMode) {
     List<Map<String, dynamic>> filteredProjects = _projects.where((project) {
@@ -750,6 +745,7 @@ class WorkTrackingPageState extends State<WorkTrackingPage>
             borderRadius: BorderRadius.circular(12.0),
             boxShadow: [
               BoxShadow(
+                // ignore: deprecated_member_use
                 color: statusColor.withOpacity(0.4),
                 blurRadius: 3.0,
                 spreadRadius: 1.0,

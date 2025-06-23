@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:http/http.dart' as http;
@@ -23,7 +22,7 @@ class S3HttpFileService implements FileService {
 
   // Cache of recently checked URLs to prevent redundant expiry checks
   final Map<String, DateTime> _expiryCheckCache = {};
-  final Duration _expiryCheckCacheDuration = Duration(minutes: 5);
+  final Duration _expiryCheckCacheDuration = const Duration(minutes: 5);
 
   // Silence all console logs for this service
   final bool _enableLogging = false;
@@ -214,17 +213,6 @@ class S3HttpFileService implements FileService {
   }
 
   // Helper to create a shorter URL for logging purposes
-  String _getShortUrlForLogging(String url) {
-    try {
-      final uri = Uri.parse(url);
-      final path = uri.path;
-      // Just return the filename part for logging
-      final fileName = path.split('/').last;
-      return 'S3 image: $fileName';
-    } catch (_) {
-      return 'S3 image URL';
-    }
-  }
 
   @override
   Future<FileServiceResponse> get(String url,
@@ -298,11 +286,6 @@ class S3HttpFileService implements FileService {
   }
 
   // Clean expired entries from the expiry check cache
-  void _cleanExpiryCheckCache() {
-    final now = DateTime.now();
-    _expiryCheckCache.removeWhere((url, timestamp) =>
-        now.difference(timestamp) > _expiryCheckCacheDuration);
-  }
 }
 
 /// A simple response implementation for HTTP responses

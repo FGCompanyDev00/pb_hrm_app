@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element
+
 import 'dart:io';
 import 'dart:convert';
 
@@ -177,13 +179,11 @@ class CalendarDatabaseService {
         final batch = txn.batch();
 
         for (var event in eventsCopy) {
-          if (event.uid == null) continue;
-
           Map<String, dynamic> eventJson = event.toJson();
 
           // Clean and prepare data
           eventJson.remove('id');
-          eventJson['fileName'] = eventJson['fileName'] ?? null;
+          eventJson['fileName'] = eventJson['fileName'];
 
           // Handle members field
           if (event.members != null) {

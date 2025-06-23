@@ -1,12 +1,12 @@
 // notification_page.dart
 
+// ignore_for_file: unused_element, use_build_context_synchronously, curly_braces_in_flow_control_structures
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
 import 'package:pb_hrsystem/notifications/notification_approvals_details_page.dart';
-import 'package:pb_hrsystem/notifications/notification_detail_page.dart';
 import 'package:pb_hrsystem/notifications/notification_meeting_section_detail_page.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:provider/provider.dart';
@@ -31,7 +31,6 @@ class NotificationPageState extends State<NotificationPage> {
   List<Map<String, dynamic>> _historyItems = [];
   bool _isLoading = true;
   bool _isBackgroundLoading = false; // For silent background updates
-  final Set<String> _knownTypes = {'meeting', 'leave', 'car'};
   Map<int, String> _leaveTypesMap = {};
 
   // BaseUrl ENV initialization for debug and production
@@ -269,7 +268,7 @@ class NotificationPageState extends State<NotificationPage> {
       if (kDebugMode) {
         debugPrint('Error in _fetchAndCacheLeaveTypes: $e');
       }
-      throw e; // Rethrow to be handled by caller
+      rethrow; // Rethrow to be handled by caller
     }
   }
 
@@ -296,7 +295,7 @@ class NotificationPageState extends State<NotificationPage> {
           meetingEndpoint, token!, allPendingItems, 'meeting');
 
       // Fetch Car permits
-      await _fetchDataFromEndpoint(carEndpoint, token!, allPendingItems, 'car');
+      await _fetchDataFromEndpoint(carEndpoint, token, allPendingItems, 'car');
 
       setState(() {
         _pendingItems = allPendingItems;
@@ -1021,9 +1020,9 @@ class NotificationPageState extends State<NotificationPage> {
       employeeName = (item['created_by_name']?.toString() ?? 'N/A').trim();
     }
 
-    if (status.toLowerCase() == 'branch approved')
+    if (status.toLowerCase() == 'branch approved') {
       status = 'Approved';
-    else if (status.toLowerCase() == 'branch waiting') status = 'Waiting';
+    } else if (status.toLowerCase() == 'branch waiting') status = 'Waiting';
 
     String id = (item['uid']?.toString() ?? '').trim();
     // For out-meeting, use outmeeting_uid if uid is empty

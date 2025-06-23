@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'dart:collection';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';

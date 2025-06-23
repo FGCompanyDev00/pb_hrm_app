@@ -3,7 +3,6 @@ import 'package:flutter_in_store_app_version_checker/flutter_in_store_app_versio
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:pb_hrsystem/widgets/update_dialog.dart';
 import 'update_service.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:io' show Platform;
 
 /// A service for checking and handling app updates
@@ -38,7 +37,7 @@ class AppUpdateChecker {
       debugPrint('Current version: ${result.currentVersion}');
       debugPrint('Store version: ${result.newVersion}');
 
-      if (result.canUpdate != null && result.canUpdate!) {
+      if (result.canUpdate) {
         debugPrint('Update available: ${result.newVersion}');
         return true;
       }

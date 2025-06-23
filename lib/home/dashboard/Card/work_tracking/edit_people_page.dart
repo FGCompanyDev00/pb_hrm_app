@@ -1,7 +1,6 @@
 // lib/home/dashboard/Card/work_tracking/edit_people_page.dart
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pb_hrsystem/services/work_tracking_service.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
@@ -86,7 +85,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       debugPrint('Employees processed and ready for display.');
     } catch (e) {
       debugPrint('Error fetching employees: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -157,7 +156,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
       }
     } catch (e) {
       debugPrint('Error fetching existing members: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -369,6 +368,7 @@ class EditPeoplePageState extends State<EditPeoplePage> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
+                  // ignore: deprecated_member_use
                   color: Colors.black.withOpacity(0.2),
                   blurRadius: 10,
                   offset: const Offset(0, 5),

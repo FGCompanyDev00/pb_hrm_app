@@ -10,7 +10,6 @@ import 'package:flutter_in_store_app_version_checker/flutter_in_store_app_versio
 
 class UpdateService {
   static const String _androidPackageName = 'com.phongsavanh.pb_hrsystem';
-  static const String _iosBundleId = 'com.psvsystem.next';
   static const String _iosAppId = '6742818675';
 
   // Store URLs

@@ -1,5 +1,7 @@
 // edit_profile_page.dart
 
+// ignore_for_file: unrelated_type_equality_checks, deprecated_member_use
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:workmanager/workmanager.dart';
@@ -21,7 +19,6 @@ class SessionService {
   static bool _isWorkManagerInitialized = false;
 
   // Flag to completely disable notifications
-  static const bool _enableNotifications = false;
 
   // Initialize the session service
   static Future<void> initialize() async {
@@ -154,86 +151,7 @@ class SessionService {
     await _checkSessionExpiry();
   }
 
-  static Future<void> _showSessionExpiredNotification() async {
-    // Skip showing notification if disabled
-    if (!_enableNotifications) return;
 
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'session_expiry_channel',
-      'Session Expiry Notifications',
-      channelDescription: 'Notifications about session expiry',
-      importance: Importance.high,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-    );
-
-    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.timeSensitive,
-    );
-
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      sessionExpiryNotificationId,
-      'Session Expired',
-      'Your session has expired. Please log in again.',
-      platformChannelSpecifics,
-      payload: 'session_expired',
-    );
-  }
-
-  static Future<void> _showSessionExpiryWarningNotification(
-      int minutesLeft) async {
-    // Skip showing notification if disabled
-    if (!_enableNotifications) return;
-
-    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-        FlutterLocalNotificationsPlugin();
-
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'session_warning_channel',
-      'Session Warning Notifications',
-      channelDescription: 'Notifications about session expiry warnings',
-      importance: Importance.high,
-      priority: Priority.high,
-      enableVibration: true,
-      playSound: true,
-    );
-
-    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      interruptionLevel: InterruptionLevel.active,
-    );
-
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-      iOS: iOSPlatformChannelSpecifics,
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      sessionWarningNotificationId,
-      'Session Expiring Soon',
-      'Your session will expire in $minutesLeft minutes. Please save your work.',
-      platformChannelSpecifics,
-      payload: 'session_warning',
-    );
-  }
 
   // Cleanup method
   static Future<void> dispose() async {

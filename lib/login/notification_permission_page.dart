@@ -54,14 +54,6 @@ class NotificationPermissionPageState
 
   Future<void> _requestNotificationPermission() async {
     if (Platform.isIOS) {
-      final bool? result = await flutterLocalNotificationsPlugin
-          .resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(
-            alert: true,
-            badge: true,
-            sound: true,
-          );
 
       // Whether permission is granted or not, proceed to the next screen
       if (mounted) {

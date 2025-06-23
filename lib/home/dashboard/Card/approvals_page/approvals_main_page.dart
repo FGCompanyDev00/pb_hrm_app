@@ -6,14 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_details_page.dart';
-import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'dart:math';
 
 class ApprovalsMainPage extends StatefulWidget {
   const ApprovalsMainPage({super.key});

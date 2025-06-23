@@ -1,7 +1,8 @@
 // lib/main.dart
 
+// ignore_for_file: invalid_return_type_for_catch_error, use_build_context_synchronously, deprecated_member_use
+
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -23,7 +24,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/connectivity_indicator.dart';
-import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:pb_hrsystem/hive_helper/model/add_assignment_record.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/dashboard/dashboard.dart';
@@ -44,17 +44,12 @@ import 'home/home_calendar.dart';
 import 'home/attendance_screen.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'hive_helper/model/attendance_record.dart';
-import 'package:encrypt/encrypt.dart' as encrypt;
 import 'firebase_options.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:hive/hive.dart';
 import 'package:pb_hrsystem/hive_helper/model/event_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_record.dart';
 import 'package:pb_hrsystem/hive_helper/model/calendar_events_list_record.dart';
-import 'package:pb_hrsystem/widgets/update_dialog.dart';
 import 'core/utils/responsive_helper.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// ------------------------------------------------------------
@@ -149,8 +144,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// 3) Show notification function for push notifications
 /// ------------------------------------------------------------
 Future<void> _showNotification(RemoteMessage message) async {
-  if (!Platform.isIOS && !Platform.isAndroid)
+  if (!Platform.isIOS && !Platform.isAndroid) {
     return; // Early return for unsupported platforms
+  }
 
   debugPrint("Notification received: ${message.notification?.title}");
   final notification = message.notification;
@@ -601,7 +597,7 @@ void main() {
 
     if (kDebugMode) {
       // Only log important errors
-      if (!(error is TimeoutException)) {
+      if (error is! TimeoutException) {
         logger.e("Uncaught error: $error");
         logger.e(stack);
       }
@@ -720,7 +716,7 @@ class MyApp extends StatelessWidget {
           builder: (context, child) {
             ResponsiveHelper.init(context);
             child = EasyLoading.init()(context, child);
-            return child!;
+            return child;
           },
           title: 'PSVB Next',
           theme: ThemeData(
@@ -847,7 +843,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   late final StreamSubscription<List<ConnectivityResult>>
       _connectivitySubscription;
   bool _isDisposed = false;
-  bool _isShowingConnectivityMessage = false;
 
   // Add overlay entry for connectivity status
   OverlayEntry? _overlayEntry;
@@ -864,7 +859,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   bool _hasCheckedMultipleAccounts = false;
 
   // Add memory management flag
-  bool _isLowMemory = false;
 
   @override
   void initState() {
@@ -1034,7 +1028,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void _performMemoryManagement() {
     if (!_isDisposed) {
       setState(() {
-        _isLowMemory = true;
       });
 
       // Clear image caches
@@ -1046,7 +1039,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         if (!_isDisposed) {
           _clearNonEssentialCaches();
           setState(() {
-            _isLowMemory = false;
           });
         }
       });
@@ -1142,10 +1134,8 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       setState(() => _selectedIndex = index);
       if (index == 1) {
         final homeCalendarState = HomeCalendarState();
-        if (homeCalendarState is Refreshable) {
-          homeCalendarState.refresh();
-        }
-      }
+        homeCalendarState.refresh();
+            }
     } else {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
     }
@@ -1229,7 +1219,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           title: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.warning_amber_rounded,
                 color: Colors.orange,
                 size: 48,
@@ -1464,9 +1454,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         ),
       ),
     );
-
-    // If overlay is null at this point, exit
-    if (overlay == null) return;
 
     // Insert overlay
     overlay.insert(_overlayEntry!);

@@ -1,10 +1,11 @@
 // lib/settings/settings_page.dart
 
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use, avoid_print, unnecessary_string_interpolations
+
 import 'dart:convert';
 // ignore: unused_import
 import 'dart:developer';
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -344,9 +345,9 @@ class SettingsPageState extends State<SettingsPage> {
             'identifier': iosInfo.identifierForVendor ?? '',
             'name': iosInfo.name,
             'model': iosInfo.model,
-            'systemName': iosInfo.systemName ?? '',
-            'systemVersion': iosInfo.systemVersion ?? '',
-            'localizedModel': iosInfo.localizedModel ?? '',
+            'systemName': iosInfo.systemName,
+            'systemVersion': iosInfo.systemVersion,
+            'localizedModel': iosInfo.localizedModel,
           };
 
           // Filter out empty values and join with underscore
@@ -387,7 +388,7 @@ class SettingsPageState extends State<SettingsPage> {
             'product': androidInfo.product,
             'hardware': androidInfo.hardware,
             'manufacturer': androidInfo.manufacturer,
-            'serialNumber': androidInfo.serialNumber ?? '',
+            'serialNumber': androidInfo.serialNumber,
           };
 
           // Filter out empty values and join with underscore
@@ -932,16 +933,16 @@ class SettingsPageState extends State<SettingsPage> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final Map<String, dynamic> state = {
-        'token': await prefs.getString('token'),
-        'isFirstLogin': await prefs.getBool('isFirstLogin'),
+        'token': prefs.getString('token'),
+        'isFirstLogin': prefs.getBool('isFirstLogin'),
         'biometricEnabled': await _storage.read(key: 'biometricEnabled'),
         'deviceInfo': {
           'platform': defaultTargetPlatform.toString(),
           'version': _appVersion,
         },
         'cacheStatus': {
-          'userProfile': await userProfileBox.get('userProfile') != null,
-          'banners': await bannersBox.get('banners') != null,
+          'userProfile': userProfileBox.get('userProfile') != null,
+          'banners': bannersBox.get('banners') != null,
         },
       };
 
@@ -991,7 +992,7 @@ class SettingsPageState extends State<SettingsPage> {
         'Altitude': '${position.altitude} meters',
         'Speed': '${position.speed} m/s',
         'Time': DateTime.fromMillisecondsSinceEpoch(
-          position.timestamp?.millisecondsSinceEpoch ?? 0,
+          position.timestamp.millisecondsSinceEpoch,
         ).toString(),
       };
 
@@ -1011,8 +1012,8 @@ class SettingsPageState extends State<SettingsPage> {
     try {
       final cacheStats = {
         'Hive Boxes': {
-          'User Profile': await userProfileBox.length,
-          'Banners': await bannersBox.length,
+          'User Profile': userProfileBox.length,
+          'Banners': bannersBox.length,
         },
         'Shared Preferences': await SharedPreferences.getInstance().then(
           (prefs) => prefs.getKeys().length,
@@ -1089,7 +1090,7 @@ class SettingsPageState extends State<SettingsPage> {
 
       // Test database performance
       stopwatch.reset();
-      await userProfileBox.get('userProfile');
+      userProfileBox.get('userProfile');
       performanceData['Database Read Time'] =
           '${stopwatch.elapsedMilliseconds}ms';
 
@@ -1381,7 +1382,7 @@ class SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         ),
