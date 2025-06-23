@@ -79,12 +79,9 @@ class ViewProjectPageState extends State<ViewProjectPage> {
         }
 
         if (data.isNotEmpty) {
+          List<Map<String, dynamic>> fetchedMembers = [];
+
           for (var member in data) {
-            final employeeId = member['employee_id'].toString();
-
-            final profileImageUrl =
-                await _fetchMemberProfileImage(employeeId, headers);
-
             String name = '';
 
             if (member['name'] != null && member['surname'] != null) {
@@ -99,13 +96,19 @@ class ViewProjectPageState extends State<ViewProjectPage> {
               name = 'Unknown (${member['employee_id']})';
             }
 
-            setState(() {
-              projectMembers.add({
-                'name': name,
-                'profileImage': profileImageUrl,
-              });
+            // Use the img_name field directly from the API response
+            final profileImageUrl =
+                member['img_name'] ?? 'https://via.placeholder.com/150';
+
+            fetchedMembers.add({
+              'name': name,
+              'profileImage': profileImageUrl,
             });
           }
+
+          setState(() {
+            projectMembers = fetchedMembers;
+          });
         }
       } else {
         if (kDebugMode) {
@@ -116,28 +119,6 @@ class ViewProjectPageState extends State<ViewProjectPage> {
       if (kDebugMode) {
         print('Failed to load project members');
       }
-    }
-  }
-
-  Future<String> _fetchMemberProfileImage(
-      String employeeId, Map<String, String> headers) async {
-    final url = '$baseUrl/api/profile/$employeeId';
-    try {
-      final response = await http.get(Uri.parse(url), headers: headers);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['results']?['images'] ?? 'https://via.placeholder.com/150';
-      } else {
-        if (kDebugMode) {
-          print('Failed to load profile image');
-        }
-        return 'https://via.placeholder.com/150';
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Failed to load profile image');
-      }
-      return 'https://via.placeholder.com/150';
     }
   }
 
