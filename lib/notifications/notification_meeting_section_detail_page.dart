@@ -890,21 +890,32 @@ class NotificationMeetingDetailsPageState
     required bool isDisabled,
     required VoidCallback onPressed,
   }) {
+    final themeNotifier = Provider.of<ThemeNotifier>(context);
+    final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ElevatedButton(
           onPressed: isDisabled ? null : onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: isActive ? activeColor : Colors.white,
-            foregroundColor: isActive ? Colors.white : Colors.grey.shade800,
+            backgroundColor: isActive
+                ? activeColor
+                : (isDarkMode ? Colors.grey[800] : Colors.white),
+            foregroundColor: isActive
+                ? Colors.white
+                : (isDarkMode ? Colors.white : Colors.grey.shade800),
             elevation: isActive ? 4 : 1,
             shadowColor:
                 isActive ? activeColor.withOpacity(0.6) : Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
               side: BorderSide(
-                color: isActive ? activeColor : Colors.grey.shade300,
+                color: isActive
+                    ? activeColor
+                    : (isDarkMode
+                        ? Colors.grey.shade600
+                        : Colors.grey.shade300),
                 width: 1.5,
               ),
             ),
@@ -924,7 +935,9 @@ class NotificationMeetingDetailsPageState
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: isActive ? Colors.white : Colors.grey.shade800,
+                  color: isActive
+                      ? Colors.white
+                      : (isDarkMode ? Colors.white : Colors.grey.shade800),
                 ),
               ),
             ],

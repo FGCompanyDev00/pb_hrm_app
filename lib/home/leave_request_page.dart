@@ -9,7 +9,6 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:pb_hrsystem/core/utils/auth_utils.dart';
 
 class LeaveManagementPage extends HookWidget {
   const LeaveManagementPage({super.key});
@@ -57,11 +56,23 @@ class LeaveManagementPage extends HookWidget {
         context: context,
         builder: (BuildContext dialogContext) {
           return AlertDialog(
-            title: Text(title),
-            content: Text(content),
+            backgroundColor: isDarkMode ? Colors.grey[850] : Colors.white,
+            title: Text(
+              title,
+              style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+            ),
+            content: Text(
+              content,
+              style: TextStyle(
+                  color: isDarkMode ? Colors.white70 : Colors.black87),
+            ),
             actions: <Widget>[
               TextButton(
-                child: const Text('Close'),
+                child: Text(
+                  'Close',
+                  style:
+                      TextStyle(color: isDarkMode ? Colors.amber : Colors.blue),
+                ),
                 onPressed: () {
                   if (title == 'Success') {
                     formKey.currentState?.reset();
@@ -199,8 +210,7 @@ class LeaveManagementPage extends HookWidget {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
-      // Use centralized auth validation with redirect
-      if (!await AuthUtils.validateTokenAndRedirect(token)) {
+      if (token == null || token.isEmpty) {
         isLoadingLeaveTypes.value = false;
         return [];
       }
@@ -210,7 +220,7 @@ class LeaveManagementPage extends HookWidget {
           Uri.parse('$baseUrl/api/leave-types'),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token!',
+            'Authorization': 'Bearer $token',
           },
         );
 
