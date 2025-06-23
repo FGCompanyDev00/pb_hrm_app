@@ -1,194 +1,81 @@
-// ignore_for_file: unused_import, unused_field, unnecessary_null_comparison, unused_element, invalid_return_type_for_catch_error, deprecated_member_use, use_build_context_synchronously
+// ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
-import 'dart:convert';
 import 'dart:async';
-import 'dart:io';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/foundation.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite/sqflite.dart';
+import 'package:path/path.dart' as path;
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
+import 'package:pb_hrsystem/core/widgets/linear_loading_indicator.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/approvals_page/approvals_main_page.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/returnCar/car_return_page.dart';
 import 'package:pb_hrsystem/home/dashboard/history/history_page.dart';
-import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
 import 'package:pb_hrsystem/home/qr_profile_page.dart';
 import 'package:pb_hrsystem/notifications/notification_page.dart';
 import 'package:pb_hrsystem/user_model.dart';
-import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:pb_hrsystem/services/s3_image_service.dart';
-import 'dart:math' as math;
-import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:pb_hrsystem/core/utils/auth_utils.dart';
-
-// Flag to control all cache-related logging in this file
-const bool _enableCacheLogging = false;
-
-// Helper to log messages only if enabled
-void _log(String message) {
-  if (_enableCacheLogging) {
-    debugPrint(message);
-  }
-}
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
 
   @override
-  DashboardState createState() => DashboardState();
+  State<Dashboard> createState() => _DashboardState();
 }
 
-class DashboardState extends State<Dashboard>
-    with
-        AutomaticKeepAliveClientMixin,
-        WidgetsBindingObserver,
-        TickerProviderStateMixin {
-  // Enhanced cache management with memory optimization
-  static final Map<String, _CacheData> _pageCache = {};
-  static const Duration _cacheExpiry = Duration(minutes: 15);
-  static const int _maxCacheSize = 50;
-  DateTime? _lastCacheUpdate;
-
-  // Optimized state management
-  bool _hasUnreadNotifications = true;
+class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
+  // Basic state management
   bool _isLoading = false;
-  int _currentPage = 0;
-  bool _isDisposed = false;
-  bool _isPaused = false;
-  bool _isInitialized = false;
+  bool _hasUnreadNotifications = true;
 
-  // Memoized values
-  late final PageController _pageController;
-  Timer? _carouselTimer;
+  // Banner state - isolated from main widget to prevent profile refresh
+  late ValueNotifier<int> _currentBannerPageNotifier;
 
-  String standardErrorMessage =
-      'We\'re unable to process your request at the moment. Please contact IT support for assistance.';
+  // Data holders
+  UserProfile? _userProfile;
+  List<String> _banners = [];
 
-  // Cached data with lazy loading
-  late Future<void> _initializationFuture;
-  late Future<UserProfile> futureUserProfile;
-  late Future<List<String>> futureBanners;
+  // Controllers
+  late PageController _bannerPageController;
+  Timer? _bannerAutoSwipeTimer;
 
-  // Optimized navigation
-  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-  final RouteObserver<PageRoute> _routeObserver = RouteObserver<PageRoute>();
+  // Database
+  Database? _database;
 
-  // Location optimization
-  Position? _lastKnownPosition;
-  bool _isLocationEnabled = false;
-  StreamSubscription<Position>? _positionStreamSubscription;
-
-  // Hive boxes with nullable initialization
-  Box<String>? _userProfileBox;
-  Box<List<String>>? _bannersBox;
-
-  // Memoized action items - Move initialization to didChangeDependencies
-  List<Map<String, dynamic>>? _actionItems;
-
-  // Cached screen dimensions
-  late final double _screenWidth;
-  late final double _screenHeight;
-
-  // Add new field for location update control
-  static const Duration _locationTimeout = Duration(seconds: 15);
-  static const Duration _locationUpdateInterval = Duration(minutes: 5);
-  DateTime? _lastLocationUpdate;
-
-  // Network error handling
-  int _profileUpdateErrorCount = 0;
-  DateTime? _lastProfileUpdateError;
-  static const Duration _errorBackoffDuration = Duration(minutes: 15);
-  bool _isProfileUpdating = false; // Flag to prevent concurrent updates
-
-  // Animasi baru
+  // Animation controllers
   late AnimationController _bellAnimationController;
   late Animation<double> _bellAnimation;
-
-  late AnimationController _settingsRotationController;
-  late Animation<double> _settingsRotationAnimation;
-
-  late AnimationController _logoutGradientController;
-  late Animation<double> _logoutGradientAnimation;
-
-  late AnimationController _waveHandController;
-  late Animation<double> _waveHandAnimation;
-
-  // Create a dedicated CacheManager for profile images
-  static final profileImageCacheManager = CacheManager(
-    Config(
-      'profileImageCache',
-      stalePeriod: const Duration(hours: 24), // Reduced from 7 days to 24 hours
-      maxNrOfCacheObjects: 20,
-      repo: JsonCacheInfoRepository(databaseName: 'profileImageCache'),
-      fileService: S3HttpFileService(),
-    ),
-  );
-
-  // Create a dedicated CacheManager for banner images
-  static final bannerImageCacheManager = CacheManager(
-    Config(
-      'bannerImageCache',
-      stalePeriod:
-          const Duration(hours: 24), // Reduced from 14 days to 24 hours
-      maxNrOfCacheObjects: 50,
-      repo: JsonCacheInfoRepository(databaseName: 'bannerImageCache'),
-      fileService: S3HttpFileService(),
-    ),
-  );
-
-  @override
-  bool get wantKeepAlive => true;
-
-  String get baseUrl {
-    final url = dotenv.env['BASE_URL'];
-    if (url == null || url.isEmpty) {
-      debugPrint('Warning: BASE_URL not found in environment variables');
-      throw Exception('BASE_URL not configured');
-    }
-    debugPrint('Using BASE_URL: $url');
-    return url;
-  }
+  late AnimationController _waveAnimationController;
+  late Animation<double> _waveAnimation;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initializationFuture = _initialize();
+    _currentBannerPageNotifier = ValueNotifier<int>(0);
+    _initializeDatabase();
+    _initializeAnimations();
     _initializePageController();
-
-    // Inisialisasi animasi-animasi baru
-    _initAnimations();
+    _loadData();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _initializeActionItems();
-  }
-
-  void _initializeActionItems() {
-    if (_actionItems != null) return; // Only initialize once
-
-    _actionItems = [
+  List<Map<String, dynamic>> _getActionItems(BuildContext context) {
+    return [
       {
         'icon': 'assets/data-2.png',
         'label': AppLocalizations.of(context)!.history,
-        'onTap': () => navigateToPage(const HistoryPage()),
+        'onTap': () => _navigateToPage(const HistoryPage()),
       },
       {
         'icon': 'assets/people.png',
         'label': AppLocalizations.of(context)!.approvals,
-        'onTap': () => navigateToPage(const ApprovalsMainPage()),
+        'onTap': () => _navigateToPage(const ApprovalsMainPage()),
       },
       {
         'icon': 'assets/status-up.png',
@@ -199,7 +86,7 @@ class DashboardState extends State<Dashboard>
       {
         'icon': 'assets/car_return.png',
         'label': AppLocalizations.of(context)!.carReturn,
-        'onTap': () => navigateToPage(const ReturnCarPage()),
+        'onTap': () => _navigateToPage(const ReturnCarPage()),
       },
       {
         'icon': 'assets/KPI.png',
@@ -214,1211 +101,388 @@ class DashboardState extends State<Dashboard>
     ];
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_isDisposed) return;
+  void _initializeAnimations() {
+    // Bell animation
+    _bellAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
 
-    switch (state) {
-      case AppLifecycleState.paused:
-        _isPaused = true;
-        _carouselTimer?.cancel();
-        _positionStreamSubscription?.pause();
-        break;
-      case AppLifecycleState.resumed:
-        _isPaused = false;
-        if (!_isDisposed) {
-          _startCarouselTimer();
-          if (_shouldTrackLocation()) {
-            _initializeLocation();
-          }
+    _bellAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+      CurvedAnimation(
+          parent: _bellAnimationController, curve: Curves.easeInOut),
+    );
 
-          // Use cached data for immediate display, gentle background refresh
-          _quickLoadThenRefresh();
+    // Wave animation
+    _waveAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+
+    _waveAnimation = Tween<double>(begin: -0.15, end: 0.15).animate(
+      CurvedAnimation(
+          parent: _waveAnimationController, curve: Curves.easeInOut),
+    );
+  }
+
+  void _initializePageController() {
+    _bannerPageController = PageController(initialPage: 0);
+  }
+
+  void _startBannerAutoSwipe() {
+    _bannerAutoSwipeTimer?.cancel();
+    if (_banners.length > 1) {
+      _bannerAutoSwipeTimer =
+          Timer.periodic(const Duration(seconds: 4), (timer) {
+        if (mounted && _bannerPageController.hasClients) {
+          final nextPage =
+              (_currentBannerPageNotifier.value + 1) % _banners.length;
+          _bannerPageController.animateToPage(
+            nextPage,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+          );
         }
-        break;
-      case AppLifecycleState.inactive:
-        // Save current state to make resuming faster
-        _persistCurrentState();
-        break;
-      default:
-        break;
-    }
-  }
-
-  // Safe refresh method
-  // Improved refresh method that forces updates from API
-  void _refreshDataSafely({bool forceClearCache = false}) {
-    if (!mounted || _isDisposed || _isPaused) return;
-
-    try {
-      // Force update checks when user returns to app
-      _checkForProfileUpdates(forceUpdate: true);
-
-      // Only clear image cache if explicitly requested (e.g., user pull-to-refresh)
-      if (forceClearCache) {
-        DefaultCacheManager().emptyCache();
-        PaintingBinding.instance.imageCache.clear();
-        PaintingBinding.instance.imageCache.clearLiveImages();
-      }
-
-      // Fetch new data from API
-      _fetchBannersFromApiAndUpdate(forceUpdate: true);
-
-      setState(() {
-        futureUserProfile = fetchUserProfile();
-        futureBanners = fetchBanners();
       });
-
-      if (!_isDisposed && mounted) {
-        Provider.of<UserProvider>(context, listen: false).fetchAndUpdateUser();
-      }
-    } catch (e) {
-      debugPrint('Error refreshing data: $e');
     }
   }
 
-  // Optimized navigation methods with better caching
-  Future<void> navigateToPage(Widget page) async {
-    if (!mounted || _isDisposed) return;
+  void _stopBannerAutoSwipe() {
+    _bannerAutoSwipeTimer?.cancel();
+  }
 
+  Future<void> _initializeDatabase() async {
     try {
-      // Save current state before navigation for faster return
-      _persistCurrentState();
+      final databasesPath = await getDatabasesPath();
+      final dbPath = path.join(databasesPath, 'dashboard_images.db');
 
-      final result = await Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => page,
-          settings: RouteSettings(name: page.runtimeType.toString()),
-        ),
+      _database = await openDatabase(
+        dbPath,
+        version: 1,
+        onCreate: (Database db, int version) async {
+          // Create table for storing images
+          await db.execute('''
+            CREATE TABLE images (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              url TEXT UNIQUE,
+              data BLOB,
+              created_at INTEGER
+            )
+          ''');
+        },
       );
 
-      // Only refresh if the page explicitly requested it (result == true)
-      // For normal navigation returns, just use existing cached data
-      if (result == true && mounted && !_isDisposed) {
-        _quickLoadThenRefresh();
-      } else if (mounted && !_isDisposed) {
-        // For normal returns, just verify cached data is still valid
-        // without triggering expensive refreshes or cache clearing
-        final cachedProfile = _getCachedData('userProfile');
-        if (cachedProfile == null) {
-          // Only refresh if we somehow lost the cached data
-          _quickLoadThenRefresh();
-        }
-        // Otherwise, do nothing - keep existing smooth UI
+      debugPrint('Database initialized successfully');
+    } catch (e) {
+      debugPrint('Error initializing database: $e');
+    }
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // Load from cache first for immediate display
+      await _loadFromCache();
+
+      // Then fetch fresh data from API
+      await _fetchFromAPI();
+    } catch (e) {
+      debugPrint('Error loading data: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading data: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadFromCache() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      // Load cached profile
+      final cachedProfile = prefs.getString('cached_profile');
+      if (cachedProfile != null) {
+        final profileJson = jsonDecode(cachedProfile);
+        setState(() {
+          _userProfile = UserProfile.fromJson(profileJson);
+        });
+        debugPrint('Loaded cached profile: ${_userProfile?.name}');
+      }
+
+      // Load cached banners
+      final cachedBanners = prefs.getStringList('cached_banners');
+      if (cachedBanners != null) {
+        setState(() {
+          _banners = cachedBanners;
+        });
+        // Start auto-swipe for cached banners too
+        _startBannerAutoSwipe();
+        debugPrint('Loaded cached banners: ${_banners.length} items');
       }
     } catch (e) {
-      debugPrint('Navigation error: $e');
+      debugPrint('Error loading from cache: $e');
     }
+  }
+
+  Future<void> _fetchFromAPI() async {
+    try {
+      // Fetch profile and banners in parallel
+      final results = await Future.wait([
+        _fetchUserProfile(),
+        _fetchBanners(),
+      ]);
+
+      final profile = results[0] as UserProfile?;
+      final banners = results[1] as List<String>;
+
+      if (profile != null) {
+        setState(() => _userProfile = profile);
+
+        // Cache profile data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cached_profile', jsonEncode(profile.toJson()));
+
+        // Download and cache profile image
+        if (profile.imgName.isNotEmpty &&
+            profile.imgName != 'avatar_placeholder.png') {
+          _downloadAndCacheImage(profile.imgName);
+        }
+      }
+
+      if (banners.isNotEmpty) {
+        setState(() => _banners = banners);
+
+        // Cache banners data
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setStringList('cached_banners', banners);
+
+        // Start auto-swipe after banners are loaded
+        _startBannerAutoSwipe();
+
+        // Download and cache banner images
+        for (final banner in banners) {
+          if (banner.isNotEmpty) {
+            _downloadAndCacheImage(banner);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching from API: $e');
+      rethrow;
+    }
+  }
+
+  Future<UserProfile?> _fetchUserProfile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null) {
+      throw Exception('No authentication token');
+    }
+
+    final baseUrl = dotenv.env['BASE_URL'];
+    if (baseUrl == null) {
+      throw Exception('BASE_URL not configured');
+    }
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/display/me'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+    ).timeout(const Duration(seconds: 30));
+
+    if (response.statusCode == 200) {
+      final responseData = jsonDecode(response.body);
+      if (responseData['results'] != null &&
+          responseData['results'].isNotEmpty) {
+        final profile = UserProfile.fromJson(responseData['results'][0]);
+        debugPrint('Profile fetched successfully: ${profile.name}');
+        return profile;
+      } else {
+        debugPrint('No profile results in API response');
+      }
+    } else if (response.statusCode == 401) {
+      // Token expired
+      debugPrint('Profile API - Token expired');
+      await prefs.remove('token');
+      throw Exception('Authentication expired');
+    } else {
+      debugPrint(
+          'Profile API error: ${response.statusCode} - ${response.body}');
+    }
+
+    throw Exception('Failed to fetch profile');
+  }
+
+  Future<List<String>> _fetchBanners() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        debugPrint('No authentication token for banners');
+        throw Exception('No authentication token');
+      }
+
+      final baseUrl = dotenv.env['BASE_URL'];
+      if (baseUrl == null) {
+        debugPrint('BASE_URL not configured for banners');
+        throw Exception('BASE_URL not configured');
+      }
+
+      debugPrint('Fetching banners from: $baseUrl/api/app/promotions/files');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/app/promotions/files'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      debugPrint('Banners API response status: ${response.statusCode}');
+      debugPrint('Banners API response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['results'] != null) {
+          final banners = List<String>.from(
+            responseData['results'].map((file) => file['files'] as String),
+          );
+          debugPrint('Fetched ${banners.length} banners successfully');
+          return banners;
+        } else {
+          debugPrint('No results field in banner response');
+        }
+      } else {
+        debugPrint(
+            'Banner API error: ${response.statusCode} - ${response.body}');
+      }
+
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching banners: $e');
+      return [];
+    }
+  }
+
+  Future<void> _downloadAndCacheImage(String imageUrl) async {
+    if (_database == null || imageUrl.isEmpty) return;
+
+    try {
+      // Check if image already exists in cache
+      final existing = await _database!.query(
+        'images',
+        where: 'url = ?',
+        whereArgs: [imageUrl],
+      );
+
+      if (existing.isNotEmpty) {
+        debugPrint('Image already cached: $imageUrl');
+        return;
+      }
+
+      // Download image
+      final response = await http.get(Uri.parse(imageUrl)).timeout(
+            const Duration(seconds: 30),
+          );
+
+      if (response.statusCode == 200) {
+        // Store in database
+        await _database!.insert(
+          'images',
+          {
+            'url': imageUrl,
+            'data': response.bodyBytes,
+            'created_at': DateTime.now().millisecondsSinceEpoch,
+          },
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+
+        debugPrint('Image cached successfully: $imageUrl');
+      }
+    } catch (e) {
+      debugPrint('Error downloading image: $e');
+    }
+  }
+
+  Future<Uint8List?> _getCachedImage(String imageUrl) async {
+    if (_database == null || imageUrl.isEmpty) return null;
+
+    try {
+      final result = await _database!.query(
+        'images',
+        columns: ['data'],
+        where: 'url = ?',
+        whereArgs: [imageUrl],
+      );
+
+      if (result.isNotEmpty) {
+        return result.first['data'] as Uint8List;
+      }
+    } catch (e) {
+      debugPrint('Error getting cached image: $e');
+    }
+
+    return null;
+  }
+
+  Future<void> _navigateToPage(Widget page) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => page),
+    );
+  }
+
+  Future<void> _refreshData() async {
+    await _fetchFromAPI();
   }
 
   @override
   void dispose() {
-    _isDisposed = true;
-    _isProfileUpdating = false; // Reset profile updating flag
-    WidgetsBinding.instance.removeObserver(this);
-    _positionStreamSubscription?.cancel();
-    _pageController.dispose();
-    _carouselTimer?.cancel();
-
-    // Dispose animasi-animasi baru
+    _stopBannerAutoSwipe();
+    _currentBannerPageNotifier.dispose();
     _bellAnimationController.dispose();
-    _settingsRotationController.dispose();
-    _logoutGradientController.dispose();
-    _waveHandController.dispose();
-
+    _waveAnimationController.dispose();
+    _bannerPageController.dispose();
+    _database?.close();
     super.dispose();
-  }
-
-  void _initializePageController() {
-    _pageController = PageController(initialPage: _currentPage)
-      ..addListener(_handlePageChange);
-    _startCarouselTimer();
-  }
-
-  void _handlePageChange() {
-    if (!_pageController.hasClients) return;
-    setState(() {
-      _currentPage = _pageController.page?.round() ?? 0;
-    });
-  }
-
-  Future<void> _initialize() async {
-    try {
-      setState(() => _isLoading = true);
-
-      // Initialize Hive boxes first - critical for caching
-      try {
-        await _initializeHiveBoxes();
-        debugPrint('Hive boxes initialized successfully');
-      } catch (hiveError) {
-        debugPrint('Hive initialization error: $hiveError');
-        // Continue without Hive if it fails
-      }
-
-      // Initialize secure storage safely - not critical for core functionality
-      try {
-        await _initializeSecureStorage();
-        debugPrint('Secure storage initialized successfully');
-      } catch (secureStorageError) {
-        debugPrint('Secure storage initialization error: $secureStorageError');
-        // Continue without secure storage if it fails
-      }
-
-      // Check if we have cached data for immediate display
-      bool hasCachedProfile = false;
-      bool hasCachedBanners = false;
-
-      try {
-        // Try memory cache first (fastest)
-        final cachedProfile = _getCachedData('userProfile');
-        final cachedBanners = _getCachedData('banners');
-
-        hasCachedProfile = cachedProfile != null;
-        hasCachedBanners =
-            cachedBanners != null && (cachedBanners as List).isNotEmpty;
-
-        // If no memory cache, check Hive (only if Hive was initialized)
-        if (!hasCachedProfile && _userProfileBox != null) {
-          try {
-            final profileJson = _userProfileBox!.get('userProfile');
-            if (profileJson != null && profileJson.isNotEmpty) {
-              final profile = UserProfile.fromJson(jsonDecode(profileJson));
-              _updateCache('userProfile', profile);
-              hasCachedProfile = true;
-              debugPrint('Loaded cached profile from Hive: ${profile.name}');
-            }
-          } catch (parseError) {
-            debugPrint('Error parsing cached profile: $parseError');
-            // Clear invalid cache
-            try {
-              await _userProfileBox!.delete('userProfile');
-            } catch (deleteError) {
-              debugPrint('Error deleting invalid profile cache: $deleteError');
-            }
-          }
-        }
-
-        if (!hasCachedBanners && _bannersBox != null) {
-          try {
-            final banners = _bannersBox!.get('banners');
-            if (banners != null && banners.isNotEmpty) {
-              _updateCache('banners', banners);
-              hasCachedBanners = true;
-              debugPrint(
-                  'Loaded cached banners from Hive: ${banners.length} items');
-            }
-          } catch (parseError) {
-            debugPrint('Error parsing cached banners: $parseError');
-            // Clear invalid cache
-            try {
-              await _bannersBox!.delete('banners');
-            } catch (deleteError) {
-              debugPrint('Error deleting invalid banner cache: $deleteError');
-            }
-          }
-        }
-      } catch (cacheError) {
-        debugPrint('Error checking cache during initialization: $cacheError');
-      }
-
-      // Initialize futures based on cache status
-      if (hasCachedProfile) {
-        futureUserProfile =
-            Future.value(_getCachedData('userProfile') as UserProfile);
-        debugPrint('Using cached profile for immediate display');
-      } else {
-        futureUserProfile = fetchUserProfile();
-        debugPrint('Fetching profile from API');
-      }
-
-      if (hasCachedBanners) {
-        futureBanners = Future.value(_getCachedData('banners') as List<String>);
-        debugPrint('Using cached banners for immediate display');
-      } else {
-        futureBanners = fetchBanners();
-        debugPrint('Fetching banners from API');
-      }
-
-      if (!_isDisposed) {
-        setState(() {
-          _isInitialized = true;
-          _isLoading = false;
-        });
-
-        // If we used cached data, refresh in background after UI is displayed
-        if (hasCachedProfile || hasCachedBanners) {
-          Future.microtask(() {
-            if (hasCachedProfile) {
-              debugPrint('Starting background profile update check');
-              _checkForProfileUpdates(forceUpdate: false);
-            }
-            if (hasCachedBanners) {
-              debugPrint('Starting background banner update check');
-              _fetchBannersFromApiAndUpdate(forceUpdate: false);
-            }
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Critical initialization error: $e');
-      if (!_isDisposed) {
-        setState(() {
-          _isLoading = false;
-          _isInitialized =
-              true; // Allow app to continue even with initialization errors
-        });
-
-        // Try to initialize with minimal functionality
-        try {
-          futureUserProfile = fetchUserProfile();
-          futureBanners = fetchBanners();
-        } catch (fallbackError) {
-          debugPrint('Fallback initialization also failed: $fallbackError');
-          // Create empty futures as last resort
-          futureUserProfile = Future.error('Unable to load profile data');
-          futureBanners = Future.value(<String>[]);
-        }
-      }
-    }
-  }
-
-  Future<void> _initializeSecureStorage() async {
-    try {
-      // Use simpler AndroidOptions for better compatibility
-      const storage = FlutterSecureStorage(
-        iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock,
-          synchronizable: false, // Changed to false for stability
-        ),
-        aOptions: AndroidOptions(
-          encryptedSharedPreferences:
-              false, // Changed to false for Android compatibility
-          sharedPreferencesName: 'pb_hrm_secure_prefs',
-          preferencesKeyPrefix: 'pb_',
-        ),
-      );
-
-      // Initialize with default values if needed
-      final Map<String, String> initialValues = {
-        'biometricEnabled': 'false',
-        // Add other secure storage keys here
-      };
-
-      // Check existing values and only write if they don't exist
-      for (var entry in initialValues.entries) {
-        try {
-          final existingValue = await storage.read(key: entry.key);
-          if (existingValue == null) {
-            await storage.write(
-              key: entry.key,
-              value: entry.value,
-            );
-          }
-        } catch (e) {
-          debugPrint('Error handling secure storage key ${entry.key}: $e');
-          // For Android, just skip problematic keys instead of trying to recover
-          if (Platform.isAndroid) {
-            debugPrint(
-                'Skipping secure storage key ${entry.key} on Android due to error');
-            continue;
-          }
-
-          // Try to recover by deleting and rewriting if there's a keychain error (iOS only)
-          if (e.toString().contains('-25299')) {
-            try {
-              await storage.delete(key: entry.key);
-              await storage.write(
-                key: entry.key,
-                value: entry.value,
-              );
-            } catch (retryError) {
-              debugPrint(
-                  'Failed to recover secure storage key ${entry.key}: $retryError');
-            }
-          }
-        }
-      }
-    } catch (e) {
-      debugPrint('Error initializing secure storage: $e');
-      // Continue initialization even if secure storage fails
-      // This is especially important for Android where secure storage can be problematic
-    }
-  }
-
-  // Initialize Hive boxes
-  Future<void> _initializeHiveBoxes() async {
-    try {
-      // Open 'userProfileBox' if not already open
-      if (!Hive.isBoxOpen('userProfileBox')) {
-        _userProfileBox = await Hive.openBox<String>('userProfileBox');
-      } else {
-        _userProfileBox = Hive.box<String>('userProfileBox');
-      }
-
-      // Open 'bannersBox' if not already open
-      if (!Hive.isBoxOpen('bannersBox')) {
-        _bannersBox = await Hive.openBox<List<String>>('bannersBox');
-      } else {
-        _bannersBox = Hive.box<List<String>>('bannersBox');
-      }
-    } catch (e) {
-      debugPrint('Error initializing Hive boxes: $e');
-      rethrow;
-    }
-  }
-
-  // Optimized data fetching with improved caching strategy
-  Future<UserProfile> fetchUserProfile() async {
-    if (_isDisposed) return UserProfile.fromJson({});
-
-    try {
-      // Use memory cache for fastest retrieval - immediate display without any delay
-      final cachedProfile = _getCachedData('userProfile');
-      if (cachedProfile != null) {
-        // Start async update check without waiting for UI
-        Future.microtask(() => _checkForProfileUpdates(forceUpdate: false));
-        return cachedProfile as UserProfile;
-      }
-
-      // Fall back to Hive for persistence between app launches
-      final cachedProfileJson = userProfileBox.get('userProfile');
-      if (cachedProfileJson != null) {
-        try {
-          final profile = UserProfile.fromJson(jsonDecode(cachedProfileJson));
-          _updateCache('userProfile', profile);
-
-          // Prefetch the profile image immediately for faster display
-          if (profile.imgName.isNotEmpty &&
-              profile.imgName != 'avatar_placeholder.png') {
-            _prefetchImage(profile.imgName);
-          }
-
-          // Start async update check in background
-          Future.microtask(() => _checkForProfileUpdates(forceUpdate: false));
-          return profile;
-        } catch (parseError) {
-          debugPrint('Error parsing cached profile: $parseError');
-        }
-      }
-
-      // No cache available - fetch from API immediately
-      return await _fetchProfileFromApi();
-    } catch (e) {
-      debugPrint('Error fetching profile: $e');
-      // Try to return cached data even if error
-      try {
-        final cachedProfileJson = userProfileBox.get('userProfile');
-        if (cachedProfileJson != null) {
-          return UserProfile.fromJson(jsonDecode(cachedProfileJson));
-        }
-      } catch (cacheError) {
-        debugPrint('Error retrieving from cache: $cacheError');
-      }
-      rethrow;
-    }
-  }
-
-  Future<void> _checkForProfileUpdates({bool forceUpdate = false}) async {
-    if (_isDisposed || _isProfileUpdating) return;
-
-    _isProfileUpdating = true; // Set flag to prevent concurrent updates
-
-    try {
-      // Check if we should back off due to recent errors
-      if (_lastProfileUpdateError != null && !forceUpdate) {
-        final timeSinceError =
-            DateTime.now().difference(_lastProfileUpdateError!);
-        if (timeSinceError < _errorBackoffDuration) {
-          // Still in backoff period, skip update
-          return;
-        }
-      }
-
-      // Skip update check if we have a recent profile (unless forced)
-      final cachedProfile = _getCachedData('userProfile') as UserProfile?;
-      final cacheTimestamp = _getCacheTimestamp('userProfile');
-
-      // Only check for updates if the cache is old or forced
-      if (!forceUpdate && cachedProfile != null && cacheTimestamp != null) {
-        final cacheAge = DateTime.now().difference(cacheTimestamp);
-        if (cacheAge < const Duration(minutes: 5)) {
-          return; // Cache is fresh enough, skip update
-        }
-      }
-
-      // Check network connectivity before making API calls
-      final connectivityResult = await Connectivity().checkConnectivity();
-      if (connectivityResult == ConnectivityResult.none) {
-        // No internet connection, skip update silently
-        return;
-      }
-
-      final newProfile = await _fetchProfileFromApi();
-
-      // Reset error count on successful fetch
-      _profileUpdateErrorCount = 0;
-      _lastProfileUpdateError = null;
-
-      final oldProfile = _getCachedData('userProfile') as UserProfile?;
-
-      // Check specifically for profile image changes
-      final hasImageChanged =
-          oldProfile != null && oldProfile.imgName != newProfile.imgName;
-
-      // Compare if data has changed
-      if (oldProfile == null ||
-          oldProfile.toJson().toString() != newProfile.toJson().toString()) {
-        if (!_isDisposed && mounted) {
-          // If profile image changed, clear the old image from cache
-          if (hasImageChanged && oldProfile.imgName != null) {
-            _clearImageFromCache(oldProfile.imgName);
-          }
-
-          // Prefetch new image before updating state
-          if (newProfile.imgName.isNotEmpty &&
-              newProfile.imgName != 'avatar_placeholder.png') {
-            _prefetchImage(newProfile.imgName);
-          }
-
-          setState(() {
-            _updateCache('userProfile', newProfile);
-            userProfileBox.put('userProfile', jsonEncode(newProfile.toJson()));
-          });
-        }
-      }
-    } catch (e) {
-      // Handle network errors with backoff mechanism
-      if (e.toString().contains('SocketException') ||
-          e.toString().contains('Failed host lookup') ||
-          e.toString().contains('TimeoutException') ||
-          e.toString().contains('ClientException') ||
-          e.toString().contains('Network error') ||
-          e.toString().contains('Timeout error') ||
-          e.toString().contains('Client error')) {
-        // Increment error count and set last error time
-        _profileUpdateErrorCount++;
-        _lastProfileUpdateError = DateTime.now();
-
-        // Silently fail for network errors to reduce log noise
-        return;
-      }
-
-      // Only log non-network errors in debug mode when necessary
-      if (kDebugMode && !e.toString().contains('Failed to fetch profile')) {
-        debugPrint('Error checking for profile updates: $e');
-      }
-    } finally {
-      _isProfileUpdating = false; // Reset flag regardless of success/failure
-    }
-  }
-
-  // Clear a specific image from the cache
-  Future<void> _clearImageFromCache(String imageUrl) async {
-    try {
-      if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true) {
-        return;
-      }
-
-      // Check if this is an S3 URL
-      if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
-        // Use the S3 cache manager for S3 URLs
-        await profileImageCacheManager.removeFile(imageUrl);
-
-        // Also clear from Flutter's image cache
-        final provider = NetworkImage(imageUrl);
-        PaintingBinding.instance.imageCache.evict(provider);
-
-        // Clear from CachedNetworkImage's cache
-        final cachedProvider = CachedNetworkImageProvider(imageUrl);
-        PaintingBinding.instance.imageCache.evict(cachedProvider);
-      } else {
-        // For non-S3 URLs, use the default cache manager
-        await DefaultCacheManager().removeFile(imageUrl);
-
-        // Also clear from Flutter's image cache
-        final provider = NetworkImage(imageUrl);
-        PaintingBinding.instance.imageCache.evict(provider);
-
-        // Clear from CachedNetworkImage's cache
-        final cachedProvider = CachedNetworkImageProvider(imageUrl);
-        PaintingBinding.instance.imageCache.evict(cachedProvider);
-      }
-    } catch (e) {
-      // Silent error handling - no logs
-    }
-  }
-
-  Future<UserProfile> _fetchProfileFromApi() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
-
-    if (token == null || token.isEmpty) {
-      debugPrint('No token found, redirecting to login');
-      throw Exception('No token found');
-    }
-
-    // Validate token format but don't redirect automatically on Android
-    if (token.length < 10) {
-      debugPrint('Invalid token format, redirecting to login');
-      throw Exception('Invalid token format');
-    }
-
-    try {
-      debugPrint('Fetching profile from: $baseUrl/api/display/me');
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/display/me'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30)); // Increased timeout for Android
-
-      debugPrint('Profile API response status: ${response.statusCode}');
-      debugPrint('Profile API response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseJson = jsonDecode(response.body);
-
-        // Check if response has the expected structure
-        if (responseJson.containsKey('results') &&
-            responseJson['results'] is List) {
-          final List<dynamic> results = responseJson['results'];
-
-          if (results.isNotEmpty) {
-            final userProfile = UserProfile.fromJson(results[0]);
-            _updateCache('userProfile', userProfile);
-            await userProfileBox.put(
-                'userProfile', jsonEncode(userProfile.toJson()));
-            debugPrint('Profile fetched successfully: ${userProfile.name}');
-            return userProfile;
-          } else {
-            debugPrint('Empty results array in profile response');
-            throw Exception('No profile data found');
-          }
-        } else {
-          debugPrint('Invalid response structure: ${responseJson.keys}');
-          throw Exception('Invalid response format');
-        }
-      } else if (response.statusCode == 401) {
-        debugPrint('Unauthorized - token may be expired');
-        // Clear invalid token
-        await prefs.remove('token');
-        throw Exception('Authentication failed');
-      } else {
-        debugPrint(
-            'Profile API error: ${response.statusCode} - ${response.body}');
-        throw Exception('Server error: ${response.statusCode}');
-      }
-    } on SocketException catch (e) {
-      debugPrint('Network error fetching profile: ${e.message}');
-      throw Exception(
-          'Network connection failed. Please check your internet connection.');
-    } on TimeoutException catch (e) {
-      debugPrint('Timeout error fetching profile: ${e.message}');
-      throw Exception('Request timed out. Please try again.');
-    } on http.ClientException catch (e) {
-      debugPrint('Client error fetching profile: ${e.message}');
-      throw Exception('Connection error. Please try again.');
-    } on FormatException catch (e) {
-      debugPrint('JSON parsing error: ${e.message}');
-      throw Exception('Invalid response format from server.');
-    } catch (e) {
-      debugPrint('Unexpected error fetching profile: $e');
-      throw Exception('Failed to load profile. Please try again.');
-    }
-  }
-
-  // Optimized banner fetching with improved caching
-  Future<List<String>> fetchBanners() async {
-    if (_isDisposed) return [];
-
-    try {
-      // Memory cache check - immediate display
-      final cachedBanners = _getCachedData('banners');
-      if (cachedBanners != null) {
-        // Prefetch banner images in background for faster display
-        Future.microtask(() {
-          final banners = List<String>.from(cachedBanners);
-          if (banners.isNotEmpty) {
-            // Prefetch current banner and next one
-            _prefetchImage(banners[_currentPage]);
-            if (_currentPage + 1 < banners.length) {
-              _prefetchImage(banners[_currentPage + 1]);
-            }
-          }
-
-          // Check for updates in background without blocking UI
-          _checkForBannerUpdates(forceUpdate: false);
-        });
-
-        return List<String>.from(cachedBanners);
-      }
-
-      // Hive persistent cache check
-      final hiveBanners = bannersBox.get('banners');
-      if (hiveBanners != null && hiveBanners.isNotEmpty) {
-        _updateCache('banners', hiveBanners);
-
-        // Prefetch banner images in background
-        Future.microtask(() {
-          if (hiveBanners.isNotEmpty) {
-            _prefetchImage(hiveBanners[0]);
-            if (hiveBanners.length > 1) {
-              _prefetchImage(hiveBanners[1]);
-            }
-          }
-
-          // Check for updates in background
-          _checkForBannerUpdates(forceUpdate: false);
-        });
-
-        return hiveBanners;
-      }
-
-      // No cache - fetch from API
-      return await _fetchBannersFromApi();
-    } catch (e) {
-      debugPrint('Error fetching banners: $e');
-      try {
-        return bannersBox.get('banners') ?? [];
-      } catch (cacheError) {
-        debugPrint('Error retrieving banners from cache: $cacheError');
-        return [];
-      }
-    }
-  }
-
-  // New method to fetch banners from API and update state
-  Future<void> _fetchBannersFromApiAndUpdate({bool forceUpdate = false}) async {
-    try {
-      // Skip update check if we already have banners (unless forced)
-      final cachedBanners = _getCachedData('banners') as List<String>?;
-      if (!forceUpdate && cachedBanners != null && cachedBanners.isNotEmpty) {
-        return; // Use cached banners, no need to refresh
-      }
-
-      final newBanners = await _fetchBannersFromApi();
-      final oldBanners = _getCachedData('banners') as List<String>?;
-
-      // Compare if data has changed
-      if (oldBanners == null || !listEquals(oldBanners, newBanners)) {
-        if (!_isDisposed && mounted) {
-          // Clear old banner images from cache if they're no longer used
-          if (oldBanners != null) {
-            final removedBanners = oldBanners
-                .where((oldUrl) => !newBanners.contains(oldUrl))
-                .toList();
-            for (final bannerUrl in removedBanners) {
-              _clearImageFromCache(bannerUrl);
-            }
-
-            // Prefetch new images that weren't in the old list
-            final newImages = newBanners
-                .where((newUrl) => !oldBanners.contains(newUrl))
-                .toList();
-            for (final bannerUrl in newImages) {
-              _prefetchImage(bannerUrl);
-            }
-          } else {
-            // Prefetch all images if we had no old banners
-            for (final bannerUrl in newBanners) {
-              _prefetchImage(bannerUrl);
-            }
-          }
-
-          setState(() {
-            _updateCache('banners', newBanners);
-            bannersBox.put('banners', newBanners);
-            // Update the future to trigger UI refresh with new data
-            futureBanners = Future.value(newBanners);
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error checking for banner updates: $e');
-    }
-  }
-
-  // Helper method to prefetch images with memory optimization
-  void _prefetchImage(String imageUrl, {bool highPriority = false}) {
-    if (imageUrl.isEmpty || Uri.tryParse(imageUrl)?.hasAbsolutePath != true) {
-      return;
-    }
-
-    try {
-      // Create a unique cache key for better control
-      final cacheKey = 'img_${imageUrl.hashCode}';
-
-      // Check if this is an S3 URL
-      final isS3Url = imageUrl.contains('s3.ap-southeast-1.amazonaws.com');
-
-      // Use appropriate cache manager based on URL type
-      final cacheManager =
-          isS3Url ? profileImageCacheManager : DefaultCacheManager();
-
-      // Memory optimization: Only load a few images at once
-      // We'll use a small placeholder size first, then the full image when needed
-      final maxWidth =
-          highPriority ? 1080 : 480; // Lower resolution for background images
-      final maxHeight = highPriority ? 1080 : 480;
-
-      // Use CachedNetworkImageProvider with memory optimization
-      final provider = CachedNetworkImageProvider(
-        imageUrl,
-        cacheKey: cacheKey,
-        cacheManager: cacheManager,
-        maxWidth: maxWidth,
-        maxHeight: maxHeight,
-      );
-
-      // Precache with higher priority for important images
-      // Only do memory caching for visible/high-priority images
-      if (highPriority) {
-        precacheImage(provider, context, onError: (exception, stackTrace) {
-          _log('Error precaching image: $exception');
-          // Handle S3 errors by refreshing pre-signed URLs if needed
-          if (isS3Url) {
-            // Determine image type for refresh logic
-            final type =
-                imageUrl.contains('employee-images') ? 'profile' : 'banner';
-            _handleS3ImageError(imageUrl, type);
-          }
-        });
-      }
-
-      // Only check if the file is already in disk cache to avoid unnecessary requests
-      cacheManager.getFileFromCache(cacheKey).then((fileInfo) {
-        if (fileInfo != null) {
-          // File already cached on disk, no need to download again
-          // Silent operation - no logging
-        } else {
-          // File not in cache, download it with size constraints
-          // Use getFileStream instead of getSingleFile for better memory management
-          cacheManager
-              .downloadFile(
-            imageUrl,
-            key: cacheKey,
-            force: false, // Don't force if already in progress
-          )
-              .then((fileInfo) {
-            // Successfully cached - silent operation
-          }).catchError((e) {
-            _log('Error caching image to disk: $e');
-            // Handle S3 errors by refreshing pre-signed URLs if needed
-            if (isS3Url) {
-              // Determine image type for refresh logic
-              final type =
-                  imageUrl.contains('employee-images') ? 'profile' : 'banner';
-              _handleS3ImageError(imageUrl, type);
-            }
-          });
-        }
-      }).catchError((e) {
-        _log('Error checking cache status: $e');
-      });
-    } catch (e) {
-      _log('Error prefetching image: $e');
-    }
-  }
-
-  Future<void> _checkForBannerUpdates({bool forceUpdate = false}) async {
-    return _fetchBannersFromApiAndUpdate(forceUpdate: forceUpdate);
-  }
-
-  Future<List<String>> _fetchBannersFromApi() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? token = prefs.getString('token');
-
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/app/promotions/files'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    ).timeout(const Duration(seconds: 10));
-
-    if (response.statusCode == 200) {
-      final results = jsonDecode(response.body)['results'];
-      final banners =
-          results.map<String>((file) => file['files'] as String).toList();
-      _updateCache('banners', banners);
-      await bannersBox.put('banners', banners);
-      return banners;
-    }
-
-    throw Exception('Failed to fetch banners');
-  }
-
-  // Enhanced cache management with timestamp tracking
-  void _updateCache(String key, dynamic data) {
-    if (_pageCache.length >= _maxCacheSize) {
-      _cleanCache();
-    }
-
-    final now = DateTime.now();
-    _pageCache[key] = _CacheData(
-      data: data,
-      timestamp: now,
-      accessCount: 0,
-    );
-    _lastCacheUpdate = now;
-
-    // Pre-cache profile image if this is a user profile update
-    if (key == 'userProfile' &&
-        data is UserProfile &&
-        data.imgName.isNotEmpty &&
-        data.imgName != 'avatar_placeholder.png') {
-      _prefetchImage(data.imgName);
-    }
-  }
-
-  void _cleanCache() {
-    final now = DateTime.now();
-    _pageCache.removeWhere((_, item) =>
-        now.difference(item.timestamp) > _cacheExpiry ||
-        item.accessCount > 100);
-
-    if (_pageCache.length >= _maxCacheSize) {
-      final sortedEntries = _pageCache.entries.toList()
-        ..sort((a, b) => a.value.accessCount.compareTo(b.value.accessCount));
-
-      for (var i = 0; i < _maxCacheSize / 2; i++) {
-        _pageCache.remove(sortedEntries[i].key);
-      }
-    }
-  }
-
-  // Get cached data with improved timestamp tracking
-  dynamic _getCachedData(String key) {
-    final cachedItem = _pageCache[key];
-    if (cachedItem == null) return null;
-
-    if (DateTime.now().difference(cachedItem.timestamp) > _cacheExpiry) {
-      _pageCache.remove(key);
-      return null;
-    }
-
-    cachedItem.accessCount++;
-    return cachedItem.data;
-  }
-
-  // Get the timestamp of when an item was cached
-  DateTime? _getCacheTimestamp(String key) {
-    final cachedItem = _pageCache[key];
-    return cachedItem?.timestamp;
-  }
-
-  // Start the carousel auto-swipe timer with modern sliding effect
-  void _startCarouselTimer() {
-    _carouselTimer = Timer.periodic(const Duration(seconds: 12), (Timer timer) {
-      if (_pageController.hasClients) {
-        int nextPage = _currentPage + 1;
-        // Calculate the total number of pages
-        double maxScrollExtent = _pageController.position.maxScrollExtent;
-        double viewportDimension = _pageController.position.viewportDimension;
-        int totalPages = (maxScrollExtent / viewportDimension).ceil() + 1;
-
-        if (nextPage >= totalPages) {
-          nextPage = 0;
-        }
-
-        // Prefetch the next image if it's already in the cache
-        if (nextPage < totalPages) {
-          final banners = _getCachedData('banners') as List<String>?;
-          if (banners != null &&
-              banners.isNotEmpty &&
-              nextPage < banners.length) {
-            // Prefetch next image for smoother transitions
-            final imageUrl = banners[nextPage];
-            if (imageUrl.isNotEmpty) {
-              _prefetchImage(imageUrl);
-
-              // Also prefetch the image after the next one
-              if (nextPage + 1 < banners.length) {
-                _prefetchImage(banners[nextPage + 1]);
-              }
-            }
-          }
-        }
-
-        // Modern sliding animation with smoother curve
-        _pageController.animateToPage(
-          nextPage,
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.easeOutCubic,
-        );
-
-        setState(() {
-          _currentPage = nextPage;
-        });
-      }
-    });
-  }
-
-  // Getters for Hive boxes with null safety
-  Box<String> get userProfileBox {
-    if (_userProfileBox == null) {
-      throw StateError('userProfileBox has not been initialized');
-    }
-    return _userProfileBox!;
-  }
-
-  Box<List<String>> get bannersBox {
-    if (_bannersBox == null) {
-      throw StateError('bannersBox has not been initialized');
-    }
-    return _bannersBox!;
-  }
-
-  // Add location initialization method with improved timeout handling
-  Future<void> _initializeLocation() async {
-    if (_isDisposed) return;
-
-    // Completely skip location initialization since tracking is disabled
-    return;
-
-    // The rest of this method is kept but won't be executed
-  }
-
-  void _startLocationUpdates() {
-    // Cancel any existing subscription first
-    _positionStreamSubscription?.cancel();
-
-    try {
-      // Create a new position stream with more resilient error handling
-      _positionStreamSubscription = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.reduced,
-          distanceFilter: 50,
-          timeLimit:
-              Duration(seconds: 10), // Shorter timeout to prevent hanging
-        ),
-      ).listen(
-        (Position position) {
-          if (mounted && !_isDisposed) {
-            setState(() {
-              _lastKnownPosition = position;
-              _lastLocationUpdate = DateTime.now();
-            });
-          }
-        },
-        onError: (error) {
-          // Handle all errors gracefully without propagating
-          if (error is TimeoutException) {
-            _log('Location timeout detected - attempting to recover');
-            // Don't propagate timeout errors, just log them
-            return;
-          }
-
-          if (mounted && !_isDisposed) {
-            // Log but don't crash on location errors
-            _log('Location stream error (handled): $error');
-            _handleLocationError(error);
-          }
-        },
-        cancelOnError: false, // Never cancel on error to maintain the stream
-      );
-    } catch (e) {
-      // Catch any errors during stream setup
-      _log('Error setting up location stream (handled): $e');
-    }
-  }
-
-  void _handleLocationError(dynamic error) {
-    if (!mounted || _isDisposed) return;
-
-    try {
-      if (error is TimeoutException) {
-        // For timeouts, wait longer before retrying to avoid rapid retries
-        _log('Location timeout - waiting before retry');
-        if (_shouldTrackLocation()) {
-          _restartLocationUpdatesWithDelay(5); // Wait 5 seconds before retry
-        }
-        return;
-      } else if (error.toString().contains('location service disabled')) {
-        _log('Location services are disabled. Not restarting updates.');
-        setState(() => _isLocationEnabled = false);
-      } else {
-        _log('Location error (handled): $error');
-        if (_shouldTrackLocation()) {
-          _restartLocationUpdatesWithDelay(
-              3); // Wait 3 seconds for other errors
-        }
-      }
-    } catch (e) {
-      // Final safety net to prevent any crashes in the error handler itself
-      _log('Error in location error handler (handled): $e');
-    }
-  }
-
-  void _restartLocationUpdatesWithDelay(int seconds) {
-    if (!mounted) return; // Return early if widget is not mounted
-
-    debugPrint('Restarting location updates in $seconds seconds');
-    // Cancel existing subscription
-    _positionStreamSubscription?.cancel();
-
-    // Use a try-catch to prevent any errors during the delayed restart
-    try {
-      Future.delayed(Duration(seconds: seconds), () {
-        // Verify the widget is still mounted before restarting
-        if (mounted && !_isDisposed) {
-          _startLocationUpdates();
-        }
-      });
-    } catch (e) {
-      debugPrint('Error scheduling location restart (handled): $e');
-    }
-  }
-
-  void _restartLocationUpdates() {
-    _restartLocationUpdatesWithDelay(1);
-  }
-
-  // New method to quickly show cached data then refresh in background
-  void _quickLoadThenRefresh() {
-    if (!mounted || _isDisposed || _isPaused) return;
-
-    try {
-      // First use cached data for immediate display
-      final cachedProfile = _getCachedData('userProfile') as UserProfile?;
-      final cachedBanners = _getCachedData('banners') as List<String>?;
-
-      // If we have cached data, use it immediately
-      if (cachedProfile != null &&
-          cachedBanners != null &&
-          cachedBanners.isNotEmpty) {
-        // Data is already displayed, just do a gentle background refresh
-        // without forcing updates or clearing cache
-        Future.microtask(() {
-          _checkForProfileUpdates(forceUpdate: false);
-          _fetchBannersFromApiAndUpdate(forceUpdate: false);
-        });
-      } else {
-        // If no cache, do a gentle refresh without cache clearing
-        _refreshDataSafely(forceClearCache: false);
-      }
-    } catch (e) {
-      debugPrint('Error in quick load: $e');
-    }
-  }
-
-  // New method to save current state for faster resume
-  void _persistCurrentState() {
-    try {
-      // Save any important state that needs to persist
-      final cachedProfile = _getCachedData('userProfile') as UserProfile?;
-      if (cachedProfile != null) {
-        userProfileBox.put('userProfile', jsonEncode(cachedProfile.toJson()));
-      }
-
-      final cachedBanners = _getCachedData('banners') as List<String>?;
-      if (cachedBanners != null) {
-        bannersBox.put('banners', cachedBanners);
-      }
-    } catch (e) {
-      debugPrint('Error persisting state: $e');
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-    if (_isDisposed) return const SizedBox.shrink();
-
-    // Preload profile picture when dashboard is shown
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_isDisposed && _getCachedData('userProfile') != null) {
-        final profile = _getCachedData('userProfile') as UserProfile?;
-        if (profile != null &&
-            profile.imgName.isNotEmpty &&
-            profile.imgName != 'avatar_placeholder.png') {
-          _prefetchImage(profile.imgName);
-        }
-      }
-    });
-
-    return FutureBuilder<void>(
-      future: _initializationFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            !_isInitialized) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            body: Center(
-              child: Text('Error initializing app: $standardErrorMessage'),
-            ),
-          );
-        }
-
-        final themeNotifier = Provider.of<ThemeNotifier>(context);
-        final bool isDarkMode = themeNotifier.isDarkMode;
+    return Consumer<ThemeNotifier>(
+      builder: (context, themeNotifier, child) {
+        final isDarkMode = themeNotifier.isDarkMode;
 
         return PopScope(
-          onPopInvokedWithResult: (e, result) => false,
+          onPopInvokedWithResult: (didPop, result) => false,
           child: Scaffold(
             backgroundColor: isDarkMode ? Colors.black : Colors.white,
-            appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(140.0),
-              child: FutureBuilder<UserProfile>(
-                future: futureUserProfile,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return _buildAppBarPlaceholder();
-                  } else if (snapshot.hasError) {
-                    // Try to get cached profile on error
-                    final cachedProfile =
-                        _getCachedData('userProfile') as UserProfile?;
-                    if (cachedProfile != null) {
-                      debugPrint(
-                          'Using cached profile due to API error: ${snapshot.error}');
-                      return _buildAppBar(cachedProfile, isDarkMode);
-                    } else {
-                      debugPrint(
-                          'AppBar error with no cache: ${snapshot.error}');
-                      return _buildErrorAppBar(
-                          'Unable to load profile. Please check your connection.');
-                    }
-                  } else if (snapshot.hasData) {
-                    return _buildAppBar(snapshot.data!, isDarkMode);
-                  } else {
-                    // Try to get cached profile when no data
-                    final cachedProfile =
-                        _getCachedData('userProfile') as UserProfile?;
-                    if (cachedProfile != null) {
-                      debugPrint('Using cached profile - no data from API');
-                      return _buildAppBar(cachedProfile, isDarkMode);
-                    } else {
-                      return _buildErrorAppBar(
-                        'No profile data available. Please try refreshing.',
-                      );
-                    }
-                  }
-                },
-              ),
-            ),
-            body: Stack(
+            appBar: _buildAppBar(isDarkMode),
+            body: Column(
               children: [
-                if (isDarkMode) _buildDarkBackground(),
-                RefreshIndicator(
-                  onRefresh: () async {
-                    _refreshDataSafely(forceClearCache: true);
-                  },
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: _buildMainContent(context, isDarkMode),
+                // Linear loading indicator at the top
+                LinearLoadingIndicator(
+                  isLoading: _isLoading,
+                  color: const Color(0xFFDBB342),
+                  height: 3.0,
+                ),
+                // Main content
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _refreshData,
+                    child: _buildBody(isDarkMode),
                   ),
                 ),
-                if (_isLoading) _buildLoadingIndicator(),
               ],
             ),
           ),
@@ -1427,35 +491,13 @@ class DashboardState extends State<Dashboard>
     );
   }
 
-  // AppBar Placeholder while loading
-  PreferredSizeWidget _buildAppBarPlaceholder() {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-    );
-  }
-
-  // AppBar with error message
-  PreferredSizeWidget _buildErrorAppBar(String errorMessage) {
-    return AppBar(
-      title: Text(
-        standardErrorMessage,
-        style: const TextStyle(color: Colors.red),
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-    );
-  }
-
-  // AppBar with user information
-  Widget _buildAppBar(UserProfile userProfile, bool isDarkMode) {
-    final screenWidth = MediaQuery.of(context).size.width;
-
+  PreferredSizeWidget _buildAppBar(bool isDarkMode) {
     return AppBar(
       automaticallyImplyLeading: false,
       backgroundColor: Colors.transparent,
       elevation: 0,
-      toolbarHeight: kToolbarHeight + 30, // Increased height for text wrapping
+      toolbarHeight: kToolbarHeight +
+          70, // Increased height to show greeting text properly
       flexibleSpace: ClipRRect(
         borderRadius: BorderRadius.circular(15),
         child: Container(
@@ -1473,27 +515,21 @@ class DashboardState extends State<Dashboard>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Settings Icon with rotation animation
-                  AnimatedBuilder(
-                    animation: _settingsRotationAnimation,
-                    builder: (context, child) {
-                      return Transform.rotate(
-                        angle: _settingsRotationAnimation.value,
-                        child: IconButton(
-                          icon: Icon(Icons.settings,
-                              color: isDarkMode ? Colors.white : Colors.black,
-                              size: 28),
-                          onPressed: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (context) => const SettingsPage()),
-                          ),
-                        ),
-                      );
-                    },
+                  // Settings Icon
+                  IconButton(
+                    icon: Icon(
+                      Icons.settings,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                      size: 28,
+                    ),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SettingsPage()),
+                    ),
                   ),
 
-                  // Center section with profile and name (vertically stacked)
+                  // Profile Section
                   Expanded(
                     child: GestureDetector(
                       onTap: () => Navigator.push(
@@ -1501,101 +537,181 @@ class DashboardState extends State<Dashboard>
                         MaterialPageRoute(
                             builder: (context) => const ProfileScreen()),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Avatar on top
-                          ProfileAvatar(
-                            userProfile: userProfile,
-                            isDarkMode: isDarkMode,
-                            cacheManager: profileImageCacheManager,
-                            fetchUserProfile: fetchUserProfile,
-                          ),
-                          const SizedBox(height: 6),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          // Get screen dimensions for responsive design
+                          final screenWidth = MediaQuery.of(context).size.width;
+                          final availableHeight = constraints.maxHeight;
 
-                          // Greeting text with waving hand emoji (now below avatar)
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                maxWidth: screenWidth * 0.6,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      AppLocalizations.of(context)!
-                                          .greeting(userProfile.name),
-                                      style: TextStyle(
-                                        color: isDarkMode
-                                            ? Colors.white
-                                            : Colors.black,
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
+                          // Calculate responsive sizes - optimized for better text visibility
+                          final avatarRadius = screenWidth < 360
+                              ? 22.0 // Small screens (iPhone SE)
+                              : screenWidth < 390
+                                  ? 24.0 // Medium screens (iPhone 12/13)
+                                  : screenWidth < 430
+                                      ? 25.0 // Large screens (iPhone 14 Plus)
+                                      : 26.0; // Extra large screens
+
+                          final greetingFontSize = screenWidth < 360
+                              ? 15.0 // Small screens
+                              : screenWidth < 390
+                                  ? 16.0 // Medium screens
+                                  : screenWidth < 430
+                                      ? 17.0 // Large screens
+                                      : 18.0; // Extra large screens
+
+                          final avatarSize = avatarRadius * 2;
+                          final spacing = availableHeight > 85 ? 8.0 : 6.0;
+
+                          return Column(
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Profile Avatar - Responsive size, bigger but safe
+                              CircleAvatar(
+                                radius: avatarRadius,
+                                backgroundColor: Colors.white,
+                                child: _userProfile?.imgName != null &&
+                                        _userProfile!.imgName.isNotEmpty &&
+                                        _userProfile!.imgName !=
+                                            'avatar_placeholder.png'
+                                    ? FutureBuilder<Uint8List?>(
+                                        future: _getCachedImage(
+                                            _userProfile!.imgName),
+                                        builder: (context, snapshot) {
+                                          if (snapshot.hasData &&
+                                              snapshot.data != null) {
+                                            return ClipOval(
+                                              child: Image.memory(
+                                                snapshot.data!,
+                                                fit: BoxFit.cover,
+                                                width: avatarSize,
+                                                height: avatarSize,
+                                              ),
+                                            );
+                                          } else {
+                                            return ClipOval(
+                                              child: Image.network(
+                                                _userProfile!.imgName,
+                                                fit: BoxFit.cover,
+                                                width: avatarSize,
+                                                height: avatarSize,
+                                                loadingBuilder: (context, child,
+                                                    loadingProgress) {
+                                                  if (loadingProgress == null) {
+                                                    return child;
+                                                  }
+                                                  return Container(
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey[200],
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      size: avatarRadius,
+                                                      color: Colors.grey[400],
+                                                    ),
+                                                  );
+                                                },
+                                                errorBuilder: (context, error,
+                                                    stackTrace) {
+                                                  return Image.asset(
+                                                    'assets/avatar_placeholder.png',
+                                                    fit: BoxFit.cover,
+                                                    width: avatarSize,
+                                                    height: avatarSize,
+                                                  );
+                                                },
+                                              ),
+                                            );
+                                          }
+                                        },
+                                      )
+                                    : Image.asset(
+                                        'assets/avatar_placeholder.png',
+                                        fit: BoxFit.cover,
+                                        width: avatarSize,
+                                        height: avatarSize,
                                       ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
+                              ),
+                              SizedBox(height: spacing),
+
+                              // Greeting Text - Responsive and bigger
+                              Flexible(
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                    maxWidth: screenWidth * 0.65,
                                   ),
-                                  AnimatedBuilder(
-                                    animation: _waveHandAnimation,
-                                    builder: (context, child) {
-                                      return Transform.rotate(
-                                        angle: _waveHandAnimation.value,
-                                        child: const Text(
-                                          " 👋",
+                                  child: _userProfile != null
+                                      ? Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                AppLocalizations.of(context)!
+                                                    .greeting(
+                                                        _userProfile!.name),
+                                                style: TextStyle(
+                                                  color: isDarkMode
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontSize: greetingFontSize,
+                                                  fontWeight: FontWeight.bold,
+                                                  letterSpacing: 0.2,
+                                                  height: 1.2,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ),
+                                            AnimatedBuilder(
+                                              animation: _waveAnimation,
+                                              builder: (context, child) {
+                                                return Transform.rotate(
+                                                  angle: _waveAnimation.value,
+                                                  child: Text(
+                                                    " 👋",
+                                                    style: TextStyle(
+                                                      fontSize:
+                                                          greetingFontSize,
+                                                      height: 1.2,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        )
+                                      : Text(
+                                          'Loading...',
                                           style: TextStyle(
-                                            fontSize: 20,
+                                            color: isDarkMode
+                                                ? Colors.white70
+                                                : Colors.black54,
+                                            fontSize: greetingFontSize - 2,
+                                            height: 1.2,
                                           ),
                                         ),
-                                      );
-                                    },
-                                  ),
-                                ],
+                                ),
                               ),
-                            ),
-                          ),
-                        ],
+                            ],
+                          );
+                        },
                       ),
                     ),
                   ),
 
-                  // Logout Icon with gradient animation
-                  AnimatedBuilder(
-                    animation: _logoutGradientAnimation,
-                    builder: (context, child) {
-                      return ShaderMask(
-                        shaderCallback: (bounds) {
-                          return SweepGradient(
-                            colors: isDarkMode
-                                ? const [
-                                    Colors.white,
-                                    Color(0xFFFF8A80),
-                                    Colors.white,
-                                    Color(0xFFEF5350)
-                                  ]
-                                : const [
-                                    Colors.black,
-                                    Colors.red,
-                                    Colors.black,
-                                    Color(0xFFB71C1C)
-                                  ],
-                            stops: const [0.0, 0.25, 0.5, 0.75],
-                            startAngle: 0.0,
-                            endAngle: 3.14159 * 2,
-                            transform: GradientRotation(
-                                _logoutGradientAnimation.value * 2 * 3.14159),
-                          ).createShader(bounds);
-                        },
-                        child: IconButton(
-                          icon: const Icon(Icons.power_settings_new,
-                              color: Colors.white, size: 28),
-                          onPressed: () =>
-                              _showLogoutDialog(context, isDarkMode),
-                        ),
-                      );
-                    },
+                  // Logout Icon
+                  IconButton(
+                    icon: const Icon(
+                      Icons.power_settings_new,
+                      color: Colors.red,
+                      size: 28,
+                    ),
+                    onPressed: () => _showLogoutDialog(isDarkMode),
                   ),
                 ],
               ),
@@ -1606,48 +722,324 @@ class DashboardState extends State<Dashboard>
     );
   }
 
-  // Dark mode background
-  Widget _buildDarkBackground() {
-    return Container(
-      color: Colors.black,
+  Widget _buildBody(bool isDarkMode) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive padding based on screen size
+    final horizontalPadding = screenWidth < 360
+        ? 12.0
+        : screenWidth < 414
+            ? 16.0
+            : 20.0;
+    final topPadding = screenHeight < 700 ? 12.0 : 18.0;
+
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(), // More fluid iOS-like scrolling
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(0, topPadding, 0, 30.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Banner Carousel with fade-in animation
+            AnimatedOpacity(
+              opacity: 1.0,
+              duration: const Duration(milliseconds: 800),
+              child: _buildBannerCarousel(isDarkMode),
+            ),
+            SizedBox(height: screenHeight < 700 ? 4 : 8),
+
+            // Action Menu Header with slide animation
+            AnimatedSlide(
+              offset: const Offset(0, 0),
+              duration: const Duration(milliseconds: 600),
+              child: _buildActionMenuHeader(isDarkMode),
+            ),
+            SizedBox(height: screenHeight < 700 ? 12 : 16),
+
+            // Action Grid with staggered animation
+            AnimatedOpacity(
+              opacity: 1.0,
+              duration: const Duration(milliseconds: 1000),
+              child: _buildActionGrid(isDarkMode),
+            ),
+            SizedBox(height: screenHeight < 700 ? 20 : 28),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildMainContent(BuildContext context, bool isDarkMode) {
-    return Container(
-      constraints: BoxConstraints(minHeight: sizeScreen(context).height * 0.8),
+  Widget _buildBannerCarousel(bool isDarkMode) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // Responsive banner height - made smaller and more compact
+    final bannerHeight = screenHeight < 700
+        ? 130.0
+        : screenHeight < 800
+            ? 145.0
+            : 155.0;
+
+    // Responsive margins
+    final horizontalMargin = screenWidth < 360 ? 10.0 : 16.0;
+
+    if (_isLoading && _banners.isEmpty) {
+      return Container(
+        height: bannerHeight,
+        margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: isDarkMode
+              ? LinearGradient(
+                  colors: [Colors.grey[850]!, Colors.grey[800]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [Colors.grey[100]!, Colors.grey[200]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  isDarkMode ? Colors.black26 : Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.image,
+              size: 48,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading banners...',
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // Linear loading indicator for banner loading
+            Container(
+              width: 120,
+              child: LinearLoadingIndicator(
+                isLoading: true,
+                color: const Color(0xFFDBB342),
+                height: 2.0,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_banners.isEmpty) {
+      return Container(
+        height: bannerHeight,
+        margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: isDarkMode
+              ? LinearGradient(
+                  colors: [Colors.grey[850]!, Colors.grey[800]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : LinearGradient(
+                  colors: [Colors.grey[100]!, Colors.grey[200]!],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+          boxShadow: [
+            BoxShadow(
+              color:
+                  isDarkMode ? Colors.black26 : Colors.black.withOpacity(0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_not_supported_outlined,
+                size: 45,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'No banners available',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: bannerHeight + 16, // Extra space for indicator - more compact
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildBannerCarousel(isDarkMode),
+          Expanded(
+            child: PageView.builder(
+              controller: _bannerPageController,
+              itemCount: _banners.length,
+              onPageChanged: (index) {
+                // Update only the banner page notifier - no setState to prevent profile refresh
+                _currentBannerPageNotifier.value = index;
+                // Reset auto-swipe timer when user manually swipes
+                _startBannerAutoSwipe();
+              },
+              itemBuilder: (context, index) {
+                final bannerUrl = _banners[index];
+
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDarkMode
+                            ? Colors.black54
+                            : Colors.black.withOpacity(0.15),
+                        blurRadius: 15,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Hero(
+                    tag: 'banner_$index',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: _buildBannerImage(bannerUrl),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
           const SizedBox(height: 10),
-          _buildActionMenuHeader(isDarkMode),
-          const SizedBox(height: 6),
-          // Use Expanded here to allow scrolling of the GridView
-          _buildActionGrid(isDarkMode),
+          _buildPageIndicator(),
         ],
       ),
     );
   }
 
-  // Banner Carousel with improved loading and animation
-  Widget _buildBannerCarousel(bool isDarkMode) {
-    return BannerCarousel(
-      futurebanners: futureBanners,
-      cachedBanners: _getCachedData('banners') as List<String>?,
-      cacheManager: bannerImageCacheManager,
-      pageController: _pageController,
-      currentPage: _currentPage,
-      onPageChanged: _handleBannerPageChange,
-      isDarkMode: isDarkMode,
-      height: 175.0,
-      standardErrorMessage: standardErrorMessage,
-      onPreloadImage: _prefetchImage,
-      useS3CacheManager: true, // Enable S3 cache manager for banners
+  Widget _buildBannerImage(String imageUrl) {
+    return FutureBuilder<Uint8List?>(
+      future: _getCachedImage(imageUrl),
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return Image.memory(
+            snapshot.data!,
+            fit: BoxFit.cover,
+          );
+        } else {
+          // Try loading from network
+          return Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            loadingBuilder: (context, child, loadingProgress) {
+              if (loadingProgress == null) return child;
+              return Container(
+                color: Colors.grey.withOpacity(0.1),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.image,
+                      size: 40,
+                      color: Colors.grey[400],
+                    ),
+                    const SizedBox(height: 16),
+                    // Linear loading indicator for individual image loading
+                    Container(
+                      width: 100,
+                      child: LinearLoadingIndicator(
+                        isLoading: true,
+                        color: const Color(0xFFDBB342),
+                        height: 2.0,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                color: Colors.grey[300],
+                child: const Center(
+                  child: Icon(Icons.broken_image_outlined, size: 50),
+                ),
+              );
+            },
+          );
+        }
+      },
     );
   }
 
-  // Action Menu Header
+  Widget _buildPageIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: Colors.black.withOpacity(0.1),
+      ),
+      child: ValueListenableBuilder<int>(
+        valueListenable: _currentBannerPageNotifier,
+        builder: (context, currentPage, child) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              _banners.length,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeInOut,
+                width: index == currentPage ? 24.0 : 8.0,
+                height: 8.0,
+                margin: const EdgeInsets.symmetric(horizontal: 3.0),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(4),
+                  color: index == currentPage
+                      ? const Color(0xFFDBB342)
+                      : Colors.white.withOpacity(0.5),
+                  boxShadow: index == currentPage
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFFDBB342).withOpacity(0.4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : [],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildActionMenuHeader(bool isDarkMode) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -1677,7 +1069,6 @@ class DashboardState extends State<Dashboard>
                 color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
-            // Bell icon dengan animasi - tanpa gradient
             AnimatedBuilder(
               animation: _bellAnimation,
               builder: (context, child) {
@@ -1695,9 +1086,10 @@ class DashboardState extends State<Dashboard>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (context) => const NotificationPage()),
+                              builder: (context) => const NotificationPage(),
+                            ),
                           ).then((_) {
-                            _updateNotificationState();
+                            setState(() => _hasUnreadNotifications = false);
                           });
                         },
                       ),
@@ -1729,87 +1121,172 @@ class DashboardState extends State<Dashboard>
   }
 
   Widget _buildActionGrid(bool isDarkMode) {
-    if (_actionItems == null) return const SizedBox.shrink();
+    final actionItems = _getActionItems(context);
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
 
-    return Consumer<ThemeNotifier>(
-      builder: (context, themeNotifier, child) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        final crossAxisCount = screenWidth < 600 ? 3 : 3;
+    // Responsive grid configuration - more compact design
+    final crossAxisCount = screenWidth < 360 ? 2 : 3;
+    final childAspectRatio = screenWidth < 360
+        ? 0.9 // Slightly taller for 2-column layout
+        : screenWidth < 400
+            ? 0.85 // More compact for 3-column
+            : screenHeight < 700
+                ? 0.9 // Compact for smaller screens
+                : 0.95; // Slightly taller for larger screens
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: GridView.builder(
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              childAspectRatio: 0.9,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 12,
+    final horizontalPadding = screenWidth < 360 ? 14.0 : 18.0;
+    final spacing = screenWidth < 360 ? 8.0 : 10.0;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      child: GridView.builder(
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: crossAxisCount,
+          childAspectRatio: childAspectRatio,
+          mainAxisSpacing: spacing,
+          crossAxisSpacing: spacing * 0.8,
+        ),
+        itemCount: actionItems.length,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemBuilder: (context, index) {
+          final item = actionItems[index];
+          return AnimatedContainer(
+            duration: Duration(milliseconds: 200 + (index * 50)),
+            curve: Curves.easeOutBack,
+            child: _buildActionCard(
+              item['icon'] as String,
+              item['label'] as String,
+              isDarkMode,
+              item['onTap'] as VoidCallback,
+              index,
             ),
-            itemCount: _actionItems!.length,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemBuilder: (context, index) {
-              final item = _actionItems![index];
-              return _buildActionCard(
-                context,
-                item['icon'] as String,
-                item['label'] as String,
-                isDarkMode,
-                item['onTap'] as VoidCallback,
-              );
-            },
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildActionCard(BuildContext context, String imagePath, String title,
-      bool isDarkMode, VoidCallback onTap) {
+  Widget _buildActionCard(String imagePath, String title, bool isDarkMode,
+      VoidCallback onTap, int index) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double iconSize = constraints.maxWidth * 0.4;
-        double fontSize = constraints.maxWidth * 0.1;
-        fontSize = fontSize.clamp(12.0, 16.0);
+        final cardHeight = constraints.maxHeight;
+        final cardWidth = constraints.maxWidth;
+        final iconSize =
+            cardHeight * 0.28; // Slightly smaller for more compact look
+        final screenWidth = MediaQuery.of(context).size.width;
 
-        return Card(
-          color: isDarkMode ? Colors.grey[850] : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Color(0xFFDBB342), width: 0.8),
+        // Responsive font size - improved for compact design
+        final fontSize = screenWidth < 360 ? 10.5 : 11.5;
+
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(
+                14), // Slightly smaller radius for compact look
+            gradient: isDarkMode
+                ? LinearGradient(
+                    colors: [
+                      Colors.grey[850]!,
+                      Colors.grey[800]!,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  )
+                : LinearGradient(
+                    colors: [
+                      Colors.white,
+                      Colors.grey[50]!,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+            border: Border.all(
+              color: const Color(0xFFDBB342)
+                  .withOpacity(0.4), // Slightly more visible border
+              width: 1.0, // Thinner border for cleaner look
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: isDarkMode
+                    ? Colors.black.withOpacity(0.25)
+                    : const Color(0xFFDBB342).withOpacity(0.08),
+                blurRadius: 6, // Reduced shadow for more compact feel
+                spreadRadius: 0,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(12),
-            splashColor: Colors.blue.withAlpha(50),
-            splashFactory: InkRipple.splashFactory,
-            child: Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    imagePath,
-                    height: iconSize,
-                    width: iconSize,
-                    fit: BoxFit.contain,
-                    color: isDarkMode ? Colors.white : null,
-                  ),
-                  const SizedBox(height: 12),
-                  Flexible(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
-                      textAlign: TextAlign.center,
-                      overflow: TextOverflow.ellipsis,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14),
+              splashColor: const Color(0xFFDBB342).withOpacity(0.15),
+              highlightColor: const Color(0xFFDBB342).withOpacity(0.08),
+              child: Container(
+                padding: EdgeInsets.all(
+                    screenWidth < 360 ? 4.0 : 6.0), // More compact padding
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Icon with subtle animation effect
+                    TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 400 + (index * 100)),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: 0.5 + (value * 0.5),
+                          child: Opacity(
+                            opacity: value,
+                            child: Container(
+                              padding: const EdgeInsets.all(
+                                  6), // More compact icon padding
+                              decoration: BoxDecoration(
+                                color:
+                                    const Color(0xFFDBB342).withOpacity(0.12),
+                                borderRadius:
+                                    BorderRadius.circular(10), // Smaller radius
+                              ),
+                              child: Image.asset(
+                                imagePath,
+                                height: iconSize.clamp(
+                                    24.0, 36.0), // Smaller icon size range
+                                width: iconSize.clamp(24.0, 36.0),
+                                fit: BoxFit.contain,
+                                color: isDarkMode ? Colors.white : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                ],
+                    SizedBox(
+                        height:
+                            screenWidth < 360 ? 4 : 6), // More compact spacing
+
+                    // Title with better typography
+                    Flexible(
+                      child: Container(
+                        constraints: BoxConstraints(maxWidth: cardWidth * 0.9),
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.w600,
+                            color: isDarkMode ? Colors.white : Colors.black87,
+                            letterSpacing: 0.2,
+                            height: 1.2,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1818,7 +1295,7 @@ class DashboardState extends State<Dashboard>
     );
   }
 
-  void _showLogoutDialog(BuildContext context, bool isDarkMode) {
+  void _showLogoutDialog(bool isDarkMode) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1827,298 +1304,78 @@ class DashboardState extends State<Dashboard>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20.0),
           ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.lock_outline,
-                    size: 60,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  size: 60,
+                  color: isDarkMode ? Colors.white : const Color(0xFF9C640C),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  AppLocalizations.of(context)!.logoutTitle,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                     color: isDarkMode ? Colors.white : const Color(0xFF9C640C),
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    AppLocalizations.of(context)!.logoutTitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color:
-                          isDarkMode ? Colors.white : const Color(0xFF9C640C),
-                    ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  AppLocalizations.of(context)!.logoutConfirmation,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDarkMode ? Colors.grey[300] : Colors.black87,
                   ),
-                  const SizedBox(height: 12),
-                  Text(
-                    AppLocalizations.of(context)!.logoutConfirmation,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: isDarkMode ? Colors.grey[300] : Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Wrap(
-                    spacing: 12,
-                    alignment: WrapAlignment.center,
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDarkMode
-                              ? Colors.grey[700]
-                              : const Color(0xFFF5F1E0),
-                          foregroundColor: isDarkMode
-                              ? Colors.white
-                              : const Color(0xFFDBB342),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 24,
-                          ),
-                        ),
-                        child: Text(AppLocalizations.of(context)!.cancel),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isDarkMode
+                            ? Colors.grey[700]
+                            : const Color(0xFFF5F1E0),
+                        foregroundColor:
+                            isDarkMode ? Colors.white : const Color(0xFFDBB342),
                       ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Provider.of<UserProvider>(context, listen: false)
-                              .logout();
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(
-                              builder: (context) => const LoginPage(),
-                            ),
-                            (Route<dynamic> route) => false,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFDBB342),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 24,
-                          ),
-                        ),
-                        child: Text(AppLocalizations.of(context)!.yesLogout),
+                      child: Text(AppLocalizations.of(context)!.cancel),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Provider.of<UserProvider>(context, listen: false)
+                            .logout();
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (context) => const LoginPage()),
+                          (Route<dynamic> route) => false,
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFDBB342),
+                        foregroundColor: Colors.white,
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                      child: Text(AppLocalizations.of(context)!.yesLogout),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         );
       },
     );
   }
-
-  // Loading Indicator Overlay
-  Widget _buildLoadingIndicator() {
-    return Container(
-      color: Colors.black.withOpacity(0.3),
-      child: const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
-        ),
-      ),
-    );
-  }
-
-  // Update notification state
-  void _updateNotificationState() {
-    setState(() {
-      _hasUnreadNotifications = false;
-    });
-  }
-
-  // Custom page transition when user manually changes page
-  void _handleBannerPageChange(int index) {
-    setState(() {
-      _currentPage = index;
-    });
-
-    // Prefetch adjacent images when user manually changes page
-    final banners = _getCachedData('banners') as List<String>?;
-    if (banners != null && banners.isNotEmpty) {
-      // Prefetch current image if not already loaded
-      if (index < banners.length) {
-        _prefetchImage(banners[index]);
-      }
-
-      // Prefetch next image
-      if (index < banners.length - 1) {
-        _prefetchImage(banners[index + 1]);
-      }
-
-      // Also prefetch previous image for backward swiping
-      if (index > 0) {
-        _prefetchImage(banners[index - 1]);
-      }
-    }
-  }
-
-  // Inisialisasi semua animasi
-  void _initAnimations() {
-    // Bell icon animation
-    _bellAnimationController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _bellAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
-      CurvedAnimation(
-        parent: _bellAnimationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
-    // Settings rotation animation
-    _settingsRotationController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 10),
-    )..repeat();
-
-    _settingsRotationAnimation =
-        Tween<double>(begin: 0, end: 2 * 3.14159).animate(
-      CurvedAnimation(
-        parent: _settingsRotationController,
-        curve: Curves.linear,
-      ),
-    );
-
-    // Logout gradient animation - lebih smooth dan natural
-    _logoutGradientController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 5), // Durasi lebih panjang
-    )..repeat();
-
-    _logoutGradientAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _logoutGradientController,
-        curve: Curves.easeInOut, // Perubahan kurva animasi
-      ),
-    );
-
-    // Wave hand animation - lebih lambat
-    _waveHandController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500), // Durasi lebih panjang
-    )..repeat(reverse: true);
-
-    _waveHandAnimation = Tween<double>(begin: -0.15, end: 0.15).animate(
-      // Jangkauan sedikit dikurangi
-      CurvedAnimation(
-        parent: _waveHandController,
-        curve: Curves.easeInOut,
-      ),
-    );
-  }
-
-  // Check network connectivity status
-  Future<bool> _hasNetworkConnection() async {
-    try {
-      final result = await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 5));
-      return result.statusCode == 200;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // Handle S3 image load error by potentially refreshing the data
-  Future<void> _handleS3ImageError(String url, String type) async {
-    // Always clear the cache for S3 URLs with errors to force refresh
-    try {
-      await _clearImageFromCache(url);
-
-      // Check if this is likely an expired pre-signed URL error
-      final uri = Uri.tryParse(url);
-      if (uri != null) {
-        // Check if URL has AWS pre-signed parameters
-        final dateParam = uri.queryParameters['X-Amz-Date'];
-        final expiresParam = uri.queryParameters['X-Amz-Expires'];
-        bool isExpired = false;
-
-        // Determine if the URL is expired
-        if (dateParam != null && expiresParam != null) {
-          try {
-            // Parse the AWS date format
-            final year = dateParam.substring(0, 4);
-            final month = dateParam.substring(4, 6);
-            final day = dateParam.substring(6, 8);
-            final hour = dateParam.substring(9, 11);
-            final minute = dateParam.substring(11, 13);
-            final second = dateParam.substring(13, 15);
-
-            final reqDate =
-                DateTime.parse('$year-$month-${day}T$hour:$minute:${second}Z');
-
-            final expiresSeconds = int.parse(expiresParam);
-            final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
-
-            // Check if already expired
-            isExpired = DateTime.now().toUtc().isAfter(expiryTime);
-          } catch (e) {
-            // If we can't parse the date, assume it might be expired
-            isExpired = true;
-          }
-        } else if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
-          // If it's an S3 URL without auth parameters, consider it expired
-          isExpired = true;
-        }
-
-        // Refresh data based on type and expiry status
-        if (isExpired) {
-          if (type == 'profile') {
-            // For expired profile images, fetch a fresh user profile
-            if (mounted) {
-              setState(() {
-                futureUserProfile = fetchUserProfile();
-              });
-
-              // Also request profile update from UserProvider
-              Future.microtask(() {
-                if (mounted) {
-                  Provider.of<UserProvider>(context, listen: false)
-                      .fetchAndUpdateUser();
-                }
-              });
-            }
-          } else if (type == 'banner') {
-            // For expired banner images, force refresh with network fetch
-            await _fetchBannersFromApiAndUpdate(forceUpdate: true);
-          }
-        }
-      } else {
-        // If URL parsing failed, refresh data anyway as a precaution
-        if (type == 'profile' && mounted) {
-          setState(() {
-            futureUserProfile = fetchUserProfile();
-          });
-        } else if (type == 'banner') {
-          await _fetchBannersFromApiAndUpdate(forceUpdate: true);
-        }
-      }
-    } catch (e) {
-      // Silent error handling - no logs
-    }
-  }
-
-  bool _shouldTrackLocation() {
-    // Completely disable location tracking to avoid timeout errors
-    return false;
-  }
 }
 
-// UserProfile Model
+// Simple UserProfile model
 class UserProfile {
   final String id;
   final String name;
@@ -2148,11 +1405,11 @@ class UserProfile {
     }
 
     return UserProfile(
-      id: json['id'].toString(),
-      name: json['employee_name'],
-      surname: json['employee_surname'],
-      email: json['employee_email'],
-      imgName: json['images'],
+      id: json['id']?.toString() ?? '',
+      name: json['employee_name'] ?? '',
+      surname: json['employee_surname'] ?? '',
+      email: json['employee_email'] ?? '',
+      imgName: json['images'] ?? '',
       roles: rolesList,
     );
   }
@@ -2166,956 +1423,5 @@ class UserProfile {
       'images': imgName,
       'roles': roles,
     };
-  }
-}
-
-// Cache data model for better memory management
-class _CacheData {
-  final dynamic data;
-  final DateTime timestamp;
-  int accessCount;
-
-  _CacheData({
-    required this.data,
-    required this.timestamp,
-    this.accessCount = 0,
-  });
-}
-
-// Dedicated widget for profile avatar with improved image handling
-class ProfileAvatar extends StatefulWidget {
-  final UserProfile userProfile;
-  final bool isDarkMode;
-  final CacheManager cacheManager;
-  final Future<UserProfile?> Function() fetchUserProfile;
-
-  const ProfileAvatar({
-    super.key,
-    required this.userProfile,
-    required this.isDarkMode,
-    required this.cacheManager,
-    required this.fetchUserProfile,
-  });
-
-  @override
-  State<ProfileAvatar> createState() => _ProfileAvatarState();
-}
-
-class _ProfileAvatarState extends State<ProfileAvatar> {
-  late final String imageUrl;
-  late final String cacheKey;
-  bool _isOnline = true;
-  bool _isLoading = true;
-  bool _hasError = false;
-  bool _isRetrying = false;
-  int _retryCount = 0;
-  static const int _maxRetries = 3;
-  Timer? _retryTimer;
-  FileInfo? _cachedFileInfo;
-
-  @override
-  void initState() {
-    super.initState();
-    imageUrl = widget.userProfile.imgName;
-    cacheKey = 'profile_${widget.userProfile.id}_${imageUrl.hashCode}';
-    _checkConnectivity();
-    _loadFromCache();
-  }
-
-  @override
-  void dispose() {
-    _retryTimer?.cancel();
-    super.dispose();
-  }
-
-  Future<void> _checkConnectivity() async {
-    if (!mounted) return;
-
-    try {
-      final result = await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 2));
-      if (mounted) {
-        setState(() {
-          _isOnline = result.statusCode == 200;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isOnline = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadFromCache() async {
-    if (!mounted) return;
-
-    try {
-      // Check if URL is empty or default placeholder
-      if (imageUrl.isEmpty ||
-          imageUrl == 'avatar_placeholder.png' ||
-          imageUrl == 'default_avatar.jpg') {
-        // If this is a default image, trigger a profile refresh to get the actual image
-        _triggerProfileRefresh();
-        _finishLoading();
-        return;
-      }
-
-      // For S3 URLs, check if the URL might be expired
-      if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
-        final uri = Uri.tryParse(imageUrl);
-        if (uri != null) {
-          final dateParam = uri.queryParameters['X-Amz-Date'];
-          final expiresParam = uri.queryParameters['X-Amz-Expires'];
-
-          if (dateParam != null && expiresParam != null) {
-            try {
-              // Parse the AWS date format
-              final year = dateParam.substring(0, 4);
-              final month = dateParam.substring(4, 6);
-              final day = dateParam.substring(6, 8);
-              final hour = dateParam.substring(9, 11);
-              final minute = dateParam.substring(11, 13);
-              final second = dateParam.substring(13, 15);
-
-              final reqDate = DateTime.parse(
-                  '$year-$month-${day}T$hour:$minute:${second}Z');
-
-              final expiresSeconds = int.parse(expiresParam);
-              final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
-
-              // If URL is expired, force a refresh from network
-              if (DateTime.now().toUtc().isAfter(expiryTime)) {
-                // Clear the cache for this URL to force a refresh
-                await widget.cacheManager.removeFile(imageUrl);
-
-                // Trigger profile refresh without showing error first
-                _triggerProfileRefresh();
-                _finishLoading();
-                return;
-              }
-            } catch (e) {
-              // If we can't parse the date, proceed with normal loading
-            }
-          }
-        }
-      }
-
-      // Try to get the file from cache first
-      _cachedFileInfo = await widget.cacheManager.getFileFromCache(cacheKey);
-
-      if (_cachedFileInfo != null) {
-        // We have a cached file, use it and trigger rebuild
-        if (mounted) setState(() {});
-      }
-
-      if (_isOnline) {
-        // If online, fetch the latest version in background
-        _updateCacheFromNetwork();
-      } else {
-        // If offline, just use the cache
-        _finishLoading();
-      }
-    } catch (e) {
-      // Silent error handling - no logs
-      _finishLoading();
-      setState(() {
-        _hasError = true;
-      });
-      // If there's an error, try to refresh the profile
-      _triggerProfileRefresh();
-    }
-  }
-
-  Future<void> _updateCacheFromNetwork() async {
-    if (!mounted) return;
-
-    try {
-      if (imageUrl.isEmpty ||
-          imageUrl == 'avatar_placeholder.png' ||
-          imageUrl == 'default_avatar.jpg') {
-        _finishLoading();
-        // Try to get a real image by refreshing profile
-        _triggerProfileRefresh();
-        return;
-      }
-
-      // Use download function instead of getSingleFile for better memory management
-      final fileInfo = await widget.cacheManager
-          .downloadFile(
-        imageUrl,
-        key: cacheKey,
-        // Only force download for critical images
-        force: false,
-      )
-          .catchError((error) {
-        // Handle S3 specific errors
-        if (error.toString().contains('403') ||
-            error.toString().contains('expired') ||
-            error.toString().contains('Invalid statusCode')) {
-          setState(() {
-            _hasError = true;
-          });
-          // Trigger profile refresh on error
-          _triggerProfileRefresh();
-        }
-        return null;
-      });
-
-      if (mounted && fileInfo != null) {
-        setState(() {
-          _cachedFileInfo = fileInfo;
-          _hasError = false; // Clear error if we got a valid file
-        });
-      }
-    } catch (e) {
-      // Silent error handling
-      setState(() {
-        _hasError = true;
-      });
-      // Trigger profile refresh on error
-      _triggerProfileRefresh();
-    } finally {
-      _finishLoading();
-    }
-  }
-
-  // Trigger a profile refresh to get new image URLs
-  void _triggerProfileRefresh() {
-    if (_isRetrying || _retryCount >= _maxRetries) return;
-
-    setState(() {
-      _isRetrying = true;
-    });
-
-    // Schedule retries with increasing delays
-    _retryTimer?.cancel();
-    _retryTimer =
-        Timer(Duration(seconds: math.pow(2, _retryCount).toInt()), () {
-      _retryCount++;
-
-      // Request an updated profile from the API
-      if (mounted) {
-        // Use Future.microtask to avoid build phase issues
-        Future.microtask(() async {
-          if (mounted) {
-            try {
-              // Directly fetch a new user profile from API
-              final newUserProfile = await widget.fetchUserProfile();
-
-              // Check if we have a new image URL
-              if (newUserProfile != null &&
-                  newUserProfile.imgName.isNotEmpty &&
-                  newUserProfile.imgName != imageUrl &&
-                  newUserProfile.imgName != 'avatar_placeholder.png' &&
-                  newUserProfile.imgName != 'default_avatar.jpg') {
-                // Clear the old image cache
-                await widget.cacheManager.removeFile(imageUrl);
-
-                // Update to the new image URL
-                if (mounted) {
-                  setState(() {
-                    imageUrl = newUserProfile.imgName;
-                    cacheKey =
-                        'profile_${newUserProfile.id}_${imageUrl.hashCode}';
-                    _hasError = false;
-                    _isLoading = true;
-                  });
-
-                  // Try loading the new image
-                  _loadFromCache();
-                }
-              }
-
-              // Also trigger user provider refresh in the background
-              Provider.of<UserProvider>(context, listen: false)
-                  .fetchAndUpdateUser()
-                  .catchError((_) {});
-            } catch (e) {
-              // Silent error handling
-            } finally {
-              if (mounted) {
-                setState(() {
-                  _isRetrying = false;
-                });
-              }
-            }
-          }
-        });
-      }
-    });
-  }
-
-  void _finishLoading() {
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CircleAvatar(
-      radius: 28,
-      backgroundColor: Colors.white,
-      child: _buildAvatar(),
-    );
-  }
-
-  Widget _buildAvatar() {
-    // If URL is empty, default placeholder, or has error AND we've exhausted retries
-    if ((imageUrl.isEmpty ||
-            imageUrl == 'avatar_placeholder.png' ||
-            imageUrl == 'default_avatar.jpg' ||
-            _hasError) &&
-        _retryCount >= _maxRetries) {
-      return Image.asset(
-        'assets/avatar_placeholder.png',
-        fit: BoxFit.cover,
-        width: 56,
-        height: 56,
-      );
-    }
-
-    // If we're retrying, show loading indicator
-    if (_isRetrying) {
-      return Center(
-        child: SizedBox(
-          width: 30,
-          height: 30,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.0,
-            color: widget.isDarkMode ? Colors.white70 : Colors.black45,
-          ),
-        ),
-      );
-    }
-
-    // If we have a cached file and not forcing online refresh, use it directly
-    if (_cachedFileInfo != null && (!_isOnline || !_isLoading) && !_hasError) {
-      return ClipOval(
-        child: Image.file(
-          _cachedFileInfo!.file,
-          fit: BoxFit.cover,
-          width: 56,
-          height: 56,
-          cacheWidth: 112, // 2x for retina displays is enough
-          cacheHeight: 112,
-          errorBuilder: (context, error, stackTrace) {
-            // If we get an error showing the file, trigger a retry
-            Future.microtask(() => _triggerProfileRefresh());
-
-            // For first few retries, show loading indicator instead of placeholder
-            if (_retryCount < _maxRetries) {
-              return Center(
-                child: SizedBox(
-                  width: 30,
-                  height: 30,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.0,
-                    color: widget.isDarkMode ? Colors.white70 : Colors.black45,
-                  ),
-                ),
-              );
-            }
-
-            return Image.asset(
-              'assets/avatar_placeholder.png',
-              fit: BoxFit.cover,
-              width: 56,
-              height: 56,
-            );
-          },
-        ),
-      );
-    }
-
-    // If we're online or don't have cache yet, use CachedNetworkImage
-    return ClipOval(
-      child: CachedNetworkImage(
-        cacheManager: widget.cacheManager,
-        cacheKey: cacheKey,
-        imageUrl: imageUrl,
-        fit: BoxFit.cover,
-        width: 56,
-        height: 56,
-        memCacheWidth: 112, // 2x for retina displays
-        memCacheHeight: 112,
-        fadeInDuration: Duration.zero,
-        fadeOutDuration: Duration.zero,
-        placeholderFadeInDuration: Duration.zero,
-        progressIndicatorBuilder: (context, url, progress) => Center(
-          child: CircularProgressIndicator(
-            value: progress.progress,
-            strokeWidth: 2.0,
-            color: widget.isDarkMode ? Colors.white70 : Colors.black45,
-          ),
-        ),
-        errorWidget: (context, url, error) {
-          // On network image error, trigger a profile refresh
-          Future.microtask(() => _triggerProfileRefresh());
-
-          // For first few retries, show loading indicator instead of placeholder
-          if (_retryCount < _maxRetries) {
-            return Center(
-              child: SizedBox(
-                width: 30,
-                height: 30,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.0,
-                  color: widget.isDarkMode ? Colors.white70 : Colors.black45,
-                ),
-              ),
-            );
-          }
-
-          return Image.asset(
-            'assets/avatar_placeholder.png',
-            fit: BoxFit.cover,
-            width: 56,
-            height: 56,
-          );
-        },
-      ),
-    );
-  }
-}
-
-class BannerCarousel extends StatefulWidget {
-  final Future<List<String>> futurebanners;
-  final List<String>? cachedBanners;
-  final CacheManager cacheManager;
-  final PageController pageController;
-  final int currentPage;
-  final Function(int) onPageChanged;
-  final bool isDarkMode;
-  final double height;
-  final String standardErrorMessage;
-  final Function(String, {bool highPriority}) onPreloadImage;
-  final bool useS3CacheManager; // New parameter
-
-  const BannerCarousel({
-    super.key,
-    required this.futurebanners,
-    this.cachedBanners,
-    required this.cacheManager,
-    required this.pageController,
-    required this.currentPage,
-    required this.onPageChanged,
-    required this.isDarkMode,
-    required this.height,
-    required this.standardErrorMessage,
-    required this.onPreloadImage,
-    this.useS3CacheManager =
-        false, // Default to false for backward compatibility
-  });
-
-  @override
-  State<BannerCarousel> createState() => _BannerCarouselState();
-}
-
-class _BannerCarouselState extends State<BannerCarousel>
-    with SingleTickerProviderStateMixin {
-  bool _isOnline = true;
-  List<String> _banners = [];
-  final Map<String, FileInfo?> _cachedBannerFiles = {};
-  late AnimationController _loadingController;
-  late Animation<double> _loadingAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadingController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-
-    _loadingAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-            parent: _loadingController, curve: Curves.easeInOutCubic));
-
-    _checkConnectivity();
-    _initializeBanners();
-  }
-
-  @override
-  void dispose() {
-    _loadingController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _checkConnectivity() async {
-    try {
-      final result = await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 3));
-      if (mounted) {
-        setState(() {
-          _isOnline = result.statusCode == 200;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isOnline = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _initializeBanners() async {
-    // First use cached banners if available
-    if (widget.cachedBanners != null && widget.cachedBanners!.isNotEmpty) {
-      if (mounted) {
-        setState(() {
-          _banners = List.from(widget.cachedBanners!);
-        });
-      }
-
-      // Load cached files for faster display
-      _loadCachedBannerFiles(widget.cachedBanners!);
-    }
-
-    // Then wait for actual data from API if online
-    if (_isOnline) {
-      try {
-        final apiBanners = await widget.futurebanners;
-        if (mounted && apiBanners.isNotEmpty) {
-          setState(() {
-            _banners = apiBanners;
-          });
-
-          // Preload all banner images for smooth experience
-          _preloadAllBannerImages(apiBanners);
-        }
-      } catch (e) {
-        debugPrint('Error loading banners from API: $e');
-      }
-    }
-  }
-
-  Future<void> _loadCachedBannerFiles(List<String> banners) async {
-    for (final url in banners) {
-      if (url.isEmpty) continue;
-
-      try {
-        final cacheKey = 'banner_${url.hashCode}';
-        final cachedFile = await widget.cacheManager.getFileFromCache(cacheKey);
-
-        if (cachedFile != null && mounted) {
-          setState(() {
-            _cachedBannerFiles[url] = cachedFile;
-          });
-        }
-      } catch (e) {
-        debugPrint('Error loading cached banner file: $e');
-      }
-    }
-  }
-
-  void _preloadAllBannerImages(List<String> banners) {
-    // Limit the number of concurrent downloads to avoid memory pressure
-    const maxConcurrentDownloads = 2;
-    int activeDownloads = 0;
-    final downloadQueue = List<String>.from(banners);
-
-    // Process banners in order of importance
-    void processNextBanner() {
-      if (downloadQueue.isEmpty ||
-          !mounted ||
-          activeDownloads >= maxConcurrentDownloads) {
-        return;
-      }
-
-      activeDownloads++;
-      final url = downloadQueue.removeAt(0);
-      final cacheKey = 'banner_${url.hashCode}';
-
-      // Check if already cached
-      widget.cacheManager.getFileFromCache(cacheKey).then((fileInfo) {
-        if (fileInfo != null) {
-          // Already cached, update UI and process next
-          if (mounted) {
-            setState(() {
-              _cachedBannerFiles[url] = fileInfo;
-            });
-          }
-          activeDownloads--;
-          processNextBanner();
-        } else {
-          // Only visible banners should be preloaded in memory
-          final currentIndex = _banners.indexOf(url);
-          final isVisibleBanner = currentIndex == widget.currentPage ||
-              currentIndex == widget.currentPage - 1 ||
-              currentIndex == widget.currentPage + 1;
-
-          if (isVisibleBanner) {
-            // Load visible banners immediately
-            widget.onPreloadImage(url, highPriority: true);
-          }
-
-          // Download to disk cache with size constraints to save memory
-          widget.cacheManager
-              .downloadFile(
-            url,
-            key: cacheKey,
-          )
-              .then((fileInfo) {
-            if (mounted) {
-              setState(() {
-                _cachedBannerFiles[url] = fileInfo;
-              });
-            }
-            _log('Banner cached successfully: ${fileInfo.file.path}');
-            activeDownloads--;
-            processNextBanner();
-          }).catchError((e) {
-            _log('Error downloading banner: $e');
-            activeDownloads--;
-            processNextBanner();
-          });
-        }
-      }).catchError((e) {
-        _log('Error checking banner cache: $e');
-        activeDownloads--;
-        processNextBanner();
-      });
-    }
-
-    // Start loading visible banners first (prioritize current, previous, and next)
-    if (banners.isNotEmpty) {
-      final priorityBanners = <String>[];
-      final normalBanners = <String>[];
-
-      for (final url in banners) {
-        // Skip invalid URLs
-        if (url.isEmpty) continue;
-
-        final currentIndex = _banners.indexOf(url);
-        final isVisibleBanner = currentIndex == widget.currentPage ||
-            currentIndex == widget.currentPage - 1 ||
-            currentIndex == widget.currentPage + 1;
-
-        if (isVisibleBanner) {
-          priorityBanners.add(url);
-        } else {
-          normalBanners.add(url);
-        }
-      }
-
-      // Reorder queue to process priority banners first
-      downloadQueue.clear();
-      downloadQueue.addAll(priorityBanners);
-      downloadQueue.addAll(normalBanners);
-
-      // Start processing
-      processNextBanner();
-      processNextBanner(); // Start 2 downloads in parallel
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      height: widget.height,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: _banners.isEmpty
-          ? _buildLoadingPlaceholder()
-          : Column(
-              children: [
-                Expanded(
-                  child: _buildBannerPageView(),
-                ),
-                const SizedBox(height: 8),
-                _buildPageIndicator(_banners.length, widget.currentPage),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildLoadingPlaceholder() {
-    return Center(
-      child: AnimatedBuilder(
-        animation: _loadingAnimation,
-        builder: (context, child) {
-          return Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(25),
-              gradient: SweepGradient(
-                colors: widget.isDarkMode
-                    ? [
-                        Colors.blue.shade900,
-                        Colors.blue.shade200,
-                        Colors.blue.shade900
-                      ]
-                    : [
-                        Colors.amber.shade800,
-                        Colors.amber.shade300,
-                        Colors.amber.shade800
-                      ],
-                stops: [0.0, _loadingAnimation.value, 1.0],
-                transform:
-                    GradientRotation(_loadingAnimation.value * 2 * 3.14159),
-              ),
-            ),
-            child: Center(
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: widget.isDarkMode ? Colors.black : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  Icons.image,
-                  size: 24,
-                  color: widget.isDarkMode
-                      ? Colors.blue.shade200
-                      : Colors.amber.shade800,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildBannerPageView() {
-    return PageView.builder(
-      controller: widget.pageController,
-      itemCount: _banners.length,
-      onPageChanged: widget.onPageChanged,
-      physics: const BouncingScrollPhysics(),
-      pageSnapping: true,
-      padEnds: false,
-      itemBuilder: (context, index) {
-        final bannerUrl = _banners[index];
-
-        if (bannerUrl.isEmpty) {
-          return Center(
-            child: Text(
-              AppLocalizations.of(context)!.noBannersAvailable,
-              style: TextStyle(
-                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          );
-        }
-
-        // Create a unique cache key for this banner
-        final cacheKey = 'banner_${bannerUrl.hashCode}';
-
-        // Preload adjacent banners for smooth scrolling
-        if (index > 0) {
-          widget.onPreloadImage(_banners[index - 1]);
-        }
-        if (index < _banners.length - 1) {
-          widget.onPreloadImage(_banners[index + 1]);
-        }
-
-        return Hero(
-          tag: 'banner_$index',
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 12.0),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: widget.isDarkMode ? Colors.black54 : Colors.black12,
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: _buildBannerImage(bannerUrl, cacheKey),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildBannerImage(String imageUrl, String cacheKey) {
-    // If we have the file cached and we're offline or prioritizing performance
-    if (_cachedBannerFiles.containsKey(imageUrl) &&
-        (!_isOnline || _cachedBannerFiles[imageUrl] != null)) {
-      final cachedFile = _cachedBannerFiles[imageUrl];
-      if (cachedFile != null) {
-        return Image.file(
-          cachedFile.file,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _buildErrorWidget();
-          },
-        );
-      }
-    }
-
-    // Check if it's an S3 URL that might be expired
-    if (imageUrl.contains('s3.ap-southeast-1.amazonaws.com')) {
-      final uri = Uri.tryParse(imageUrl);
-      if (uri != null) {
-        final dateParam = uri.queryParameters['X-Amz-Date'];
-        final expiresParam = uri.queryParameters['X-Amz-Expires'];
-
-        if (dateParam != null && expiresParam != null) {
-          try {
-            // Parse the AWS date format
-            final year = dateParam.substring(0, 4);
-            final month = dateParam.substring(4, 6);
-            final day = dateParam.substring(6, 8);
-            final hour = dateParam.substring(9, 11);
-            final minute = dateParam.substring(11, 13);
-            final second = dateParam.substring(13, 15);
-
-            final reqDate =
-                DateTime.parse('$year-$month-${day}T$hour:$minute:${second}Z');
-
-            final expiresSeconds = int.parse(expiresParam);
-            final expiryTime = reqDate.add(Duration(seconds: expiresSeconds));
-
-            // If URL is expired, show error widget directly
-            if (DateTime.now().toUtc().isAfter(expiryTime)) {
-              // Also try to notify parent that the URL needs refreshing
-              Future.microtask(() {
-                if (widget.useS3CacheManager) {
-                  widget.onPreloadImage(imageUrl, highPriority: true);
-                }
-              });
-
-              return _buildErrorWidget();
-            }
-          } catch (e) {
-            // If we can't parse the date, continue with normal loading
-          }
-        }
-      }
-    }
-
-    // Otherwise use CachedNetworkImage with our custom cache manager
-    return CachedNetworkImage(
-      cacheManager: widget.cacheManager,
-      cacheKey: cacheKey,
-      imageUrl: imageUrl,
-      fit: BoxFit.cover,
-      fadeOutDuration: Duration.zero,
-      fadeInDuration: Duration.zero,
-      placeholderFadeInDuration: Duration.zero,
-      errorWidget: (context, url, error) {
-        // Attempt to refresh the image on error
-        if (url.contains('s3.ap-southeast-1.amazonaws.com')) {
-          Future.microtask(() {
-            if (widget.useS3CacheManager) {
-              // Try to clear the cache entry
-              widget.cacheManager.removeFile(url);
-
-              // Request a refresh from the parent
-              widget.onPreloadImage(url, highPriority: true);
-            }
-          });
-        }
-        return _buildErrorWidget();
-      },
-      progressIndicatorBuilder: (context, url, progress) => Container(
-        color: widget.isDarkMode ? Colors.grey[850] : Colors.grey[200],
-        child: Center(
-          child: CircularProgressIndicator(
-            value: progress.progress,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              widget.isDarkMode ? Colors.blueAccent : Colors.amber,
-            ),
-            strokeWidth: 3,
-          ),
-        ),
-      ),
-      imageBuilder: (context, imageProvider) => Container(
-        decoration: BoxDecoration(
-          image: DecorationImage(
-            image: imageProvider,
-            fit: BoxFit.cover,
-            colorFilter: widget.isDarkMode
-                ? ColorFilter.mode(
-                    Colors.white.withOpacity(0.1),
-                    BlendMode.lighten,
-                  )
-                : null,
-          ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.black.withOpacity(0.3),
-              ],
-              stops: const [0.7, 1.0],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorWidget() {
-    return Container(
-      color: widget.isDarkMode ? Colors.grey[850] : Colors.grey[200],
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.broken_image_outlined,
-              size: 40,
-              color: widget.isDarkMode ? Colors.redAccent : Colors.red),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Text(
-              'Image is temporarily unavailable',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: widget.isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPageIndicator(int count, int currentIndex) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        count,
-        (index) => AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          width: index == currentIndex ? 12.0 : 8.0,
-          height: index == currentIndex ? 12.0 : 8.0,
-          margin: const EdgeInsets.symmetric(horizontal: 4.0),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: index == currentIndex
-                ? (widget.isDarkMode
-                    ? Colors.blueAccent
-                    : const Color(0xFFDBB342))
-                : (widget.isDarkMode
-                    ? Colors.grey.shade700
-                    : Colors.grey.shade300),
-          ),
-        ),
-      ),
-    );
   }
 }
