@@ -40,7 +40,10 @@
         android:supportsRtl="true"
         android:theme="@style/LaunchTheme"
         android:enableOnBackInvokedCallback="true"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"
+        android:largeHeap="true"
+        android:hardwareAccelerated="true"
+        android:usesCleartextTraffic="true">
 
         <receiver
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
@@ -81,6 +84,34 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+            
+        <!-- Performance optimizations for low-end devices -->
+        <meta-data
+            android:name="firebase_performance_logcat_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_performance_collection_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+        
+        <!-- Low-end device configuration -->
+        <meta-data
+            android:name="low_memory_profile"
+            android:value="true" />
+        <meta-data
+            android:name="image_cache_size"
+            android:value="50" />
+        <meta-data
+            android:name="max_image_resolution"
+            android:value="1024" />
+        <meta-data
+            android:name="network_timeout"
+            android:value="30000" />
+        <meta-data
+            android:name="connection_pool_size"
+            android:value="5" />
 
         <!-- WorkManager Configuration -->
         <provider

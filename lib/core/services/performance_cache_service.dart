@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -180,7 +179,6 @@ class PerformanceCacheService {
   }
 
   static void clearExpiredMemoryCache() {
-    final now = DateTime.now().millisecondsSinceEpoch;
     final expiredKeys = <String>[];
 
     for (final entry in _memoryCache.entries) {

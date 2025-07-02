@@ -23,6 +23,7 @@ import 'package:logger/logger.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pb_hrsystem/core/standard/constant_map.dart';
 import 'package:pb_hrsystem/core/utils/user_preferences.dart';
+import 'package:pb_hrsystem/core/utils/low_end_device_optimizer.dart';
 import 'package:pb_hrsystem/core/widgets/connectivity_indicator.dart';
 import 'package:pb_hrsystem/hive_helper/model/add_assignment_record.dart';
 import 'package:pb_hrsystem/home/dashboard/Card/work_tracking_page.dart';
@@ -197,6 +198,9 @@ class MemoryPressureObserver extends WidgetsBindingObserver {
 
 /// Memory optimization helper to clear caches when low on memory
 void _clearMemoryCache() {
+  // Use low-end device optimizer for comprehensive cleanup
+  LowEndDeviceOptimizer.emergencyCleanup();
+
   // Clear Flutter's image cache
   PaintingBinding.instance.imageCache.clear();
 
@@ -216,6 +220,9 @@ void _clearMemoryCache() {
 Future<void> _initializeApp() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize low-end device optimizer FIRST for maximum performance
+  await LowEndDeviceOptimizer.initialize();
 
   // Set up memory optimization
   // Listen for memory pressure events (iOS)
@@ -242,17 +249,23 @@ Future<void> _initializeApp() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Optimize memory usage
+  // Optimize memory usage based on device capabilities
   if (Platform.isAndroid) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-    // Enable image caching optimization
-    PaintingBinding.instance.imageCache.maximumSizeBytes =
-        100 * 1024 * 1024; // 100MB limit
+    // Dynamic image cache based on device tier
+    final imageCacheSize = LowEndDeviceOptimizer.isLowEndDevice
+        ? 20 * 1024 * 1024
+        : // 20MB for low-end
+        100 * 1024 * 1024; // 100MB for high-end
+    PaintingBinding.instance.imageCache.maximumSizeBytes = imageCacheSize;
   } else {
     // iOS tends to be more memory constrained
-    PaintingBinding.instance.imageCache.maximumSizeBytes =
-        50 * 1024 * 1024; // 50MB limit
+    final imageCacheSize = LowEndDeviceOptimizer.isLowEndDevice
+        ? 10 * 1024 * 1024
+        : // 10MB for low-end
+        50 * 1024 * 1024; // 50MB for high-end
+    PaintingBinding.instance.imageCache.maximumSizeBytes = imageCacheSize;
   }
 
   // Load environment variables

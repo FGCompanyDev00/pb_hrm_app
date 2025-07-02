@@ -54,6 +54,10 @@ android {
         versionCode = 5
         versionName = "1.1.8"
         multiDexEnabled true
+        resConfigs "en", "ms"
+        manifestPlaceholders = [
+            largeHeap: "true"
+        ]
     }
 
     signingConfigs {
@@ -71,6 +75,75 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            zipAlignEnabled true
+            debuggable false
+            jniDebuggable false
+            renderscriptDebuggable false
+            crunchPngs true
+            buildConfigField "boolean", "IS_LOW_END_TARGET", "true"
+        }
+        
+        debug {
+            minifyEnabled false
+            shrinkResources false
+            debuggable true
+            buildConfigField "boolean", "IS_LOW_END_TARGET", "true"
+        }
+        
+        veryLowEnd {
+            initWith debug
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules-low-end.pro'
+            buildConfigField "boolean", "IS_VERY_LOW_END", "true"
+            buildConfigField "boolean", "ENABLE_ANIMATIONS", "false"
+            buildConfigField "boolean", "ENABLE_SHADOWS", "false"
+            buildConfigField "boolean", "ENABLE_BLUR", "false"
+            matchingFallbacks = ['debug']
+        }
+    }
+
+    packagingOptions {
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
+    }
+
+    // Temporarily disable splits to prevent APK corruption during optimization
+    // splits {
+    //     abi {
+    //         enable true
+    //         reset()
+    //         include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+    //         universalApk true
+    //     }
+    //     
+    //     density {
+    //         enable true
+    //         reset()
+    //         include 'mdpi', 'hdpi', 'xhdpi', 'xxhdpi'
+    //     }
+    // }
+
+    lintOptions {
+        disable 'InvalidPackage'
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = true
+        }
+        abi {
+            enableSplit = true
         }
     }
 
@@ -93,6 +166,15 @@ dependencies {
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.multidex:multidex:2.0.1'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
 }
 
 apply plugin: 'com.google.gms.google-services'
+
+android.applicationVariants.all { variant ->
+    variant.outputs.all { output ->
+        def buildType = variant.buildType.name
+        def versionName = variant.versionName
+        outputFileName = "pb_hrsystem_${buildType}_${versionName}.apk"
+    }
+}

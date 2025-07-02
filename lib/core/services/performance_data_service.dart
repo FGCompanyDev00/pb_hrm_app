@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:isolate';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -38,7 +37,6 @@ class PerformanceDataService {
     String endpoint, {
     String method = 'GET',
     Map<String, dynamic>? body,
-    bool useCache = true,
   }) async {
     try {
       // Request throttling
@@ -253,7 +251,7 @@ class PerformanceDataService {
   /// Combine date and time strings
   static String _combineDatetime(dynamic date, dynamic time) {
     if (date == null || time == null) return '';
-    return '${date}T${time}:00';
+    return '${date}T$time:00';
   }
 
   /// Calendar Events API with smart caching
