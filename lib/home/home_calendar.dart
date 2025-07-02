@@ -29,6 +29,7 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/core/services/performance_cache_service.dart';
 
 abstract class Refreshable {
   void refresh();
@@ -81,6 +82,8 @@ class HomeCalendarState extends State<HomeCalendar>
   final _eventCountsCache = <DateTime, Map<String, int>>{};
   final _processedEventsCache = <DateTime, List<Events>>{};
 
+  // Performance optimization will be used in future iterations
+
   // Animasi untuk ikon plus
   late AnimationController _plusIconController;
   late Animation<double> _plusIconRotation;
@@ -95,6 +98,8 @@ class HomeCalendarState extends State<HomeCalendar>
   @override
   void initState() {
     super.initState();
+
+    // Performance optimization services initialized elsewhere
 
     // Initialize default values
     _selectedDay = _focusedDay;
@@ -144,16 +149,20 @@ class HomeCalendarState extends State<HomeCalendar>
       _instantLoadAndBackgroundRefresh();
     });
 
-    // Clear cache when connectivity changes - with mounted checks
+    // Handle connectivity changes smoothly - with mounted checks
     connectivityResult.onConnectivityChanged.listen((source) async {
       if (!mounted) return;
 
       if (source.contains(ConnectivityResult.none)) {
-        // If offline, reload from local storage
+        // If offline, reload from local storage silently
         await _loadLocalData();
       } else {
-        // If online, do silent background refresh
-        _silentBackgroundRefresh();
+        // If online, do silent background refresh with delay to avoid immediate lag
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _silentBackgroundRefresh();
+          }
+        });
       }
     });
   }
@@ -166,17 +175,18 @@ class HomeCalendarState extends State<HomeCalendar>
 
       if (hasCachedData) {
         debugPrint('📱 Instantly loaded cached events');
-        // Update UI immediately with cached data
+        // Update UI immediately with cached data - single setState only
         if (mounted) {
           setState(() {});
         }
-        _filterAndSearchEvents();
+        // Process events in background to avoid UI lag
+        _processEventsInBackground();
       } else {
         // If no cache, try local storage for instant display
         await _loadLocalData();
       }
 
-      // Step 2: Always start background refresh (silent)
+      // Step 2: Always start background refresh (silent, no setState)
       _silentBackgroundRefresh();
     } catch (e) {
       debugPrint('Error in instant load: $e');
@@ -185,14 +195,35 @@ class HomeCalendarState extends State<HomeCalendar>
     }
   }
 
+  /// Process events in background to avoid UI lag
+  void _processEventsInBackground() {
+    // Use Future.microtask to process on next frame, avoiding UI blocking
+    Future.microtask(() {
+      if (!mounted) return;
+      _filterAndSearchEvents();
+    });
+  }
+
+  /// Smooth UI update without causing lag
+  void _smoothUIUpdate() {
+    // Use addPostFrameCallback to ensure smooth updating
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      // Only call setState if widget is still mounted and stable
+      setState(() {
+        // Minimal state change to trigger rebuild
+      });
+    });
+  }
+
   /// Silent background refresh without any loading indicators
   void _silentBackgroundRefresh() {
     Future.delayed(const Duration(milliseconds: 100), () async {
       if (!mounted) return;
 
-      setState(() {
-        _isBackgroundLoading = true;
-      });
+      // Don't show any loading state for truly silent refresh
+      _isBackgroundLoading = true;
 
       await _fetchFreshDataSilently();
     });
@@ -201,12 +232,35 @@ class HomeCalendarState extends State<HomeCalendar>
   /// Load cached data instantly with no validation delays
   Future<bool> _loadCachedDataInstantly() async {
     try {
+      // Try performance cache first
+      final cachedEventsData =
+          await PerformanceCacheService.getCachedCalendarEvents();
+      if (cachedEventsData != null && cachedEventsData.isNotEmpty) {
+        // Convert cached data to Events objects
+        final List<Events> cachedEvents = cachedEventsData.map((item) {
+          final Map<String, dynamic> eventData =
+              Map<String, dynamic>.from(item);
+          return Events.fromJson(eventData);
+        }).toList();
+
+        // Add cached events instantly
+        eventsForAll.clear();
+        events.value.clear();
+        eventsForAll.addAll(cachedEvents);
+        addEventOffline(cachedEvents);
+
+        debugPrint(
+            '⚡ Instant performance cache load: ${cachedEvents.length} events');
+        return true;
+      }
+
+      // Fallback to SharedPreferences cache
       final prefs = await SharedPreferences.getInstance();
-      final cachedEvents = prefs.getString('cached_calendar_events');
+      final cachedEventsJson = prefs.getString('cached_calendar_events');
 
       // Accept any cache, even if old - better to show something than nothing
-      if (cachedEvents != null && cachedEvents.isNotEmpty) {
-        final List<dynamic> eventsList = jsonDecode(cachedEvents);
+      if (cachedEventsJson != null && cachedEventsJson.isNotEmpty) {
+        final List<dynamic> eventsList = jsonDecode(cachedEventsJson);
         final List<Events> parsedEvents = eventsList.map((item) {
           final Map<String, dynamic> eventData =
               Map<String, dynamic>.from(item);
@@ -222,7 +276,7 @@ class HomeCalendarState extends State<HomeCalendar>
         final cacheTimestamp = prefs.getInt('calendar_cache_timestamp') ?? 0;
         final cacheAge = DateTime.now().millisecondsSinceEpoch - cacheTimestamp;
         debugPrint(
-            '⚡ Instant cache load: ${parsedEvents.length} events (${(cacheAge / (1000 * 60)).round()} min old)');
+            '⚡ Instant fallback cache load: ${parsedEvents.length} events (${(cacheAge / (1000 * 60)).round()} min old)');
 
         return true;
       }
@@ -240,9 +294,7 @@ class HomeCalendarState extends State<HomeCalendar>
       // Check connectivity first
       final connectivityStatus = await connectivityResult.checkConnectivity();
       if (connectivityStatus.contains(ConnectivityResult.none)) {
-        setState(() {
-          _isBackgroundLoading = false;
-        });
+        _isBackgroundLoading = false;
         return;
       }
 
@@ -283,22 +335,25 @@ class HomeCalendarState extends State<HomeCalendar>
         debugPrint(
             '🔄 Silent refresh complete: ${newEventIds.length} new events, ${eventsForAll.length} total');
 
-        // Background updates are now completely silent - no popup notifications
+        // Process events in background to avoid UI lag
+        _processEventsInBackground();
       } else {
         // If API fetch failed, restore original events
         eventsForAll.addAll(originalEvents);
         addEventOffline(originalEvents);
         debugPrint('🔄 Silent refresh failed, restored cached events');
+        _processEventsInBackground();
       }
     } catch (e) {
       debugPrint('Error in silent background refresh: $e');
       // Don't break the app if background refresh fails
     } finally {
+      // Silent completion - no setState to avoid lag
+      _isBackgroundLoading = false;
+
+      // Only update UI if there are actual changes, and do it smoothly
       if (mounted) {
-        setState(() {
-          _isBackgroundLoading = false;
-        });
-        _filterAndSearchEvents();
+        _smoothUIUpdate();
       }
     }
   }
@@ -382,25 +437,19 @@ class HomeCalendarState extends State<HomeCalendar>
     await _instantLoadAndBackgroundRefresh();
   }
 
-
-  /// Fetch fresh data from API and update cache (optimized for background loading)
-  Future<void> _fetchFreshData() async {
-    // This method is now primarily used for the old refresh system
-    // The new system uses _fetchFreshDataSilently for better UX
-    await _fetchFreshDataSilently();
-  }
-
-  /// Cache fresh data to SharedPreferences
+  /// Cache fresh data to both performance cache and SharedPreferences
   Future<void> _cacheFreshData() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-
       // Convert events to JSON serializable format
       final List<Map<String, dynamic>> eventsJson = eventsForAll.map((event) {
         return event.toJson();
       }).toList();
 
-      // Cache the data with timestamp
+      // Cache using performance cache service (primary)
+      await PerformanceCacheService.cacheCalendarEvents(eventsJson);
+
+      // Fallback cache using SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
       await prefs.setString('cached_calendar_events', jsonEncode(eventsJson));
       await prefs.setInt(
           'calendar_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
@@ -409,15 +458,8 @@ class HomeCalendarState extends State<HomeCalendar>
     }
   }
 
-
-
   /// Fetches all required data concurrently
   Future<void> fetchData({bool showUpdateInfo = false}) async {
-    // Only call setState if mounted
-    if (mounted) {
-      setState(() {});
-    } else {}
-
     try {
       // Store previous event count to compare after fetching
       final Set<String> previousEventIds =
@@ -476,23 +518,19 @@ class HomeCalendarState extends State<HomeCalendar>
       // If fetch fails, load from local storage as fallback
       await _loadLocalData();
     } finally {
+      // Process events in background to avoid UI lag
+      _processEventsInBackground();
+
+      // Smooth UI update only if mounted
       if (mounted) {
-        setState(() {});
-      } else {}
-      _filterAndSearchEvents();
+        _smoothUIUpdate();
+      }
     }
   }
 
   /// Fetches all required data concurrently
   Future<void> fetchDataPass() async {
     try {
-      // Only set loading state if widget is mounted
-      if (mounted) {
-        setState(() {});
-      } else {
-// Set the variable directly if not mounted
-      }
-
       // Use Future.wait to fetch all data in parallel for better performance
       await Future.wait([
         _fetchMeetingData()
@@ -513,15 +551,14 @@ class HomeCalendarState extends State<HomeCalendar>
             (e) => debugPrint('Error fetching meeting members: $e')),
       ]);
 
-      // Apply filters and search after all data is loaded
-      _filterAndSearchEvents();
+      // Apply filters and search after all data is loaded in background
+      _processEventsInBackground();
     } catch (e) {
       debugPrint('Error during fetchDataPass: $e');
     } finally {
+      // Smooth UI update only if mounted
       if (mounted) {
-        setState(() {});
-      } else {
-// Set the variable directly if not mounted
+        _smoothUIUpdate();
       }
     }
   }
@@ -548,19 +585,10 @@ class HomeCalendarState extends State<HomeCalendar>
       // Clear the caches
       _clearCaches();
 
-      // Check if mounted before calling setState
-      if (mounted) {
-        setState(() {});
-      } else {}
-
-      // Fetch everything fresh from APIs
+      // Fetch everything fresh from APIs without showing loading states
       await fetchData(showUpdateInfo: false);
     } catch (e) {
       debugPrint('Error during forced calendar refresh: $e');
-      // Check if mounted before calling setState
-      if (mounted) {
-        setState(() {});
-      } else {}
     }
   }
 
@@ -1379,18 +1407,17 @@ class HomeCalendarState extends State<HomeCalendar>
   Future<void> _onRefresh() async {
     // For pull-to-refresh, we want to force a fresh load but still show cached data initially
     try {
-      setState(() {
-        _isBackgroundLoading = true;
-      });
+      // Start background loading silently
+      _isBackgroundLoading = true;
 
       // Keep existing data visible while refreshing
-      await _fetchFreshData();
+      await _fetchFreshDataSilently();
 
       if (mounted) {
-        setState(() {
-          _refreshKey = UniqueKey();
-        });
+        // Update refresh key without lag
+        _refreshKey = UniqueKey();
 
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -1401,14 +1428,13 @@ class HomeCalendarState extends State<HomeCalendar>
             duration: Duration(seconds: 2),
           ),
         );
+
+        // Smooth UI update
+        _smoothUIUpdate();
       }
     } catch (e) {
       debugPrint('Error during refresh: $e');
-      if (mounted) {
-        setState(() {
-          _isBackgroundLoading = false;
-        });
-      }
+      _isBackgroundLoading = false;
     }
   }
 
@@ -1452,7 +1478,7 @@ class HomeCalendarState extends State<HomeCalendar>
     _processedEventsCache.clear();
   }
 
-  /// Optimized filter and search with better performance
+  /// Optimized filter and search with better performance - no setState
   void _filterAndSearchEvents() {
     if (_selectedDay == null) return;
 
@@ -1484,9 +1510,8 @@ class HomeCalendarState extends State<HomeCalendar>
       }).toList();
     }
 
-    setState(() {
-      eventsForDay = filteredEvents;
-    });
+    // Update data without setState to avoid lag
+    eventsForDay = filteredEvents;
   }
 
   void _eventsOffline() async {
@@ -1506,10 +1531,14 @@ class HomeCalendarState extends State<HomeCalendar>
             eventDescription.contains(_searchQuery.toLowerCase());
       }).toList();
     }
-    setState(() {
-      eventsForDay = dayEvents;
-      events.value;
-    });
+
+    // Update data without setState for smoother performance
+    eventsForDay = dayEvents;
+
+    // Only trigger UI update if mounted and necessary
+    if (mounted) {
+      _smoothUIUpdate();
+    }
   }
 
   /// Navigates to day view when a day is double-tapped
@@ -1918,19 +1947,15 @@ class HomeCalendarState extends State<HomeCalendar>
   /// Loads calendar data from local storage
   Future<void> _loadLocalData() async {
     try {
-      setState(() {});
-
-      // Load events from local storage
+      // Load events from local storage without triggering loading state
       final localEvents = await offlineProvider.getCalendar();
 
       if (localEvents.isNotEmpty) {
         addEventOffline(localEvents);
-        _filterAndSearchEvents();
+        _processEventsInBackground();
       }
     } catch (e) {
       debugPrint('Error loading local data: $e');
-    } finally {
-      setState(() {});
     }
   }
 
@@ -2105,7 +2130,6 @@ class HomeCalendarState extends State<HomeCalendar>
         return category;
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

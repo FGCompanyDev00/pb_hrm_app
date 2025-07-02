@@ -1027,8 +1027,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // Handle memory management
   void _performMemoryManagement() {
     if (!_isDisposed) {
-      setState(() {
-      });
+      setState(() {});
 
       // Clear image caches
       PaintingBinding.instance.imageCache.clear();
@@ -1038,8 +1037,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       Future.delayed(const Duration(milliseconds: 300), () {
         if (!_isDisposed) {
           _clearNonEssentialCaches();
-          setState(() {
-          });
+          setState(() {});
         }
       });
     }
@@ -1135,7 +1133,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       if (index == 1) {
         final homeCalendarState = HomeCalendarState();
         homeCalendarState.refresh();
-            }
+      }
     } else {
       _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
     }

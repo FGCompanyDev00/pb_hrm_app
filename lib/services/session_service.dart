@@ -151,8 +151,6 @@ class SessionService {
     await _checkSessionExpiry();
   }
 
-
-
   // Cleanup method
   static Future<void> dispose() async {
     _fallbackTimer?.cancel();
