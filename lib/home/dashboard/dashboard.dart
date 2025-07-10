@@ -22,6 +22,7 @@ import 'package:pb_hrsystem/user_model.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/settings_page.dart';
 import 'package:pb_hrsystem/login/login_page.dart';
+import 'package:pb_hrsystem/home/dashboard/Card/inventory_page.dart';
 
 class Dashboard extends StatefulWidget {
   const Dashboard({super.key});
@@ -96,7 +97,7 @@ class _DashboardState extends State<Dashboard> with TickerProviderStateMixin {
       {
         'icon': 'assets/inventory.png',
         'label': AppLocalizations.of(context)!.inventory,
-        'onTap': () {},
+        'onTap': () => _navigateToPage(const InventoryPage()),
       },
     ];
   }

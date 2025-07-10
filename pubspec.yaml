@@ -101,6 +101,7 @@ flutter:
 
   assets:
     - assets/icons/
+    - assets/inventory/
     - assets/background.png
     - assets/logo.png
     - assets/notification_image.png

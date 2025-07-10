@@ -842,14 +842,17 @@ class LanguageNotifier with ChangeNotifier {
 }
 
 class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
+  final int initialTab;
+
+  const MainScreen({super.key, this.initialTab = 0});
 
   @override
   MainScreenState createState() => MainScreenState();
 }
 
 class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
-  int _selectedIndex = 1;
+  // Change default index to 0 (attendance screen)
+  int _selectedIndex = 0;
   final List<GlobalKey<NavigatorState>> _navigatorKeys =
       List.generate(4, (index) => GlobalKey<NavigatorState>());
 
@@ -870,8 +873,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   // Flag to prevent showing multiple account warning more than once per session
   bool _hasCheckedMultipleAccounts = false;
-
-  // Add memory management flag
 
   @override
   void initState() {
@@ -907,9 +908,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     _initializeConnectivity();
     _startSessionCheck();
 
-    // Update calendar data after login
-    _updateCalendarData();
-
     // Check for multiple accounts
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
@@ -932,8 +930,10 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     });
   }
 
-  // Update calendar data from server after login
+  // Update calendar data only when calendar tab is selected
   void _updateCalendarData() {
+    if (_selectedIndex != 1) return; // Only update if calendar tab is selected
+
     // Schedule calendar update after UI is fully initialized
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted && !_isDisposed) {
@@ -947,8 +947,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             DefaultCacheManager().emptyCache();
 
             // Log the refresh attempt
-            debugPrint(
-                'Refreshing calendar data after login with cleared caches');
+            debugPrint('Refreshing calendar data after tab selection');
           } catch (e) {
             debugPrint('Error clearing cache: $e');
           }
@@ -979,7 +978,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             if (state != null) {
               // Force a complete refresh with data fetch to handle expired S3 URLs
               state.forceCompleteRefresh();
-              debugPrint('Successfully refreshed calendar data after login');
+              debugPrint('Successfully refreshed calendar data');
             }
           } catch (e) {
             debugPrint('Error refreshing calendar: $e');
@@ -1152,32 +1151,38 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Add tab change handler
+  void _onTabChanged(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    // Load calendar data only when switching to calendar tab
+    if (index == 1) {
+      _updateCalendarData();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      onPopInvoked: (didPop) async {
-        if (didPop) return;
-        final shouldPop = await _onWillPop();
-        if (shouldPop && context.mounted) {
-          Navigator.pop(context);
+    return WillPopScope(
+      onWillPop: () async {
+        final currentNavigatorState =
+            _navigatorKeys[_selectedIndex].currentState;
+        if (currentNavigatorState?.canPop() ?? false) {
+          currentNavigatorState?.pop();
+          return false;
         }
+        return true;
       },
       child: Scaffold(
-        body: Stack(
-          children: [
-            // Main content
-            IndexedStack(
-              index: _selectedIndex,
-              children: _screens,
-            ),
-
-            // Connectivity indicator
-            const ConnectivityIndicator(),
-          ],
+        body: IndexedStack(
+          index: _selectedIndex,
+          children: _screens,
         ),
         bottomNavigationBar: CustomBottomNavBar(
           currentIndex: _selectedIndex,
-          onTap: _onItemTapped,
+          onTap: _onTabChanged,
         ),
       ),
     );

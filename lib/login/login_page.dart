@@ -192,7 +192,9 @@ class LoginPageState extends State<LoginPage>
           if (mounted) {
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (context) => const MainScreen()),
+              MaterialPageRoute(
+                  builder: (context) => const MainScreen(
+                      initialTab: 0)), // Pass initial tab as attendance
             );
           }
         }
