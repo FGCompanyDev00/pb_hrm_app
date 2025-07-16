@@ -32,6 +32,10 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                   isDarkMode ? 'assets/darkbg.png' : 'assets/ready_bg.png'),
               fit: BoxFit.cover,
             ),
+            borderRadius: const BorderRadius.only(
+              bottomLeft: Radius.circular(30),
+              bottomRight: Radius.circular(30),
+            ),
           ),
           child: AppBar(
             automaticallyImplyLeading: false,
@@ -46,14 +50,8 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (showBack)
-                      Container(
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? Colors.black.withOpacity(0.2)
-                              : Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
                         child: IconButton(
                           icon: Icon(
                             Icons.arrow_back_ios_new,

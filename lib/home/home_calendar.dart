@@ -95,69 +95,65 @@ class HomeCalendarState extends State<HomeCalendar>
   /// Handles pull-to-refresh action with update information
   Key _refreshKey = UniqueKey();
 
+  // Activation flag to ensure background work only runs when navigated to
+  bool _activated = false;
+
+  // Static accessor for parent to get state
+  static HomeCalendarState? of(BuildContext context) {
+    return context.findAncestorStateOfType<HomeCalendarState>();
+  }
+
   @override
   void initState() {
     super.initState();
-
-    // Performance optimization services initialized elsewhere
-
-    // Initialize default values
+    // Only initialize animation controllers and variables, NO data loading or listeners
     _selectedDay = _focusedDay;
     switchTime.value =
         (_focusedDay.hour < 18 && _focusedDay.hour > 6) ? false : true;
-
     eventsForDay = [];
     eventsForAll = [];
-
-    // Initialize Animation Controller
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-
-    // Initialize plus icon animation
     _plusIconController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 4),
     )..repeat();
-
     _plusIconRotation = Tween<double>(begin: 0, end: 0.05).animate(
       CurvedAnimation(
         parent: _plusIconController,
         curve: Curves.easeInOut,
       ),
     );
-
-    // Initialize typing animation
     _typingController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
-
     _typingAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _typingController,
         curve: Curves.easeInOut,
       ),
     );
-
-    // INSTANT LOADING: No initial loading state, immediately show content
     _isBackgroundLoading = false;
+    // NO data loading, cache, or listeners here!
+  }
 
+  /// Call this when the user navigates to the calendar page.
+  void activateCalendarPage() {
+    if (_activated) return;
+    _activated = true;
     // Load cache synchronously and start background refresh
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _instantLoadAndBackgroundRefresh();
     });
-
     // Handle connectivity changes smoothly - with mounted checks
     connectivityResult.onConnectivityChanged.listen((source) async {
       if (!mounted) return;
-
       if (source.contains(ConnectivityResult.none)) {
-        // If offline, reload from local storage silently
         await _loadLocalData();
       } else {
-        // If online, do silent background refresh with delay to avoid immediate lag
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) {
             _silentBackgroundRefresh();
@@ -2256,6 +2252,62 @@ class HomeCalendarState extends State<HomeCalendar>
       ),
       child: Stack(
         children: [
+          // Info icon at top left
+          Positioned(
+            top: 90,
+            left: 18,
+            child: Tooltip(
+              message:
+                  'Please pull to refresh in order to get the latest calendar data.',
+              preferBelow: false,
+              verticalOffset: 24,
+              child: GestureDetector(
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) {
+                      return Dialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        backgroundColor:
+                            isDarkMode ? Colors.grey[900] : Colors.white,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.info_outline,
+                                  color: const Color.fromARGB(255, 255, 0, 0),
+                                  size: 28),
+                              const SizedBox(width: 14),
+                              Flexible(
+                                child: Text(
+                                  'Please pull to refresh in order to get the latest calendar data.',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : Colors.black87,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+                child: Icon(
+                  Icons.info_outline,
+                  color: const Color.fromARGB(255, 207, 16, 16),
+                  size: 22,
+                ),
+              ),
+            ),
+          ),
           Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
