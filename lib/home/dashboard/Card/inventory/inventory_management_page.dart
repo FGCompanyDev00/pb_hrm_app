@@ -523,9 +523,12 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
     final fontSize = screenWidth < 360 ? 11.0 : 13.0;
     return GestureDetector(
       onTap: () {
-        // TODO: Implement navigation for category (if needed)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Category: $label (uid: $uid)')),
+        // Navigate to request form with category UID
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InventoryRequestForm(categoryUid: uid, categoryName: label),
+          ),
         );
       },
       child: Container(

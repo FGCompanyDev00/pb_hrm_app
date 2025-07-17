@@ -47,6 +47,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                 padding: EdgeInsets.fromLTRB(
                     horizontalPadding, 8, horizontalPadding, 8),
                 child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     if (showBack)
@@ -69,6 +70,7 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                     Expanded(
                       child: Text(
                         title.toUpperCase(),
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           color: isDarkMode ? Colors.white : Colors.black,
                           fontSize: 20,
@@ -78,6 +80,9 @@ class InventoryAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                     ),
                     if (actions != null) ...actions!,
+                    // Add a placeholder padding when there are no actions to maintain center alignment
+                    if (actions == null && showBack)
+                      const SizedBox(width: 48), // Same width as back button
                   ],
                 ),
               ),
