@@ -55,10 +55,15 @@ import flutter_background_service_ios
     if #available(iOS 10.0, *) {
       notificationCenter.delegate = self
       
-      // Register for notifications without requesting permission
-      DispatchQueue.main.async {
-        application.registerForRemoteNotifications()
-        self.notificationCenter.delegate = self
+      // Check current notification authorization status
+      notificationCenter.getNotificationSettings { settings in
+        print("Current notification settings: \(settings)")
+        
+        DispatchQueue.main.async {
+          // Register for notifications without requesting permission
+          application.registerForRemoteNotifications()
+          self.notificationCenter.delegate = self
+        }
       }
     } else {
       DispatchQueue.main.async {
@@ -109,6 +114,11 @@ import flutter_background_service_ios
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
     print("Failed to register for remote notifications: \(error)")
+    
+    // Send error to Flutter
+    DispatchQueue.main.async { [weak self] in
+      self?.notificationChannel?.invokeMethod("notificationError", arguments: error.localizedDescription)
+    }
   }
 
   override func application(
@@ -158,6 +168,18 @@ extension AppDelegate {
         self?.notificationChannel?.invokeMethod("notificationTapped", arguments: userInfo)
         completionHandler()
       }
+    }
+  }
+  
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    openSettingsFor notification: UNNotification?
+  ) {
+    print("User opened notification settings")
+    
+    // Send to Flutter
+    DispatchQueue.main.async { [weak self] in
+      self?.notificationChannel?.invokeMethod("settingsOpened", arguments: nil)
     }
   }
 }

@@ -5,6 +5,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../settings/theme_notifier.dart';
 import 'location_information_page.dart';
 import 'dart:io';
@@ -20,6 +21,7 @@ class NotificationPermissionPage extends StatefulWidget {
 class NotificationPermissionPageState
     extends State<NotificationPermissionPage> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
+  bool _isRequestingPermission = false;
 
   @override
   void initState() {
@@ -37,6 +39,7 @@ class NotificationPermissionPageState
       onDidReceiveLocalNotification:
           (int id, String? title, String? body, String? payload) async {
         // Handle notification received on iOS
+        debugPrint('iOS local notification received: $title - $body');
       },
     );
 
@@ -53,73 +56,155 @@ class NotificationPermissionPageState
   }
 
   Future<void> _requestNotificationPermission() async {
-    if (Platform.isIOS) {
+    if (_isRequestingPermission) return;
 
-      // Whether permission is granted or not, proceed to the next screen
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (context) => const LocationInformationPage()),
-        );
-      }
-    } else {
-      // Android permission flow
-      final status = await Permission.notification.status;
+    setState(() {
+      _isRequestingPermission = true;
+    });
 
-      if (status.isGranted) {
-        // If permission is already granted, proceed to next screen
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const LocationInformationPage()),
-          );
-        }
+    try {
+      if (Platform.isIOS) {
+        // iOS-specific notification permission request
+        await _requestIOSNotificationPermission();
       } else {
-        // Request permission
-        final result = await Permission.notification.request();
+        // Android permission flow
+        await _requestAndroidNotificationPermission();
+      }
+    } catch (e) {
+      debugPrint('Error requesting notification permission: $e');
+      _showErrorDialog(
+          'Failed to request notification permission. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRequestingPermission = false;
+        });
+      }
+    }
+  }
 
-        if (mounted) {
-          if (result.isDenied || result.isPermanentlyDenied) {
-            // Show dialog explaining why notifications are important
-            showDialog(
-              context: context,
-              builder: (BuildContext context) => AlertDialog(
-                title: Text(AppLocalizations.of(context)!.notification),
-                content: Text(AppLocalizations.of(context)!.weWantToSendYou),
-                actions: [
-                  // Skip button removed as per Apple guidelines 5.1.1
-                  TextButton(
-                    onPressed: () async {
-                      Navigator.pop(context); // Close dialog
-                      if (result.isPermanentlyDenied) {
-                        await openAppSettings();
-                      } else {
-                        _requestNotificationPermission();
-                      }
-                    },
-                    child: Text(result.isPermanentlyDenied
-                        ? 'Open Settings'
-                        : 'Try Again'),
-                  ),
-                ],
-              ),
-            );
-          } else {
-            // Permission granted, proceed to next screen
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const LocationInformationPage()),
-            );
-          }
+  Future<void> _requestIOSNotificationPermission() async {
+    try {
+      // Step 1: Request local notification permissions
+      final bool? localResult = await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
+          ?.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+            critical: true, // For important notifications
+          );
+
+      debugPrint('iOS Local Notification Permission Result: $localResult');
+
+      // Step 2: Request Firebase messaging permissions
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+
+      debugPrint('Firebase Permission Status: ${settings.authorizationStatus}');
+
+      // Check if either permission was granted
+      final bool isLocalGranted = localResult == true;
+      final bool isFirebaseGranted =
+          settings.authorizationStatus == AuthorizationStatus.authorized;
+
+      if (isLocalGranted || isFirebaseGranted) {
+        debugPrint('✅ iOS notification permission granted');
+        _proceedToNextScreen();
+      } else {
+        debugPrint('❌ iOS notification permission denied');
+        _showPermissionDeniedDialog();
+      }
+    } catch (e) {
+      debugPrint('Error requesting iOS notification permission: $e');
+      // Proceed anyway to avoid blocking the user
+      _proceedToNextScreen();
+    }
+  }
+
+  Future<void> _requestAndroidNotificationPermission() async {
+    final status = await Permission.notification.status;
+
+    if (status.isGranted) {
+      debugPrint('✅ Android notification permission already granted');
+      _proceedToNextScreen();
+    } else {
+      // Request permission
+      final result = await Permission.notification.request();
+
+      if (mounted) {
+        if (result.isGranted) {
+          debugPrint('✅ Android notification permission granted');
+          _proceedToNextScreen();
+        } else if (result.isDenied || result.isPermanentlyDenied) {
+          debugPrint('❌ Android notification permission denied');
+          _showPermissionDeniedDialog();
         }
       }
     }
   }
 
-  // Skip function removed as per Apple guidelines 5.1.1
+  void _proceedToNextScreen() {
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (context) => const LocationInformationPage()),
+      );
+    }
+  }
+
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Notification Permission'),
+        content: const Text(
+            'Notification permission is required for important updates. Please enable notifications in Settings to continue.'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _proceedToNextScreen(); // Allow user to continue anyway
+            },
+            child: const Text('Continue Anyway'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _proceedToNextScreen(); // Allow user to continue anyway
+            },
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +260,9 @@ class NotificationPermissionPageState
                 child: Column(
                   children: [
                     ElevatedButton(
-                      onPressed: () => _requestNotificationPermission(),
+                      onPressed: _isRequestingPermission
+                          ? null
+                          : () => _requestNotificationPermission(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         padding: const EdgeInsets.symmetric(
@@ -184,8 +271,18 @@ class NotificationPermissionPageState
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                       ),
-                      child: Text(AppLocalizations.of(context)!.next,
-                          style: const TextStyle(fontSize: 18)),
+                      child: _isRequestingPermission
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(AppLocalizations.of(context)!.next,
+                              style: const TextStyle(fontSize: 18)),
                     ),
                   ],
                 ),

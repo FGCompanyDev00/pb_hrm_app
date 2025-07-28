@@ -171,6 +171,7 @@ class HomeCalendarState extends State<HomeCalendar>
 
       if (hasCachedData) {
         debugPrint('📱 Instantly loaded cached events');
+        _isFirstTimeUser = false;
         // Update UI immediately with cached data - single setState only
         if (mounted) {
           setState(() {});
@@ -179,7 +180,18 @@ class HomeCalendarState extends State<HomeCalendar>
         _processEventsInBackground();
       } else {
         // If no cache, try local storage for instant display
-        await _loadLocalData();
+        final bool hasLocalData = await _loadLocalData();
+
+        if (!hasLocalData) {
+          // This is a first-time user with no data
+          debugPrint('🆕 First-time user detected - no cached data available');
+          _isFirstTimeUser = true;
+          _isBackgroundLoading = true; // Show loading for first-time users
+
+          if (mounted) {
+            setState(() {});
+          }
+        }
       }
 
       // Step 2: Always start background refresh (silent, no setState)
@@ -346,6 +358,7 @@ class HomeCalendarState extends State<HomeCalendar>
     } finally {
       // Silent completion - no setState to avoid lag
       _isBackgroundLoading = false;
+      _isFirstTimeUser = false; // No longer first time user after first load
 
       // Only update UI if there are actual changes, and do it smoothly
       if (mounted) {
@@ -568,6 +581,11 @@ class HomeCalendarState extends State<HomeCalendar>
   void forceCompleteRefresh() async {
     // Force a complete refresh of all data sources
     debugPrint('Forcing complete calendar data refresh');
+
+    // Reset refresh state
+    _isRefreshing = false;
+    _hasFreshData = false;
+    _freshEvents.clear();
 
     // Start by clearing any cached data
     try {
@@ -1399,18 +1417,32 @@ class HomeCalendarState extends State<HomeCalendar>
     }
   }
 
-  /// Handles pull-to-refresh action with smart cache management
-  Future<void> _onRefresh() async {
-    // For pull-to-refresh, we want to force a fresh load but still show cached data initially
-    try {
-      // Start background loading silently
-      _isBackgroundLoading = true;
+  // Add new state variables for pull-to-refresh with cached data first
+  bool _isRefreshing = false;
+  List<Events> _freshEvents = [];
+  bool _hasFreshData = false;
+  bool _isFirstTimeUser = false; // Track if this is first time user
 
-      // Keep existing data visible while refreshing
-      await _fetchFreshDataSilently();
+  /// Handles pull-to-refresh action with cached data first strategy
+  Future<void> _onRefresh() async {
+    // Don't start another refresh if one is already in progress
+    if (_isRefreshing) return;
+
+    try {
+      // Set refresh state
+      _isRefreshing = true;
+      _hasFreshData = false;
+      _freshEvents.clear();
+
+      // Keep existing data visible while refreshing in background
+      // This ensures user sees cached data immediately (fast loading)
+      debugPrint('🔄 Starting pull-to-refresh with cached data first');
+
+      // Start background refresh without clearing current data
+      await _refreshWithCachedDataFirst();
 
       if (mounted) {
-        // Update refresh key without lag
+        // Update refresh key
         _refreshKey = UniqueKey();
 
         // Show success message
@@ -1430,518 +1462,780 @@ class HomeCalendarState extends State<HomeCalendar>
       }
     } catch (e) {
       debugPrint('Error during refresh: $e');
+    } finally {
+      _isRefreshing = false;
+    }
+  }
+
+  /// Refresh strategy: show cached data first, fetch fresh data in background
+  Future<void> _refreshWithCachedDataFirst() async {
+    try {
+      // Check connectivity first
+      final connectivityStatus = await connectivityResult.checkConnectivity();
+      if (connectivityStatus.contains(ConnectivityResult.none)) {
+        debugPrint('🔄 No connectivity, keeping cached data');
+        return;
+      }
+
+      // Store current events for comparison
+      final Set<String> currentEventIds =
+          eventsForAll.map((e) => e.uid).toSet();
+
+      // Start background loading indicator
+      _isBackgroundLoading = true;
+
+      // Fetch fresh data in background without clearing current data
+      await _fetchFreshDataInBackground();
+
+      // Only update if we have fresh data and it's different
+      if (_hasFreshData && _freshEvents.isNotEmpty) {
+        final Set<String> freshEventIds =
+            _freshEvents.map((e) => e.uid).toSet();
+        final Set<String> newEventIds =
+            freshEventIds.difference(currentEventIds);
+
+        if (newEventIds.isNotEmpty ||
+            _freshEvents.length != eventsForAll.length) {
+          debugPrint(
+              '🔄 Updating to fresh data: ${newEventIds.length} new events');
+          await _updateToFreshData();
+        } else {
+          debugPrint('🔄 No new data, keeping current cached data');
+        }
+      } else {
+        debugPrint('🔄 No fresh data available, keeping cached data');
+      }
+    } catch (e) {
+      debugPrint('Error in refresh with cached data: $e');
+      // Keep existing data on error
+    } finally {
       _isBackgroundLoading = false;
     }
   }
 
-  int liveHour() {
-    int hour = DateTime.now().toLocal().hour;
-    return hour;
-  }
+  /// Fetch fresh data in background without affecting current UI
+  Future<void> _fetchFreshDataInBackground() async {
+    try {
+      // Create temporary lists to store fresh data
+      final List<Events> tempEventsForAll = [];
+      final Map<DateTime, List<Events>> tempEvents = {};
 
-  /// Optimized event retrieval with caching
-  List<Events> _getEventsForDay(DateTime day) {
-    final normalizedDay = normalizeDate(day);
-    if (_processedEventsCache.containsKey(normalizedDay)) {
-      return _processedEventsCache[normalizedDay]!;
-    }
-    final result = events.value[normalizedDay] ?? [];
-    _processedEventsCache[normalizedDay] = result;
-    return result;
-  }
+      // Fetch all data concurrently with individual error handling
+      await Future.wait([
+        _fetchMeetingDataToTemp(tempEventsForAll, tempEvents),
+        _fetchLeaveRequestsToTemp(tempEventsForAll, tempEvents),
+        _fetchMeetingRoomBookingsToTemp(tempEventsForAll, tempEvents),
+        _fetchMeetingRoomInviteToTemp(tempEventsForAll, tempEvents),
+        _fetchCarBookingsToTemp(tempEventsForAll, tempEvents),
+        _fetchCarBookingsInviteToTemp(tempEventsForAll, tempEvents),
+        _fetchMinutesOfMeetingToTemp(tempEventsForAll, tempEvents),
+        _fetchMeetingMembersToTemp(tempEventsForAll, tempEvents),
+      ].map((future) => future.catchError((e) {
+            debugPrint('Error in background fetch: $e');
+            return null;
+          })));
 
-  /// Optimized event counts with caching
-  Map<String, int> _getEventCountsByCategory(DateTime day) {
-    final normalizedDay = normalizeDate(day);
-    if (_eventCountsCache.containsKey(normalizedDay)) {
-      return _eventCountsCache[normalizedDay]!;
-    }
+      // Store fresh data for later use
+      if (tempEventsForAll.isNotEmpty) {
+        _freshEvents = List.from(tempEventsForAll);
+        _hasFreshData = true;
 
-    final events = _getEventsForDay(day);
-    final counts = <String, int>{};
+        // Cache the fresh data with error handling
+        try {
+          await _cacheFreshDataFromList(_freshEvents);
+        } catch (e) {
+          debugPrint('Error caching fresh data: $e');
+        }
 
-    for (var event in events) {
-      counts[event.category] = (counts[event.category] ?? 0) + 1;
-    }
+        try {
+          await offlineProvider.insertCalendar(_freshEvents);
+        } catch (e) {
+          debugPrint('Error inserting to offline provider: $e');
+        }
 
-    _eventCountsCache[normalizedDay] = counts;
-    return counts;
-  }
-
-  /// Clear caches when data is updated (optimized version)
-  void _clearCaches() {
-    _eventCountsCache.clear();
-    _processedEventsCache.clear();
-  }
-
-  /// Optimized filter and search with better performance - no setState
-  void _filterAndSearchEvents() {
-    if (_selectedDay == null) return;
-
-    // Only clear caches if we have new data
-    if (eventsForAll.isNotEmpty) {
-      _clearCaches();
-    }
-
-    // Save all events to offline storage to ensure data persistence (async to not block UI)
-    if (eventsForAll.isNotEmpty) {
-      Future(() => offlineProvider.insertCalendar(eventsForAll));
-    }
-
-    final dayEvents = _getEventsForDay(_selectedDay!);
-    List<Events> filteredEvents = dayEvents;
-
-    if (_selectedCategory != 'All') {
-      filteredEvents = filteredEvents
-          .where((event) => event.category == _selectedCategory)
-          .toList();
-    }
-
-    if (_searchQuery.isNotEmpty) {
-      final query = _searchQuery.toLowerCase();
-      filteredEvents = filteredEvents.where((event) {
-        final title = event.title.toLowerCase();
-        final description = event.desc.toLowerCase();
-        return title.contains(query) || description.contains(query);
-      }).toList();
-    }
-
-    // Update data without setState to avoid lag
-    eventsForDay = filteredEvents;
-  }
-
-  void _eventsOffline() async {
-    if (_selectedDay == null) return;
-
-    List<Events> dayEvents = _getEventsForDay(_selectedDay!);
-    if (_selectedCategory != 'All') {
-      dayEvents = dayEvents
-          .where((event) => event.category == _selectedCategory)
-          .toList();
-    }
-    if (_searchQuery.isNotEmpty) {
-      dayEvents = dayEvents.where((event) {
-        final eventTitle = event.title.toLowerCase();
-        final eventDescription = event.desc.toLowerCase();
-        return eventTitle.contains(_searchQuery.toLowerCase()) ||
-            eventDescription.contains(_searchQuery.toLowerCase());
-      }).toList();
-    }
-
-    // Update data without setState for smoother performance
-    eventsForDay = dayEvents;
-
-    // Only trigger UI update if mounted and necessary
-    if (mounted) {
-      _smoothUIUpdate();
-    }
-  }
-
-  /// Navigates to day view when a day is double-tapped
-  void _showDayView(DateTime selectedDay) {
-    // final List<Events> dayEvents = _getEventsForDay(selectedDay);
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TimetablePage(date: selectedDay),
-      ),
-    );
-  }
-
-  /// Displays a popup to choose between adding personal or office events
-  void showAddEventOptionsPopup() {
-    showDialog(
-      context: context,
-      barrierColor: Colors.transparent,
-      builder: (BuildContext context) {
-        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-        return Stack(
-          children: [
-            Positioned(
-              top: 75,
-              right: 40,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  width: 160,
-                  decoration: BoxDecoration(
-                    color: isDarkMode
-                        ? Colors.grey[850]
-                        : Colors.white, // Dark mode background
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDarkMode
-                            ? Colors.black.withOpacity(0.6)
-                            : Colors.black.withOpacity(
-                                0.2), // Darker shadow for dark mode
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildPopupOption(
-                        icon: Icons.person,
-                        label: '1. ${AppLocalizations.of(context)!.personal}',
-                        onTap: () {
-                          Navigator.pop(context);
-                          _navigateToAddEvent('Personal');
-                        },
-                        isDarkMode: isDarkMode, // Passing dark mode flag
-                      ),
-                      const Divider(height: 1),
-                      _buildPopupOption(
-                        icon: Icons.work,
-                        label: '2. ${AppLocalizations.of(context)!.office}',
-                        onTap: () {
-                          Navigator.pop(context);
-                          _navigateToAddEvent('Office');
-                        },
-                        isDarkMode: isDarkMode, // Passing dark mode flag
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Builds individual popup options
-  Widget _buildPopupOption({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-    required bool isDarkMode, // Added the 'isDarkMode' parameter here
-  }) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            // Icon color changes based on dark mode
-            Icon(
-              icon,
-              size: 20,
-              color: isDarkMode
-                  ? Colors.white70
-                  : Colors.black54, // Dark mode: white, Light mode: black
-              semanticLabel: label,
-            ),
-            const SizedBox(width: 12),
-            // Text color changes based on dark mode
-            Text(
-              label,
-              style: TextStyle(
-                color: isDarkMode
-                    ? Colors.white
-                    : Colors.black87, // Dark mode: white, Light mode: black
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// Navigates to the appropriate event addition page
-  void _navigateToAddEvent(String eventType) async {
-    if (eventType == 'Personal') {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const LeaveManagementPage(),
-        ),
-      );
-    } else {
-      final newEvent = await Navigator.push<Map<String, dynamic>>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const OfficeAddEventPage(),
-        ),
-      );
-      if (newEvent != null) {
-        _addEvent(
-          title: newEvent['title'] ?? 'New Event',
-          startDateTime: DateTime.parse(newEvent['startDateTime']),
-          endDateTime: DateTime.parse(newEvent['endDateTime']),
-          description: newEvent['description'] ?? '',
-          status: 'Pending',
-          isMeeting: true,
-          category: 'Meetings',
-          uid: newEvent['uid'] ?? UniqueKey().toString(),
-        );
-        Fluttertoast.showToast(
-          msg: "Event Created Successfully",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.green[600],
-          textColor: Colors.white,
-        );
+        debugPrint('🔄 Fresh data fetched: ${_freshEvents.length} events');
+      } else {
+        debugPrint('🔄 No fresh data fetched from APIs');
+        _hasFreshData = false;
       }
+    } catch (e) {
+      debugPrint('Error fetching fresh data in background: $e');
+      _hasFreshData = false;
     }
   }
 
-  /// Adds a new event to the calendar
-  void _addEvent({
-    required String title,
-    required DateTime startDateTime,
-    required DateTime endDateTime,
-    required String description,
-    required String status,
-    required bool isMeeting,
-    required String category,
-    required String uid,
-  }) {
-    final newEvent = Events(
-      title: title,
-      start: startDateTime,
-      end: endDateTime,
-      desc: description,
-      status: status,
-      isMeeting: isMeeting,
-      category: category,
-      uid: uid,
-    );
-    final normalizedDay = normalizeDate(startDateTime);
-    setState(() {
-      if (events.value.containsKey(normalizedDay)) {
-        if (!events.value[normalizedDay]!.any((e) => e.uid == uid)) {
-          events.value[normalizedDay]!.add(newEvent);
+  /// Update UI to fresh data when available
+  Future<void> _updateToFreshData() async {
+    if (!_hasFreshData || _freshEvents.isEmpty) return;
+
+    try {
+      // Replace current data with fresh data
+      eventsForAll.clear();
+      events.value.clear();
+      eventsForAll.addAll(_freshEvents);
+      addEventOffline(_freshEvents);
+
+      // Clear caches to force rebuild
+      _clearCaches();
+
+      // Process events in background
+      _processEventsInBackground();
+
+      debugPrint('🔄 Successfully updated to fresh data');
+    } catch (e) {
+      debugPrint('Error updating to fresh data: $e');
+    }
+  }
+
+  /// Cache fresh data from list
+  Future<void> _cacheFreshDataFromList(List<Events> eventsList) async {
+    try {
+      // Convert events to JSON serializable format
+      final List<Map<String, dynamic>> eventsJson = eventsList.map((event) {
+        return event.toJson();
+      }).toList();
+
+      // Cache using performance cache service (primary) with error handling
+      try {
+        await PerformanceCacheService.cacheCalendarEvents(eventsJson);
+      } catch (e) {
+        debugPrint('Error with performance cache, using fallback: $e');
+      }
+
+      // Fallback cache using SharedPreferences
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cached_calendar_events', jsonEncode(eventsJson));
+        await prefs.setInt(
+            'calendar_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
+      } catch (e) {
+        debugPrint('Error with SharedPreferences cache: $e');
+      }
+    } catch (e) {
+      debugPrint('Error caching fresh data: $e');
+    }
+  }
+
+  // Temporary fetch methods that don't affect current UI
+  Future<void> _fetchMeetingDataToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response =
+        await getRequest('/api/work-tracking/out-meeting/out-meeting');
+    if (response == null) return;
+
+    try {
+      final data = json.decode(response.body);
+      if (data == null || data['results'] == null || data['results'] is! List) {
+        return;
+      }
+
+      final List<dynamic> results = data['results'];
+      for (var item in results) {
+        if (item['fromdate'] == null || item['todate'] == null) continue;
+
+        DateTime startDateTime;
+        DateTime endDateTime;
+        try {
+          DateTime fromDate = DateTime.parse(item['fromdate']);
+          startDateTime = DateTime(fromDate.year, fromDate.month, fromDate.day,
+              fromDate.hour, fromDate.minute);
+          DateTime toDate = DateTime.parse(item['todate']);
+          endDateTime = DateTime(toDate.year, toDate.month, toDate.day,
+              toDate.hour, toDate.minute);
+        } catch (e) {
+          continue;
+        }
+
+        final String uid =
+            item['outmeeting_uid']?.toString() ?? UniqueKey().toString();
+        String status = item['s_name'] != null
+            ? mapEventStatus(item['s_name'].toString())
+            : 'Pending';
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['title'] ?? 'Add Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['description'] ?? '',
+          status: status,
+          isMeeting: true,
+          location: item['location'] ?? '',
+          createdBy: item['created_by_name'] ?? item['create_by'] ?? '',
+          imgName: item['img_name'] ?? item['file_name'] ?? '',
+          createdAt: item['created_at'] ?? '',
+          uid: uid,
+          isRepeat: item['is_repeat']?.toString(),
+          videoConference: item['video_conference']?.toString(),
+          backgroundColor: item['backgroundColor'] != null
+              ? parseColor(item['backgroundColor'])
+              : Colors.blue,
+          outmeetingUid: item['outmeeting_uid']?.toString(),
+          category: 'Add Meeting',
+          members: item['guests'] != null
+              ? List<Map<String, dynamic>>.from(item['guests'])
+              : [],
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching meeting data to temp: $e');
+    }
+  }
+
+  Future<void> _fetchLeaveRequestsToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response = await getRequest('/api/leave_requests');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'];
+      final leaveRequests = List<Map<String, dynamic>>.from(results);
+      String? leaveType;
+
+      for (var item in leaveRequests) {
+        final DateTime startDate = item['take_leave_from'] != null
+            ? normalizeDate(DateTime.parse(item['take_leave_from']))
+            : normalizeDate(DateTime.now());
+        final DateTime endDate = item['take_leave_to'] != null
+            ? normalizeDate(DateTime.parse(item['take_leave_to']))
+            : normalizeDate(DateTime.now());
+        final String uid = 'leave_${item['id']}';
+        double days = item['days'].runtimeType == int
+            ? double.parse(item['days'].toString())
+            : item['days'];
+        String status = item['is_approve'] != null
+            ? _mapLeaveStatus(item['is_approve'].toString())
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['name'] ?? 'Leave',
+          start: startDate,
+          end: endDate,
+          desc: item['take_leave_reason'] ?? 'Approval Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Leave',
+          uid: uid,
+          imgName: item['img_name'],
+          createdAt: item['updated_at'],
+          createdBy: item['requestor_id'],
+          days: days,
+          leaveType: leaveType,
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching leave requests to temp: $e');
+    }
+  }
+
+  Future<void> _fetchMeetingRoomBookingsToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response = await getRequest(
+        '/api/office-administration/book_meeting_room/my-requests');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+      final meetingRoomBookings = List<Map<String, dynamic>>.from(results);
+
+      for (var item in meetingRoomBookings) {
+        final DateTime? startDateTime = item['from_date_time'] != null
+            ? DateTime.parse(item['from_date_time'])
+            : null;
+        final DateTime? endDateTime = item['to_date_time'] != null
+            ? DateTime.parse(item['to_date_time'])
+            : null;
+
+        if (startDateTime == null || endDateTime == null) continue;
+
+        final String uid = item['uid']?.toString() ?? UniqueKey().toString();
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
+        if (status == 'Cancelled') continue;
+
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+        for (var member in membersList) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(member);
+          }
+        }
+
+        final event = Events(
+          title: item['title'] ??
+              AppLocalizations.of(context)!.meetingRoomBookings,
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['remark'] ?? 'Booking Pending',
+          status: status,
+          isMeeting: true,
+          category: 'Meeting Room Bookings',
+          uid: uid,
+          imgName: item['img_name'],
+          createdBy: item['employee_name'],
+          createdAt: item['date_create'],
+          location: item['room_name'] ?? 'Meeting Room',
+          members: uniqueMembers,
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching meeting room bookings to temp: $e');
+    }
+  }
+
+  Future<void> _fetchMeetingRoomInviteToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response = await getRequest(
+        '/api/office-administration/book_meeting_room/invites-meeting');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+      final minutesMeeting = List<Map<String, dynamic>>.from(results);
+
+      for (var item in minutesMeeting) {
+        String dateFrom = formatDateString(item['from_date_time'].toString());
+        String dateTo = formatDateString(item['to_date_time'].toString());
+
+        if (dateFrom.isEmpty || dateTo.isEmpty) continue;
+
+        DateTime? startDateTime;
+        DateTime? endDateTime;
+
+        try {
+          DateTime fromDate = DateTime.parse(dateFrom);
+          startDateTime = DateTime(fromDate.year, fromDate.month, fromDate.day,
+              fromDate.hour, fromDate.minute);
+          DateTime inDate = DateTime.parse(dateTo);
+          endDateTime = DateTime(inDate.year, inDate.month, inDate.day,
+              inDate.hour, inDate.minute);
+        } catch (e) {
+          continue;
+        }
+
+        final String uid =
+            item['project_id']?.toString() ?? UniqueKey().toString();
+        String status = item['statuss'] != null
+            ? (item['statuss'] == 1 ? 'Success' : 'Pending')
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['project_name'] ?? 'Minutes Of Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['descriptions'] ?? 'Minutes Of Meeting Pending',
+          status: status,
+          isMeeting: true,
+          category: 'Minutes Of Meeting',
+          uid: uid,
+          imgName: item['img_name'],
+          createdBy: item['member_name'],
+          createdAt: item['updated_at'],
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching meeting room invites to temp: $e');
+    }
+  }
+
+  Future<void> _fetchCarBookingsToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response =
+        await getRequest('/api/office-administration/car_permits/me');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+      final carBookings = List<Map<String, dynamic>>.from(results);
+
+      for (var item in carBookings) {
+        if (item['date_out'] == null || item['date_in'] == null) continue;
+
+        String dateOutStr = formatDateString(item['date_out'].toString());
+        String dateInStr = formatDateString(item['date_in'].toString());
+        String timeOutStr = item['time_out']?.toString() ?? '00:00';
+        String timeInStr = item['time_in']?.toString() ?? '23:59';
+
+        DateTime? startDateTime;
+        DateTime? endDateTime;
+
+        try {
+          DateTime outDate = DateTime.parse(dateOutStr);
+          List<String> timeOutParts = timeOutStr.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
+          if (timeOutParts.length != 2) continue;
+
+          endDateTime = DateTime(outDate.year, outDate.month, outDate.day,
+              int.parse(timeOutParts[0]), int.parse(timeOutParts[1]));
+
+          DateTime inDate = DateTime.parse(dateInStr);
+          List<String> timeInParts = timeInStr.split(':');
+          if (timeInParts.length == 3) timeInParts.removeLast();
+          if (timeInParts.length != 2) continue;
+
+          startDateTime = DateTime(inDate.year, inDate.month, inDate.day,
+              int.parse(timeInParts[0]), int.parse(timeInParts[1]));
+        } catch (e) {
+          continue;
+        }
+
+        final String uid =
+            'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['desc'] ?? 'Car Booking Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Booking Car',
+          uid: uid,
+          location: item['place'] ?? '',
+          imgName: item['img_name'],
+          createdBy: item['requestor_name'],
+          createdAt: item['updated_at'],
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching car bookings to temp: $e');
+    }
+  }
+
+  Future<void> _fetchCarBookingsInviteToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response = await getRequest(
+        '/api/office-administration/car_permits/invites-car-member');
+    if (response == null) return;
+
+    try {
+      final List<dynamic> results = json.decode(response.body)['results'] ?? [];
+      final carBookings = List<Map<String, dynamic>>.from(results);
+
+      for (var item in carBookings) {
+        if (item['date_out'] == null || item['date_in'] == null) continue;
+
+        String dateOutStr = formatDateString(item['date_out'].toString());
+        String dateInStr = formatDateString(item['date_in'].toString());
+        String timeOutStr = item['time_out']?.toString() ?? '00:00';
+        String timeInStr = item['time_in']?.toString() ?? '23:59';
+
+        DateTime? startDateTime;
+        DateTime? endDateTime;
+
+        try {
+          DateTime outDate = DateTime.parse(dateOutStr);
+          List<String> timeOutParts = timeOutStr.split(':');
+          if (timeOutParts.length == 3) timeOutParts.removeLast();
+          if (timeOutParts.length != 2) continue;
+
+          endDateTime = DateTime(outDate.year, outDate.month, outDate.day,
+              int.parse(timeOutParts[0]), int.parse(timeOutParts[1]));
+
+          DateTime inDate = DateTime.parse(dateInStr);
+          List<String> timeInParts = timeInStr.split(':');
+          if (timeInParts.length == 3) timeInParts.removeLast();
+          if (timeInParts.length != 2) continue;
+
+          startDateTime = DateTime(inDate.year, inDate.month, inDate.day,
+              int.parse(timeInParts[0]), int.parse(timeInParts[1]));
+        } catch (e) {
+          continue;
+        }
+
+        final String uid =
+            'car_${item['uid']?.toString() ?? UniqueKey().toString()}';
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
+
+        if (status == 'Cancelled') continue;
+
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+        for (var member in membersList) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(member);
+          }
+        }
+
+        final event = Events(
+          title: item['purpose'] ?? AppLocalizations.of(context)!.noTitle,
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['place'] ?? 'Car Booking Pending',
+          status: status,
+          isMeeting: false,
+          category: 'Booking Car',
+          uid: uid,
+          location: item['place'] ?? '',
+          imgName: item['img_name'],
+          createdBy: item['requestor_name'],
+          createdAt: item['updated_at'],
+          members: uniqueMembers,
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching car booking invites to temp: $e');
+    }
+  }
+
+  Future<void> _fetchMinutesOfMeetingToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response =
+        await getRequest('/api/work-tracking/meeting/get-all-meeting');
+    if (response == null) return;
+
+    try {
+      final data = json.decode(response.body);
+      if (data == null || data['results'] == null || data['results'] is! List) {
+        return;
+      }
+
+      final List<dynamic> results = data['results'];
+
+      for (var item in results) {
+        if (item['from_date'] == null ||
+            item['to_date'] == null ||
+            item['start_time'] == null ||
+            item['end_time'] == null) {
+          continue;
+        }
+
+        final responseMember = await getRequest(
+            '/api/work-tracking/meeting/Meetig-Member/${item['id']}');
+
+        dynamic dataMember;
+        List<dynamic> resultsMember = [];
+        if (responseMember != null) {
+          dataMember = json.decode(responseMember.body);
+          resultsMember = dataMember['results'] ?? [];
+        }
+
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+
+        for (var member in resultsMember) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(Map<String, dynamic>.from(member));
+          }
+        }
+
+        DateTime startDateTime;
+        DateTime endDateTime;
+        try {
+          DateTime fromDate = DateTime.parse(item['from_date']);
+          List<String> startTimeParts = item['start_time'] != ""
+              ? item['start_time'].split(':')
+              : ["00", "00"];
+          if (startTimeParts.length == 3) startTimeParts.removeLast();
+          if (startTimeParts.length != 2) continue;
+
+          startDateTime = DateTime(fromDate.year, fromDate.month, fromDate.day,
+              int.parse(startTimeParts[0]), int.parse(startTimeParts[1]));
+
+          DateTime toDate = DateTime.parse(item['to_date']);
+          List<String> endTimeParts = item['end_time'] != ""
+              ? item['end_time'].split(':')
+              : ["00", "00"];
+          if (endTimeParts.length == 3) endTimeParts.removeLast();
+          if (endTimeParts.length != 2) continue;
+
+          endDateTime = DateTime(toDate.year, toDate.month, toDate.day,
+              int.parse(endTimeParts[0]), int.parse(endTimeParts[1]));
+        } catch (e) {
+          continue;
+        }
+
+        final String uid =
+            item['meeting_id']?.toString() ?? UniqueKey().toString();
+        String status = item['s_name'] != null
+            ? mapEventStatus(item['s_name'].toString())
+            : 'Pending';
+        if (status == 'Cancelled') continue;
+
+        final event = Events(
+          title: item['title'] ?? 'Minutes Of Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['description'] ?? '',
+          status: status,
+          isMeeting: true,
+          location: item['location'] ?? '',
+          createdBy: item['create_by'] ?? '',
+          createdAt: item['created_at'] ?? '',
+          uid: uid,
+          isRepeat: item['is_repeat']?.toString(),
+          videoConference: item['video_conference']?.toString(),
+          backgroundColor: item['backgroundColor'] != null
+              ? parseColor(item['backgroundColor'])
+              : Colors.blue,
+          outmeetingUid: item['meeting_id']?.toString(),
+          category: 'Minutes Of Meeting',
+          fileName: item['file_name'],
+          members: uniqueMembers,
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching minutes of meeting to temp: $e');
+    }
+  }
+
+  Future<void> _fetchMeetingMembersToTemp(List<Events> tempEventsForAll,
+      Map<DateTime, List<Events>> tempEvents) async {
+    final response = await getRequest(
+        '/api/work-tracking/out-meeting/outmeeting/my-members');
+    if (response == null) return;
+
+    try {
+      final data = json.decode(response.body);
+      if (data == null || data['results'] == null || data['results'] is! List) {
+        return;
+      }
+
+      final List<dynamic> results = data['results'];
+
+      for (var item in results) {
+        if (item['fromdate'] == null || item['todate'] == null) continue;
+
+        DateTime startDateTime;
+        DateTime endDateTime;
+        try {
+          DateTime fromDate = DateTime.parse(item['fromdate']);
+          startDateTime = DateTime(fromDate.year, fromDate.month, fromDate.day,
+              fromDate.hour, fromDate.minute);
+
+          DateTime toDate = DateTime.parse(item['todate']);
+          endDateTime = DateTime(toDate.year, toDate.month, toDate.day,
+              toDate.hour, toDate.minute);
+        } catch (e) {
+          continue;
+        }
+
+        final String uid =
+            item['meeting_id']?.toString() ?? UniqueKey().toString();
+        String status = item['status'] != null
+            ? mapEventStatus(item['status'].toString())
+            : 'Pending';
+        if (status == 'Cancelled') continue;
+
+        List<Map<String, dynamic>> membersList = item['members'] != null
+            ? List<Map<String, dynamic>>.from(item['members'])
+            : [];
+        final seenEmployeeIds = <dynamic>{};
+        final uniqueMembers = <Map<String, dynamic>>[];
+        for (var member in membersList) {
+          if (member['employee_id'] != null &&
+              !seenEmployeeIds.contains(member['employee_id'])) {
+            seenEmployeeIds.add(member['employee_id']);
+            uniqueMembers.add(member);
+          }
+        }
+
+        final event = Events(
+          title: item['title'] ?? 'Minutes Of Meeting',
+          start: startDateTime,
+          end: endDateTime,
+          desc: item['description'] ?? '',
+          status: status,
+          isMeeting: true,
+          location: item['location'] ?? '',
+          createdBy: item['create_by'] ?? '',
+          imgName: item['file_name'] ?? '',
+          createdAt: item['created_at'] ?? '',
+          uid: uid,
+          isRepeat: item['is_repeat']?.toString(),
+          videoConference: item['video_conference']?.toString(),
+          backgroundColor: item['backgroundColor'] != null
+              ? parseColor(item['backgroundColor'])
+              : Colors.blue,
+          outmeetingUid: item['meeting_id']?.toString(),
+          category: 'Minutes Of Meeting',
+          members: uniqueMembers,
+        );
+
+        tempEventsForAll.add(event);
+        _addEventToTempMap(event, tempEvents);
+      }
+    } catch (e) {
+      debugPrint('Error fetching meeting members to temp: $e');
+    }
+  }
+
+  /// Helper method to add event to temporary map
+  void _addEventToTempMap(
+      Events event, Map<DateTime, List<Events>> tempEvents) {
+    final normalizedStartDay = normalizeDate(event.start);
+    final normalizedEndDay = normalizeDate(event.end);
+
+    for (var day = normalizedStartDay;
+        !day.isAfter(normalizedEndDay);
+        day = day.add(const Duration(days: 1))) {
+      final detectDate = normalizeDate(day);
+
+      if (tempEvents.containsKey(detectDate)) {
+        if (tempEvents[detectDate]!
+            .where((desc) => desc.desc == event.desc)
+            .isEmpty) {
+          tempEvents[detectDate]!.add(event);
+        } else {
+          event.members?.forEach((e) => tempEvents[detectDate]!
+              .where((desc) => desc.desc == event.desc)
+              .first
+              .members
+              ?.add(e));
         }
       } else {
-        events.value[normalizedDay] = [newEvent];
+        tempEvents[detectDate] = [event];
       }
-      _filterAndSearchEvents();
-      _animationController.forward(from: 0.0);
-    });
-  }
-
-  /// Shows a modern snackbar with event counts
-  void _showEventCountsSnackbar(DateTime day, bool isDarkMode) {
-    final counts = _getEventCountsByCategory(day);
-    if (counts.isEmpty) return;
-
-    final formattedDate = DateFormat('EEE, dd MMM').format(day);
-
-    const categoryOrder = {
-      'Add Meeting': 1,
-      'Meeting Room Bookings': 2,
-      'Booking Car': 3,
-      'Minutes Of Meeting': 4,
-      'Leave': 5,
-    };
-
-    final sortedCounts = counts.entries.toList()
-      ..sort((a, b) =>
-          (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
-
-    final snackBar = SnackBar(
-      content: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
-          children: [
-            Container(
-              width: 4,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    ColorStandardization().colorDarkGold,
-                    ColorStandardization().colorDarkGreen,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 16,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        formattedDate,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: sortedCounts.map((entry) {
-                      final category = entry.key;
-                      final count = entry.value;
-                      final color = categoryColors[category] ?? Colors.grey;
-                      String displayCategory = '';
-
-                      switch (category) {
-                        case 'Add Meeting':
-                          displayCategory =
-                              AppLocalizations.of(context)!.meetingTitle;
-                        case 'Leave':
-                          displayCategory = AppLocalizations.of(context)!.leave;
-                        case 'Meeting Room Bookings':
-                          displayCategory =
-                              AppLocalizations.of(context)!.meetingRoomBookings;
-                        case 'Booking Car':
-                          displayCategory =
-                              AppLocalizations.of(context)!.bookingCar;
-                        case 'Minutes Of Meeting':
-                          displayCategory =
-                              AppLocalizations.of(context)!.minutesOfMeeting;
-                        default:
-                          displayCategory = category;
-                      }
-
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
-                          border: Border.all(
-                              color: color.withOpacity(0.3), width: 1),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: color.withOpacity(0.1),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              categoryIcon[category] != null
-                                  ? Icons.circle
-                                  : Icons.event,
-                              size: 8,
-                              color: color,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              displayCategory,
-                              style: TextStyle(
-                                color: isDarkMode
-                                    ? Colors.white.withOpacity(0.9)
-                                    : Colors.black87,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Container(
-                              margin: const EdgeInsets.only(left: 6),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: color.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                count.toString(),
-                                style: TextStyle(
-                                  color: isDarkMode
-                                      ? Colors.white
-                                      : Colors.black87,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
-          width: 1,
-        ),
-      ),
-
-      margin: const EdgeInsets.fromLTRB(12, 50, 12, 30), // Top: 50, Bottom: 12
-      duration: const Duration(seconds: 4),
-      animation: CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.elasticOut,
-        reverseCurve: Curves.easeOut,
-      ),
-      elevation: isDarkMode ? 8 : 4,
-      action: SnackBarAction(
-        label: 'OK',
-        textColor: ColorStandardization().colorDarkGold,
-        onPressed: () {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        },
-      ),
-    );
-
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(snackBar);
-    _animationController.forward(from: 0.0);
-  }
-
-  /// Retrieves events for a specific day with duplicates filtered
-  List<Events> _getDubplicateEventsForDay(DateTime day) {
-    final normalizedDay = normalizeDate(day);
-    final listEvent = events.value[normalizedDay] ?? [];
-    List<Events> updateEvents = [];
-    if (listEvent.length > 4) {
-      for (var i in listEvent) {
-        if (updateEvents.isEmpty) {
-          updateEvents.add(i);
-        } else if (updateEvents.any((u) => u.category.contains(i.category))) {
-          // Skip duplicate categories
-        } else {
-          updateEvents.add(i);
-        }
-      }
-    } else {
-      updateEvents = listEvent;
     }
-
-    return updateEvents;
   }
 
   /// Loads calendar data from local storage
-  Future<void> _loadLocalData() async {
+  Future<bool> _loadLocalData() async {
     try {
       // Load events from local storage without triggering loading state
       final localEvents = await offlineProvider.getCalendar();
@@ -1949,9 +2243,12 @@ class HomeCalendarState extends State<HomeCalendar>
       if (localEvents.isNotEmpty) {
         addEventOffline(localEvents);
         _processEventsInBackground();
+        return true; // Data was loaded successfully
       }
+      return false; // No local data available
     } catch (e) {
       debugPrint('Error loading local data: $e');
+      return false; // Error occurred, no data loaded
     }
   }
 
@@ -2188,20 +2485,21 @@ class HomeCalendarState extends State<HomeCalendar>
                       offset: const Offset(0, -32),
                       child: SizedBox(
                         height: MediaQuery.of(context).size.height * 0.50,
-                        child: eventsForDay.isEmpty
+                        child: _isFirstTimeUser && eventsForDay.isEmpty
                             ? Center(
-                                child: AnimatedBuilder(
-                                  animation: _typingAnimation,
-                                  builder: (context, child) {
-                                    final String message =
-                                        AppLocalizations.of(context)!
-                                            .noEventsForThisDay;
-                                    final int length = (message.length *
-                                            _typingAnimation.value)
-                                        .round();
-                                    return Text(
-                                      message.substring(
-                                          0, length.clamp(0, message.length)),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isDarkMode
+                                            ? Colors.amber
+                                            : Colors.green,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      'Loading your calendar...',
                                       style: TextStyle(
                                         fontSize: 16,
                                         color: isDarkMode
@@ -2210,16 +2508,53 @@ class HomeCalendarState extends State<HomeCalendar>
                                         fontWeight: FontWeight.w500,
                                       ),
                                       textAlign: TextAlign.center,
-                                    );
-                                  },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'This may take a moment on first launch',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDarkMode
+                                            ? Colors.grey.shade500
+                                            : Colors.grey.shade600,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
                                 ),
                               )
-                            : CalendarDaySwitchView(
-                                selectedDay: _selectedDay,
-                                passDefaultCurrentHour: 0,
-                                passDefaultEndHour: 25,
-                                eventsCalendar: eventsForDay,
-                              ),
+                            : eventsForDay.isEmpty
+                                ? Center(
+                                    child: AnimatedBuilder(
+                                      animation: _typingAnimation,
+                                      builder: (context, child) {
+                                        final String message =
+                                            AppLocalizations.of(context)!
+                                                .noEventsForThisDay;
+                                        final int length = (message.length *
+                                                _typingAnimation.value)
+                                            .round();
+                                        return Text(
+                                          message.substring(0,
+                                              length.clamp(0, message.length)),
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            color: isDarkMode
+                                                ? Colors.grey.shade300
+                                                : Colors.grey.shade700,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        );
+                                      },
+                                    ),
+                                  )
+                                : CalendarDaySwitchView(
+                                    selectedDay: _selectedDay,
+                                    passDefaultCurrentHour: 0,
+                                    passDefaultEndHour: 25,
+                                    eventsCalendar: eventsForDay,
+                                  ),
                       ),
                     )
                   ],
@@ -2277,8 +2612,8 @@ class HomeCalendarState extends State<HomeCalendar>
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.info_outline,
-                                  color: const Color.fromARGB(255, 255, 0, 0),
+                              const Icon(Icons.info_outline,
+                                  color: Color.fromARGB(255, 255, 0, 0),
                                   size: 28),
                               const SizedBox(width: 14),
                               Flexible(
@@ -2300,9 +2635,9 @@ class HomeCalendarState extends State<HomeCalendar>
                     },
                   );
                 },
-                child: Icon(
+                child: const Icon(
                   Icons.info_outline,
-                  color: const Color.fromARGB(255, 207, 16, 16),
+                  color: Color.fromARGB(255, 207, 16, 16),
                   size: 22,
                 ),
               ),
@@ -2580,6 +2915,505 @@ class HomeCalendarState extends State<HomeCalendar>
   /// Builds a gradient animated line as a section separator
   Widget _buildSectionSeparator() {
     return const GradientAnimationLine();
+  }
+
+  /// Clear caches when data is updated (optimized version)
+  void _clearCaches() {
+    _eventCountsCache.clear();
+    _processedEventsCache.clear();
+  }
+
+  /// Optimized filter and search with better performance - no setState
+  void _filterAndSearchEvents() {
+    if (_selectedDay == null) return;
+
+    // Only clear caches if we have new data
+    if (eventsForAll.isNotEmpty) {
+      _clearCaches();
+    }
+
+    // Save all events to offline storage to ensure data persistence (async to not block UI)
+    if (eventsForAll.isNotEmpty) {
+      Future(() => offlineProvider.insertCalendar(eventsForAll));
+    }
+
+    final dayEvents = _getEventsForDay(_selectedDay!);
+    List<Events> filteredEvents = dayEvents;
+
+    if (_selectedCategory != 'All') {
+      filteredEvents = filteredEvents
+          .where((event) => event.category == _selectedCategory)
+          .toList();
+    }
+
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filteredEvents = filteredEvents.where((event) {
+        final title = event.title.toLowerCase();
+        final description = event.desc.toLowerCase();
+        return title.contains(query) || description.contains(query);
+      }).toList();
+    }
+
+    // Update data without setState to avoid lag
+    eventsForDay = filteredEvents;
+  }
+
+  void _eventsOffline() async {
+    if (_selectedDay == null) return;
+
+    List<Events> dayEvents = _getEventsForDay(_selectedDay!);
+    if (_selectedCategory != 'All') {
+      dayEvents = dayEvents
+          .where((event) => event.category == _selectedCategory)
+          .toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      dayEvents = dayEvents.where((event) {
+        final eventTitle = event.title.toLowerCase();
+        final eventDescription = event.desc.toLowerCase();
+        return eventTitle.contains(_searchQuery.toLowerCase()) ||
+            eventDescription.contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+
+    // Update data without setState for smoother performance
+    eventsForDay = dayEvents;
+
+    // Only trigger UI update if mounted and necessary
+    if (mounted) {
+      _smoothUIUpdate();
+    }
+  }
+
+  /// Navigates to day view when a day is double-tapped
+  void _showDayView(DateTime selectedDay) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TimetablePage(date: selectedDay),
+      ),
+    );
+  }
+
+  /// Displays a popup to choose between adding personal or office events
+  void showAddEventOptionsPopup() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (BuildContext context) {
+        bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        return Stack(
+          children: [
+            Positioned(
+              top: 75,
+              right: 40,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  width: 160,
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.grey[850]
+                        : Colors.white, // Dark mode background
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDarkMode
+                            ? Colors.black.withOpacity(0.6)
+                            : Colors.black.withOpacity(
+                                0.2), // Darker shadow for dark mode
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildPopupOption(
+                        icon: Icons.person,
+                        label: '1. ${AppLocalizations.of(context)!.personal}',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToAddEvent('Personal');
+                        },
+                        isDarkMode: isDarkMode, // Passing dark mode flag
+                      ),
+                      const Divider(height: 1),
+                      _buildPopupOption(
+                        icon: Icons.work,
+                        label: '2. ${AppLocalizations.of(context)!.office}',
+                        onTap: () {
+                          Navigator.pop(context);
+                          _navigateToAddEvent('Office');
+                        },
+                        isDarkMode: isDarkMode, // Passing dark mode flag
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Builds individual popup options
+  Widget _buildPopupOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required bool isDarkMode, // Added the 'isDarkMode' parameter here
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            // Icon color changes based on dark mode
+            Icon(
+              icon,
+              size: 20,
+              color: isDarkMode
+                  ? Colors.white70
+                  : Colors.black54, // Dark mode: white, Light mode: black
+              semanticLabel: label,
+            ),
+            const SizedBox(width: 12),
+            // Text color changes based on dark mode
+            Text(
+              label,
+              style: TextStyle(
+                color: isDarkMode
+                    ? Colors.white
+                    : Colors.black87, // Dark mode: white, Light mode: black
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Navigates to the appropriate event addition page
+  void _navigateToAddEvent(String eventType) async {
+    if (eventType == 'Personal') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LeaveManagementPage(),
+        ),
+      );
+    } else {
+      final newEvent = await Navigator.push<Map<String, dynamic>>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const OfficeAddEventPage(),
+        ),
+      );
+      if (newEvent != null) {
+        _addEvent(
+          title: newEvent['title'] ?? 'New Event',
+          startDateTime: DateTime.parse(newEvent['startDateTime']),
+          endDateTime: DateTime.parse(newEvent['endDateTime']),
+          description: newEvent['description'] ?? '',
+          status: 'Pending',
+          isMeeting: true,
+          category: 'Meetings',
+          uid: newEvent['uid'] ?? UniqueKey().toString(),
+        );
+        Fluttertoast.showToast(
+          msg: "Event Created Successfully",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.green[600],
+          textColor: Colors.white,
+        );
+      }
+    }
+  }
+
+  /// Adds a new event to the calendar
+  void _addEvent({
+    required String title,
+    required DateTime startDateTime,
+    required DateTime endDateTime,
+    required String description,
+    required String status,
+    required bool isMeeting,
+    required String category,
+    required String uid,
+  }) {
+    final newEvent = Events(
+      title: title,
+      start: startDateTime,
+      end: endDateTime,
+      desc: description,
+      status: status,
+      isMeeting: isMeeting,
+      category: category,
+      uid: uid,
+    );
+    final normalizedDay = normalizeDate(startDateTime);
+    setState(() {
+      if (events.value.containsKey(normalizedDay)) {
+        if (!events.value[normalizedDay]!.any((e) => e.uid == uid)) {
+          events.value[normalizedDay]!.add(newEvent);
+        }
+      } else {
+        events.value[normalizedDay] = [newEvent];
+      }
+      _filterAndSearchEvents();
+      _animationController.forward(from: 0.0);
+    });
+  }
+
+  /// Retrieves events for a specific day with duplicates filtered
+  List<Events> _getDubplicateEventsForDay(DateTime day) {
+    final normalizedDay = normalizeDate(day);
+    final listEvent = events.value[normalizedDay] ?? [];
+    List<Events> updateEvents = [];
+    if (listEvent.length > 4) {
+      for (var i in listEvent) {
+        if (updateEvents.isEmpty) {
+          updateEvents.add(i);
+        } else if (updateEvents.any((u) => u.category.contains(i.category))) {
+          // Skip duplicate categories
+        } else {
+          updateEvents.add(i);
+        }
+      }
+    } else {
+      updateEvents = listEvent;
+    }
+
+    return updateEvents;
+  }
+
+  /// Shows a modern snackbar with event counts
+  void _showEventCountsSnackbar(DateTime day, bool isDarkMode) {
+    final counts = _getEventCountsByCategory(day);
+    if (counts.isEmpty) return;
+
+    final formattedDate = DateFormat('EEE, dd MMM').format(day);
+
+    const categoryOrder = {
+      'Add Meeting': 1,
+      'Meeting Room Bookings': 2,
+      'Booking Car': 3,
+      'Minutes Of Meeting': 4,
+      'Leave': 5,
+    };
+
+    final sortedCounts = counts.entries.toList()
+      ..sort((a, b) =>
+          (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
+
+    final snackBar = SnackBar(
+      content: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 4,
+              height: 40,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    ColorStandardization().colorDarkGold,
+                    ColorStandardization().colorDarkGreen,
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_today,
+                        size: 16,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        formattedDate,
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: sortedCounts.map((entry) {
+                      final category = entry.key;
+                      final count = entry.value;
+                      final color = categoryColors[category] ?? Colors.grey;
+                      String displayCategory = '';
+
+                      switch (category) {
+                        case 'Add Meeting':
+                          displayCategory =
+                              AppLocalizations.of(context)!.meetingTitle;
+                        case 'Leave':
+                          displayCategory = AppLocalizations.of(context)!.leave;
+                        case 'Meeting Room Bookings':
+                          displayCategory =
+                              AppLocalizations.of(context)!.meetingRoomBookings;
+                        case 'Booking Car':
+                          displayCategory =
+                              AppLocalizations.of(context)!.bookingCar;
+                        case 'Minutes Of Meeting':
+                          displayCategory =
+                              AppLocalizations.of(context)!.minutesOfMeeting;
+                        default:
+                          displayCategory = category;
+                      }
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          border: Border.all(
+                              color: color.withOpacity(0.3), width: 1),
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              categoryIcon[category] != null
+                                  ? Icons.circle
+                                  : Icons.event,
+                              size: 8,
+                              color: color,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              displayCategory,
+                              style: TextStyle(
+                                color: isDarkMode
+                                    ? Colors.white.withOpacity(0.9)
+                                    : Colors.black87,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: color.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                count.toString(),
+                                style: TextStyle(
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black87,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: isDarkMode ? Colors.white10 : Colors.black.withOpacity(0.05),
+          width: 1,
+        ),
+      ),
+
+      margin: const EdgeInsets.fromLTRB(12, 50, 12, 30), // Top: 50, Bottom: 12
+      duration: const Duration(seconds: 4),
+      animation: CurvedAnimation(
+        parent: _animationController,
+        curve: Curves.elasticOut,
+        reverseCurve: Curves.easeOut,
+      ),
+      elevation: isDarkMode ? 8 : 4,
+      action: SnackBarAction(
+        label: 'OK',
+        textColor: ColorStandardization().colorDarkGold,
+        onPressed: () {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        },
+      ),
+    );
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+    _animationController.forward(from: 0.0);
+  }
+
+  /// Optimized event retrieval with caching
+  List<Events> _getEventsForDay(DateTime day) {
+    final normalizedDay = normalizeDate(day);
+    if (_processedEventsCache.containsKey(normalizedDay)) {
+      return _processedEventsCache[normalizedDay]!;
+    }
+    final result = events.value[normalizedDay] ?? [];
+    _processedEventsCache[normalizedDay] = result;
+    return result;
+  }
+
+  /// Optimized event counts with caching
+  Map<String, int> _getEventCountsByCategory(DateTime day) {
+    final normalizedDay = normalizeDate(day);
+    if (_eventCountsCache.containsKey(normalizedDay)) {
+      return _eventCountsCache[normalizedDay]!;
+    }
+
+    final events = _getEventsForDay(day);
+    final counts = <String, int>{};
+
+    for (var event in events) {
+      counts[event.category] = (counts[event.category] ?? 0) + 1;
+    }
+
+    _eventCountsCache[normalizedDay] = counts;
+    return counts;
   }
 }
 

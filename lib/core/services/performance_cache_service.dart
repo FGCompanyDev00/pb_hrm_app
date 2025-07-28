@@ -84,27 +84,16 @@ class PerformanceCacheService {
 
   /// Background persistence without blocking UI
   static void _persistCacheData(String key, Map<String, dynamic> cacheEntry) {
-    // Use compute for heavy serialization to avoid blocking UI
-    compute(_serializeAndPersist, {
-      'key': key,
-      'data': cacheEntry,
-    }).catchError((e) {
-      debugPrint('Error persisting cache data: $e');
+    // Use Future.microtask for non-blocking serialization
+    Future.microtask(() async {
+      try {
+        final serialized = jsonEncode(cacheEntry);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(key, serialized);
+      } catch (e) {
+        debugPrint('Error persisting cache data: $e');
+      }
     });
-  }
-
-  /// Isolate function for serialization
-  static Future<void> _serializeAndPersist(Map<String, dynamic> params) async {
-    try {
-      final key = params['key'] as String;
-      final data = params['data'];
-      final serialized = jsonEncode(data);
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(key, serialized);
-    } catch (e) {
-      debugPrint('Error in isolate serialization: $e');
-    }
   }
 
   /// Check if cache entry is still valid

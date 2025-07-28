@@ -3,6 +3,8 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io';
 
 class TestNotificationWidget extends StatefulWidget {
   const TestNotificationWidget({super.key});
@@ -11,18 +13,16 @@ class TestNotificationWidget extends StatefulWidget {
   TestNotificationWidgetState createState() => TestNotificationWidgetState();
 }
 
-class TestNotificationWidgetState extends State<TestNotificationWidget>
-    with SingleTickerProviderStateMixin {
+class TestNotificationWidgetState extends State<TestNotificationWidget> {
   late FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin;
-  late AnimationController _controller;
-  late Animation<Color?> _colorTween;
+  String _permissionStatus = 'Unknown';
+  String _lastNotificationResult = '';
 
   @override
   void initState() {
     super.initState();
     _initializeNotificationPlugin();
-    _requestPermissions();
-    _initializeAnimation();
+    _checkPermissions();
   }
 
   void _initializeNotificationPlugin() {
@@ -31,91 +31,142 @@ class TestNotificationWidgetState extends State<TestNotificationWidget>
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings =
-        InitializationSettings(android: initializationSettingsAndroid);
+    final DarwinInitializationSettings initializationSettingsIOS =
+        DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
+      onDidReceiveLocalNotification:
+          (int id, String? title, String? body, String? payload) async {
+        debugPrint('iOS local notification received: $title - $body');
+      },
+    );
+
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+      android: initializationSettingsAndroid,
+      iOS: initializationSettingsIOS,
+    );
 
     flutterLocalNotificationsPlugin.initialize(initializationSettings);
   }
 
-  Future<void> _requestPermissions() async {
-    final status = await Permission.notification.request();
-    if (status.isGranted) {
-      // Permission granted
-    } else if (status.isDenied || status.isPermanentlyDenied) {
-      // Permission denied
-      // Show a dialog or other UI to inform the user about the importance of this permission
+  Future<void> _checkPermissions() async {
+    try {
+      final status = await Permission.notification.status;
+      setState(() {
+        _permissionStatus = status.toString();
+      });
+
+      if (Platform.isIOS) {
+        // Check iOS-specific notification settings
+        final iosPlugin = flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>();
+
+        if (iosPlugin != null) {
+          final settings = await iosPlugin.requestPermissions(
+            alert: true,
+            badge: true,
+            sound: true,
+            critical: true,
+          );
+          debugPrint('iOS notification permission result: $settings');
+        }
+
+        // Check Firebase messaging permission
+        final firebaseSettings =
+            await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        debugPrint(
+            'Firebase permission status: ${firebaseSettings.authorizationStatus}');
+      }
+    } catch (e) {
+      debugPrint('Error checking permissions: $e');
+      setState(() {
+        _permissionStatus = 'Error: $e';
+      });
     }
   }
 
-  void _initializeAnimation() {
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(seconds: 3))
-          ..repeat(reverse: true);
+  Future<void> _requestPermissions() async {
+    try {
+      final status = await Permission.notification.request();
+      setState(() {
+        _permissionStatus = status.toString();
+      });
 
-    _colorTween = _controller.drive(
-      ColorTween(
-        begin: Colors.pink,
-        end: Colors.blue,
-      ),
-    );
+      if (status.isGranted) {
+        debugPrint('✅ Notification permission granted');
+      } else if (status.isDenied || status.isPermanentlyDenied) {
+        debugPrint('❌ Notification permission denied');
+      }
+    } catch (e) {
+      debugPrint('Error requesting permission: $e');
+      setState(() {
+        _permissionStatus = 'Error: $e';
+      });
+    }
   }
 
-  Future<void> _showTestNotification() async {
-    const AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'test_channel',
-      'Test Notifications',
-      importance: Importance.max,
-      priority: Priority.high,
-      showWhen: false,
-      icon: '@mipmap/ic_launcher',
-    );
+  Future<void> _sendTestNotification() async {
+    try {
+      const AndroidNotificationDetails androidPlatformChannelSpecifics =
+          AndroidNotificationDetails(
+        'test_channel',
+        'Test Notifications',
+        channelDescription: 'Channel for test notifications',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+      );
 
-    const DarwinNotificationDetails iOSPlatformChannelSpecifics =
-        DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      sound: 'default',
-      badgeNumber: 1,
-    );
+      const DarwinNotificationDetails iOSPlatformChannelSpecifics =
+          DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        interruptionLevel: InterruptionLevel.timeSensitive,
+      );
 
-    const NotificationDetails platformChannelSpecifics = NotificationDetails(
+      const NotificationDetails platformChannelSpecifics = NotificationDetails(
         android: androidPlatformChannelSpecifics,
-        iOS: iOSPlatformChannelSpecifics);
+        iOS: iOSPlatformChannelSpecifics,
+      );
 
-    await flutterLocalNotificationsPlugin.show(
-      0,
-      'Test Notification',
-      'This is a test notification',
-      platformChannelSpecifics,
-      payload: 'test_payload',
-    );
-  }
+      await flutterLocalNotificationsPlugin.show(
+        0,
+        'Test Notification',
+        'This is a test notification from the app',
+        platformChannelSpecifics,
+        payload: 'test_payload',
+      );
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+      setState(() {
+        _lastNotificationResult = 'Test notification sent successfully!';
+      });
+    } catch (e) {
+      debugPrint('Error sending test notification: $e');
+      setState(() {
+        _lastNotificationResult = 'Error: $e';
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final themeNotifier = Provider.of<ThemeNotifier>(context);
     final bool isDarkMode = themeNotifier.isDarkMode;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Test Notification'),
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(
-                  isDarkMode ? 'assets/darkbg.png' : 'assets/background.png'),
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
-        backgroundColor: Colors.transparent,
+        title: const Text('Test Notifications'),
+        backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -125,32 +176,117 @@ class TestNotificationWidgetState extends State<TestNotificationWidget>
             fit: BoxFit.cover,
           ),
         ),
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return ElevatedButton(
-                onPressed: _showTestNotification,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _colorTween.value,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 50, vertical: 20),
-                  textStyle: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Permission Status',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Current Status: $_permissionStatus',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _requestPermissions,
+                        child: const Text('Request Permission'),
+                      ),
+                    ],
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Test Notification',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Platform: ${Platform.isIOS ? 'iOS' : 'Android'}',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: _sendTestNotification,
+                        child: const Text('Send Test Notification'),
+                      ),
+                      if (_lastNotificationResult.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          _lastNotificationResult,
+                          style: TextStyle(
+                            color: _lastNotificationResult.contains('Error')
+                                ? Colors.red
+                                : Colors.green,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
-                  elevation: 10,
-                  shadowColor: _colorTween.value,
                 ),
-                child: const Text(
-                  'Show Test Notification',
-                  style: TextStyle(color: Colors.white),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Debug Information',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'iOS Version: ${Platform.operatingSystemVersion}',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Device: ${Platform.isIOS ? 'iPhone/iPad' : 'Android'}',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            },
+              ),
+            ],
           ),
         ),
       ),

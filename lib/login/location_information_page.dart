@@ -8,19 +8,92 @@ import 'package:provider/provider.dart';
 
 import '../settings/theme_notifier.dart';
 
-class LocationInformationPage extends StatelessWidget {
+class LocationInformationPage extends StatefulWidget {
   const LocationInformationPage({super.key});
 
+  @override
+  State<LocationInformationPage> createState() =>
+      _LocationInformationPageState();
+}
+
+class _LocationInformationPageState extends State<LocationInformationPage> {
+  bool _isRequestingPermission = false;
+
   Future<void> _requestLocationPermission(BuildContext context) async {
-    PermissionStatus status = await Permission.locationWhenInUse.status;
+    if (_isRequestingPermission) return;
 
-    // Request permission but proceed regardless of the result
-    if (status.isDenied || status.isRestricted) {
-      await Permission.locationWhenInUse.request();
+    setState(() {
+      _isRequestingPermission = true;
+    });
+
+    try {
+      await _requestLocationPermissions();
+    } catch (e) {
+      debugPrint('Error requesting location permission: $e');
+      _showErrorDialog(
+          'Failed to request location permission. Please try again.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRequestingPermission = false;
+        });
+      }
     }
+  }
 
-    // Proceed to next screen regardless of permission status
-    if (context.mounted) {
+  Future<void> _requestLocationPermissions() async {
+    try {
+      // Check current location permission status
+      PermissionStatus whenInUseStatus =
+          await Permission.locationWhenInUse.status;
+      PermissionStatus alwaysStatus = await Permission.locationAlways.status;
+
+      debugPrint('Location When In Use Status: $whenInUseStatus');
+      debugPrint('Location Always Status: $alwaysStatus');
+
+      // If either permission is already granted, proceed
+      if (whenInUseStatus.isGranted || alwaysStatus.isGranted) {
+        debugPrint('✅ Location permission already granted');
+        _proceedToNextScreen();
+        return;
+      }
+
+      // Request locationWhenInUse permission first
+      if (whenInUseStatus.isDenied || whenInUseStatus.isRestricted) {
+        debugPrint('Requesting locationWhenInUse permission...');
+        whenInUseStatus = await Permission.locationWhenInUse.request();
+        debugPrint('Location When In Use Result: $whenInUseStatus');
+      }
+
+      // If whenInUse was granted, try to request always permission
+      if (whenInUseStatus.isGranted) {
+        debugPrint(
+            '✅ Location When In Use granted, requesting Always permission...');
+        alwaysStatus = await Permission.locationAlways.request();
+        debugPrint('Location Always Result: $alwaysStatus');
+      }
+
+      // Check final status
+      if (whenInUseStatus.isGranted || alwaysStatus.isGranted) {
+        debugPrint('✅ Location permission granted');
+        _proceedToNextScreen();
+      } else if (whenInUseStatus.isPermanentlyDenied ||
+          alwaysStatus.isPermanentlyDenied) {
+        debugPrint('❌ Location permission permanently denied');
+        _showPermissionDeniedDialog();
+      } else {
+        debugPrint('⚠️ Location permission denied but not permanent');
+        _showPermissionDeniedDialog();
+      }
+    } catch (e) {
+      debugPrint('Error in location permission request: $e');
+      // Proceed anyway to avoid blocking the user
+      _proceedToNextScreen();
+    }
+  }
+
+  void _proceedToNextScreen() {
+    if (mounted) {
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -30,7 +103,52 @@ class LocationInformationPage extends StatelessWidget {
     }
   }
 
-  // Skip function removed as per Apple guidelines 5.1.1
+  void _showPermissionDeniedDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Location Permission'),
+        content: const Text(
+            'Location permission is required for attendance tracking and location-based features. Please enable location access in Settings to continue.'),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await openAppSettings();
+            },
+            child: const Text('Open Settings'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _proceedToNextScreen(); // Allow user to continue anyway
+            },
+            child: const Text('Continue Anyway'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _proceedToNextScreen(); // Allow user to continue anyway
+            },
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +204,9 @@ class LocationInformationPage extends StatelessWidget {
                 child: Column(
                   children: [
                     ElevatedButton(
-                      onPressed: () => _requestLocationPermission(context),
+                      onPressed: _isRequestingPermission
+                          ? null
+                          : () => _requestLocationPermission(context),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         padding: const EdgeInsets.symmetric(
@@ -95,8 +215,18 @@ class LocationInformationPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8.0),
                         ),
                       ),
-                      child: Text(AppLocalizations.of(context)!.next,
-                          style: const TextStyle(fontSize: 18)),
+                      child: _isRequestingPermission
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.white),
+                              ),
+                            )
+                          : Text(AppLocalizations.of(context)!.next,
+                              style: const TextStyle(fontSize: 18)),
                     ),
                   ],
                 ),

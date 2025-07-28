@@ -1,6 +1,6 @@
 // lib/main.dart
 
-// ignore_for_file: invalid_return_type_for_catch_error, use_build_context_synchronously, deprecated_member_use
+// ignore_for_file: invalid_return_type_for_catch_error, use_build_context_synchronously, deprecated_member_use, unused_import
 
 import 'dart:async';
 import 'dart:io';
@@ -1130,26 +1130,8 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     return false;
   }
 
-  Future<bool> _onWillPop() async {
-    final navState = _navigatorKeys[_selectedIndex].currentState;
-    if (navState == null) return true;
-    return !await navState.maybePop();
-  }
 
   // Optimize item tap handler
-  void _onItemTapped(int index) {
-    if (!mounted) return;
-
-    if (index != _selectedIndex) {
-      setState(() => _selectedIndex = index);
-      if (index == 1) {
-        final homeCalendarState = HomeCalendarState();
-        homeCalendarState.refresh();
-      }
-    } else {
-      _navigatorKeys[index].currentState?.popUntil((route) => route.isFirst);
-    }
-  }
 
   // Add tab change handler
   void _onTabChanged(int index) {

@@ -32,6 +32,10 @@
 	<string>We need access to Face ID for secure authentication and faster login.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We need your location to provide personalized location-based services, such as finding nearby stores or services.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>We need your location to provide personalized location-based services, such as finding nearby stores or services.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We need your location to provide personalized location-based services, such as finding nearby stores or services.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need access to add photos to your library when you save images from the app.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
