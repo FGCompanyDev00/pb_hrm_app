@@ -104,12 +104,15 @@ class OverFlowCalendarDayView<T extends Object> extends StatefulWidget {
   final List<OverflowEventsRow<T>> overflowEvents;
 
   @override
-  State<OverFlowCalendarDayView> createState() => _OverFlowCalendarDayViewState<T>();
+  State<OverFlowCalendarDayView> createState() =>
+      _OverFlowCalendarDayViewState<T>();
 }
 
-class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCalendarDayView<T>> {
+class _OverFlowCalendarDayViewState<T extends Object>
+    extends State<OverFlowCalendarDayView<T>> {
   DateTime _currentTime = DateTime.now();
-  ValueNotifier<DateTime> selectedDateNotifier = ValueNotifier<DateTime>(DateTime.now());
+  ValueNotifier<DateTime> selectedDateNotifier =
+      ValueNotifier<DateTime>(DateTime.now());
   Timer? _timer;
   double _rowScale = 1;
   late DateTime timeStart;
@@ -179,7 +182,9 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
                     return GestureDetector(
                       key: ValueKey(time.toString()),
                       behavior: HitTestBehavior.opaque,
-                      onTap: widget.onTimeTap == null ? null : () => widget.onTimeTap!(time),
+                      onTap: widget.onTimeTap == null
+                          ? null
+                          : () => widget.onTimeTap!(time),
                       child: SizedBox(
                         height: rowHeight,
                         width: viewWidth,
@@ -201,15 +206,22 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
                                   child: Column(
                                     children: [
                                       Text(
-                                        widget.time12 ? time.hourDisplayZero12 : time.hourDisplay24,
-                                        style: widget.timeTextStyle ?? TextStyle(color: widget.timeTextColor),
+                                        widget.time12
+                                            ? time.hourDisplayZero12
+                                            : time.hourDisplay24,
+                                        style: widget.timeTextStyle ??
+                                            TextStyle(
+                                                color: widget.timeTextColor),
                                         maxLines: 1,
                                       ),
                                       Visibility(
                                         visible: widget.time12,
                                         child: Text(
                                           time.displayAMPM,
-                                          style: widget.timeTextStyle ?? TextStyle(color: widget.timeTextColor, fontSize: 10),
+                                          style: widget.timeTextStyle ??
+                                              TextStyle(
+                                                  color: widget.timeTextColor,
+                                                  fontSize: 10),
                                           maxLines: 1,
                                         ),
                                       ),
@@ -244,9 +256,12 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
 
                       return child;
                     }),
-                if (widget.showCurrentTimeLine && _currentTime.isAfter(timeStart) && _currentTime.isBefore(timeEnd))
+                if (widget.showCurrentTimeLine &&
+                    _currentTime.isAfter(timeStart) &&
+                    _currentTime.isBefore(timeEnd))
                   CurrentTimeLineWidget(
-                    top: _currentTime.minuteFrom(timeStart).toDouble() * heightUnit,
+                    top: _currentTime.minuteFrom(timeStart).toDouble() *
+                        heightUnit,
                     width: constraints.maxWidth,
                     color: widget.currentTimeLineColor,
                   ),
@@ -262,45 +277,37 @@ class _OverFlowCalendarDayViewState<T extends Object> extends State<OverFlowCale
     final widgets = <Widget>[];
 
     for (final oEvents in widget.overflowEvents) {
-      final maxHeight = (heightUnit * oEvents.start.minuteUntil(oEvents.end).abs());
-
       for (var i = 0; i < oEvents.events.length; i++) {
-        widgets.add(
-          Builder(
-            builder: (context) {
-              final event = oEvents.events.elementAt(i);
-              final width = (eventColumnWith / oEvents.events.length) + 30;
-              final topGap = event.minutesFrom(oEvents.start) * heightUnit;
+        final event = oEvents.events[i];
+        final width = eventColumnWith / oEvents.events.length;
+        final topPosition = event.minutesFrom(oEvents.start) * heightUnit;
+        final tileHeight = widget.cropBottomEvents && event.end.isAfter(timeEnd)
+            ? (event.minutesFrom(oEvents.end).abs() * heightUnit)
+            : (event.durationInMins * heightUnit);
 
-              final tileHeight = (widget.cropBottomEvents && event.end.isAfter(timeEnd)) ? (maxHeight - topGap) : (event.durationInMins * heightUnit);
-
-              final tileConstraints = BoxConstraints(
-                maxHeight: tileHeight,
-                minHeight: tileHeight,
-                minWidth: width,
-                maxWidth: eventColumnWith,
-              );
-
-              return Positioned(
-                left: widget.timeTitleColumnWidth + oEvents.events.indexOf(event) * width,
-                top: event.minutesFrom(timeStart) * heightUnit,
-                child: widget.overflowItemBuilder!(
-                  context,
-                  tileConstraints,
-                  i,
-                  event,
-                ),
-              );
-            },
+        widgets.add(Positioned(
+          top: topPosition,
+          left: widget.timeTitleColumnWidth + (i * width),
+          child: Container(
+            constraints: BoxConstraints.tightFor(
+              height: tileHeight,
+              width: width,
+            ),
+            child: widget.overflowItemBuilder!(
+                context,
+                BoxConstraints.tightFor(height: tileHeight, width: width),
+                i,
+                event),
           ),
-        );
+        ));
       }
     }
     return widgets;
   }
 
 // to render all events in same row as a horizontal istView
-  List<Widget> renderAsListView(double heightUnit, double eventColumnWith, double totalHeight) {
+  List<Widget> renderAsListView(
+      double heightUnit, double eventColumnWith, double totalHeight) {
     return [
       for (final oEvents in widget.overflowEvents)
         Positioned(
