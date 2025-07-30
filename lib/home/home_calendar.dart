@@ -29,7 +29,6 @@ import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/home/leave_request_page.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:pb_hrsystem/core/services/performance_cache_service.dart';
 
 abstract class Refreshable {
   void refresh();
@@ -42,6 +41,10 @@ class HomeCalendar extends StatefulWidget {
   @override
   HomeCalendarState createState() => HomeCalendarState();
 }
+
+// Global key for accessing HomeCalendar state
+final GlobalKey<HomeCalendarState> homeCalendarGlobalKey =
+    GlobalKey<HomeCalendarState>();
 
 class HomeCalendarState extends State<HomeCalendar>
     with TickerProviderStateMixin
@@ -144,62 +147,198 @@ class HomeCalendarState extends State<HomeCalendar>
   void activateCalendarPage() {
     if (_activated) return;
     _activated = true;
-    // Load cache synchronously and start background refresh
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _instantLoadAndBackgroundRefresh();
+
+    // Check if this is first time user (no local storage data)
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _checkFirstTimeUserAndLoad();
     });
+
     // Handle connectivity changes smoothly - with mounted checks
     connectivityResult.onConnectivityChanged.listen((source) async {
       if (!mounted) return;
       if (source.contains(ConnectivityResult.none)) {
         await _loadLocalData();
       } else {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            _silentBackgroundRefresh();
-          }
-        });
+        // No longer doing silent background refresh - data is loaded on demand
+        debugPrint(
+            'Connectivity restored - data will be loaded on next navigation');
       }
     });
   }
 
-  /// Instant loading with background refresh - Google Calendar style
-  Future<void> _instantLoadAndBackgroundRefresh() async {
+  /// Check if first time user and load data accordingly
+  Future<void> _checkFirstTimeUserAndLoad() async {
     try {
-      // Step 1: Try to load cached data instantly (no loading state)
-      final bool hasCachedData = await _loadCachedDataInstantly();
+      // Check if we have local storage data
+      final hasLocalData = await _hasLocalStorageData();
 
-      if (hasCachedData) {
-        debugPrint('📱 Instantly loaded cached events');
+      if (hasLocalData) {
+        // Returning user - load from local storage instantly
+        debugPrint('🔄 Returning user - loading from local storage');
+        await _loadLocalDataInstantly();
         _isFirstTimeUser = false;
-        // Update UI immediately with cached data - single setState only
+      } else {
+        // First time user - show loading modal and fetch from API
+        debugPrint(
+            '🆕 First time user - showing loading modal and fetching from API');
+        _isFirstTimeUser = true;
+        _isBackgroundLoading = true;
+
         if (mounted) {
           setState(() {});
         }
-        // Process events in background to avoid UI lag
-        _processEventsInBackground();
-      } else {
-        // If no cache, try local storage for instant display
-        final bool hasLocalData = await _loadLocalData();
 
-        if (!hasLocalData) {
-          // This is a first-time user with no data
-          debugPrint('🆕 First-time user detected - no cached data available');
-          _isFirstTimeUser = true;
-          _isBackgroundLoading = true; // Show loading for first-time users
+        // Fetch all data from API and save to local storage
+        await _fetchAndSaveAllData();
 
-          if (mounted) {
-            setState(() {});
+        _isFirstTimeUser = false;
+        _isBackgroundLoading = false;
+
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    } catch (e) {
+      debugPrint('Error in first time user check: $e');
+      // Fallback to local data if available
+      await _loadLocalData();
+    }
+  }
+
+  /// Check if local storage has data
+  Future<bool> _hasLocalStorageData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasCachedEvents = prefs.getString('cached_calendar_events') != null;
+      final hasLocalEvents = await offlineProvider.getCalendar();
+
+      return hasCachedEvents || hasLocalEvents.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking local storage: $e');
+      return false;
+    }
+  }
+
+  /// Load data from local storage instantly (no loading indicators)
+  Future<void> _loadLocalDataInstantly() async {
+    try {
+      // Try SharedPreferences first
+      final prefs = await SharedPreferences.getInstance();
+      final cachedEventsJson = prefs.getString('cached_calendar_events');
+
+      if (cachedEventsJson != null && cachedEventsJson.isNotEmpty) {
+        try {
+          final List<dynamic> eventsList = jsonDecode(cachedEventsJson);
+          final List<Events> parsedEvents = [];
+
+          for (var item in eventsList) {
+            try {
+              final Map<String, dynamic> eventData =
+                  Map<String, dynamic>.from(item);
+              final event = Events.fromJson(eventData);
+              parsedEvents.add(event);
+            } catch (e) {
+              debugPrint('Error parsing individual event: $e');
+              debugPrint('Problematic event data: ${jsonEncode(item)}');
+              // Continue with other events
+            }
           }
+
+          if (parsedEvents.isNotEmpty) {
+            eventsForAll.clear();
+            events.value.clear();
+            eventsForAll.addAll(parsedEvents);
+            addEventOffline(parsedEvents);
+
+            debugPrint(
+                '⚡ Loaded ${parsedEvents.length} events from SharedPreferences');
+
+            // Debug: Count events by category
+            final Map<String, int> categoryCounts = {};
+            for (final event in parsedEvents) {
+              categoryCounts[event.category] =
+                  (categoryCounts[event.category] ?? 0) + 1;
+            }
+            debugPrint('📊 Events by category: $categoryCounts');
+
+            // Mark as loaded from local storage to prevent duplicate insertions
+            _hasLoadedFromLocalStorage = true;
+
+            return;
+          }
+        } catch (e) {
+          debugPrint('Error parsing cached events JSON: $e');
         }
       }
 
-      // Step 2: Always start background refresh (silent, no setState)
-      _silentBackgroundRefresh();
+      // Fallback to offline provider
+      try {
+        final localEvents = await offlineProvider.getCalendar();
+        if (localEvents.isNotEmpty) {
+          eventsForAll.clear();
+          events.value.clear();
+          eventsForAll.addAll(localEvents);
+          addEventOffline(localEvents);
+
+          debugPrint(
+              '⚡ Loaded ${localEvents.length} events from offline provider');
+        }
+      } catch (e) {
+        debugPrint('Error loading from offline provider: $e');
+      }
     } catch (e) {
-      debugPrint('Error in instant load: $e');
-      // Even if cache fails, start background refresh
-      _silentBackgroundRefresh();
+      debugPrint('Error loading local data instantly: $e');
+    }
+  }
+
+  /// Fetch all data from API and save to local storage
+  Future<void> _fetchAndSaveAllData() async {
+    try {
+      // Clear current data
+      eventsForAll.clear();
+      events.value.clear();
+
+      // Fetch all data concurrently
+      await Future.wait([
+        _fetchMeetingData(),
+        _fetchLeaveRequests(),
+        _fetchMeetingRoomBookings(),
+        _fetchMeetingRoomInvite(),
+        _fetchCarBookings(),
+        _fetchCarBookingsInvite(),
+        _fetchMinutesOfMeeting(),
+        _fetchMeetingMembers(),
+      ]);
+
+      // Save to local storage
+      if (eventsForAll.isNotEmpty) {
+        await _saveToLocalStorage();
+        // Only insert to offline provider if not already loaded from local storage
+        if (!_hasLoadedFromLocalStorage) {
+          await offlineProvider.insertCalendar(eventsForAll);
+        }
+        debugPrint('💾 Saved ${eventsForAll.length} events to local storage');
+      }
+    } catch (e) {
+      debugPrint('Error fetching and saving data: $e');
+    }
+  }
+
+  /// Save events to local storage
+  Future<void> _saveToLocalStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final List<Map<String, dynamic>> eventsJson = eventsForAll.map((event) {
+        return event.toJson();
+      }).toList();
+
+      await prefs.setString('cached_calendar_events', jsonEncode(eventsJson));
+      await prefs.setInt(
+          'calendar_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
+
+      debugPrint('💾 Events saved to SharedPreferences');
+    } catch (e) {
+      debugPrint('Error saving to local storage: $e');
     }
   }
 
@@ -223,148 +362,6 @@ class HomeCalendarState extends State<HomeCalendar>
         // Minimal state change to trigger rebuild
       });
     });
-  }
-
-  /// Silent background refresh without any loading indicators
-  void _silentBackgroundRefresh() {
-    Future.delayed(const Duration(milliseconds: 100), () async {
-      if (!mounted) return;
-
-      // Don't show any loading state for truly silent refresh
-      _isBackgroundLoading = true;
-
-      await _fetchFreshDataSilently();
-    });
-  }
-
-  /// Load cached data instantly with no validation delays
-  Future<bool> _loadCachedDataInstantly() async {
-    try {
-      // Try performance cache first
-      final cachedEventsData =
-          await PerformanceCacheService.getCachedCalendarEvents();
-      if (cachedEventsData != null && cachedEventsData.isNotEmpty) {
-        // Convert cached data to Events objects
-        final List<Events> cachedEvents = cachedEventsData.map((item) {
-          final Map<String, dynamic> eventData =
-              Map<String, dynamic>.from(item);
-          return Events.fromJson(eventData);
-        }).toList();
-
-        // Add cached events instantly
-        eventsForAll.clear();
-        events.value.clear();
-        eventsForAll.addAll(cachedEvents);
-        addEventOffline(cachedEvents);
-
-        debugPrint(
-            '⚡ Instant performance cache load: ${cachedEvents.length} events');
-        return true;
-      }
-
-      // Fallback to SharedPreferences cache
-      final prefs = await SharedPreferences.getInstance();
-      final cachedEventsJson = prefs.getString('cached_calendar_events');
-
-      // Accept any cache, even if old - better to show something than nothing
-      if (cachedEventsJson != null && cachedEventsJson.isNotEmpty) {
-        final List<dynamic> eventsList = jsonDecode(cachedEventsJson);
-        final List<Events> parsedEvents = eventsList.map((item) {
-          final Map<String, dynamic> eventData =
-              Map<String, dynamic>.from(item);
-          return Events.fromJson(eventData);
-        }).toList();
-
-        // Add cached events instantly
-        eventsForAll.clear();
-        events.value.clear();
-        eventsForAll.addAll(parsedEvents);
-        addEventOffline(parsedEvents);
-
-        final cacheTimestamp = prefs.getInt('calendar_cache_timestamp') ?? 0;
-        final cacheAge = DateTime.now().millisecondsSinceEpoch - cacheTimestamp;
-        debugPrint(
-            '⚡ Instant fallback cache load: ${parsedEvents.length} events (${(cacheAge / (1000 * 60)).round()} min old)');
-
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      debugPrint('Error in instant cache load: $e');
-      return false;
-    }
-  }
-
-  /// Fetch fresh data silently in background without UI disruption
-  Future<void> _fetchFreshDataSilently() async {
-    try {
-      // Check connectivity first
-      final connectivityStatus = await connectivityResult.checkConnectivity();
-      if (connectivityStatus.contains(ConnectivityResult.none)) {
-        _isBackgroundLoading = false;
-        return;
-      }
-
-      // Store previous events for comparison
-      final Set<String> previousEventIds =
-          eventsForAll.map((e) => e.uid).toSet();
-
-      // Create a temporary list to store fresh events
-      final List<Events> originalEvents = List.from(eventsForAll);
-
-      // Clear current events to fetch fresh data
-      eventsForAll.clear();
-      events.value.clear();
-
-      // Fetch all data concurrently
-      await Future.wait([
-        _fetchMeetingData(),
-        _fetchLeaveRequests(),
-        _fetchMeetingRoomBookings(),
-        _fetchMeetingRoomInvite(),
-        _fetchCarBookings(),
-        _fetchCarBookingsInvite(),
-        _fetchMinutesOfMeeting(),
-        _fetchMeetingMembers(),
-      ]);
-
-      // Cache the fresh data
-      if (eventsForAll.isNotEmpty) {
-        await _cacheFreshData();
-        await offlineProvider.insertCalendar(eventsForAll);
-
-        // Calculate new events for debugging only
-        final Set<String> currentEventIds =
-            eventsForAll.map((e) => e.uid).toSet();
-        final Set<String> newEventIds =
-            currentEventIds.difference(previousEventIds);
-
-        debugPrint(
-            '🔄 Silent refresh complete: ${newEventIds.length} new events, ${eventsForAll.length} total');
-
-        // Process events in background to avoid UI lag
-        _processEventsInBackground();
-      } else {
-        // If API fetch failed, restore original events
-        eventsForAll.addAll(originalEvents);
-        addEventOffline(originalEvents);
-        debugPrint('🔄 Silent refresh failed, restored cached events');
-        _processEventsInBackground();
-      }
-    } catch (e) {
-      debugPrint('Error in silent background refresh: $e');
-      // Don't break the app if background refresh fails
-    } finally {
-      // Silent completion - no setState to avoid lag
-      _isBackgroundLoading = false;
-      _isFirstTimeUser = false; // No longer first time user after first load
-
-      // Only update UI if there are actual changes, and do it smoothly
-      if (mounted) {
-        _smoothUIUpdate();
-      }
-    }
   }
 
   @override
@@ -436,35 +433,17 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
     }
-    _eventsOffline();
+    // Only call _eventsOffline() if we have a selected day
+    if (_selectedDay != null) {
+      _eventsOffline();
+    }
   }
 
-  /// Smart caching strategy for calendar data (legacy method - now using instant loading)
+  /// Smart caching strategy for calendar data (legacy method - now using new loading strategy)
   // ignore: unused_element
   Future<void> _fetchCalendarData() async {
-    // This method is kept for compatibility but now just calls the instant loading
-    await _instantLoadAndBackgroundRefresh();
-  }
-
-  /// Cache fresh data to both performance cache and SharedPreferences
-  Future<void> _cacheFreshData() async {
-    try {
-      // Convert events to JSON serializable format
-      final List<Map<String, dynamic>> eventsJson = eventsForAll.map((event) {
-        return event.toJson();
-      }).toList();
-
-      // Cache using performance cache service (primary)
-      await PerformanceCacheService.cacheCalendarEvents(eventsJson);
-
-      // Fallback cache using SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('cached_calendar_events', jsonEncode(eventsJson));
-      await prefs.setInt(
-          'calendar_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
-    } catch (e) {
-      debugPrint('Error caching calendar data: $e');
-    }
+    // This method is kept for compatibility but now just calls the new loading strategy
+    await _checkFirstTimeUserAndLoad();
   }
 
   /// Fetches all required data concurrently
@@ -509,10 +488,13 @@ class HomeCalendarState extends State<HomeCalendar>
         }
       }
 
-      // Explicitly store all fetched events to local storage
+      // Save to local storage (both SharedPreferences and offline provider)
       if (eventsForAll.isNotEmpty) {
+        await _saveToLocalStorage();
+        // Reset flag since this is fresh data from API
+        _hasLoadedFromLocalStorage = false;
         await offlineProvider.insertCalendar(eventsForAll);
-        debugPrint('Saved ${eventsForAll.length} events to local storage');
+        debugPrint('💾 Saved ${eventsForAll.length} events to local storage');
 
         // Show update info if requested and there are updates
         if (showUpdateInfo && mounted && updatedEventCount > 0) {
@@ -584,8 +566,6 @@ class HomeCalendarState extends State<HomeCalendar>
 
     // Reset refresh state
     _isRefreshing = false;
-    _hasFreshData = false;
-    _freshEvents.clear();
 
     // Start by clearing any cached data
     try {
@@ -1419,27 +1399,29 @@ class HomeCalendarState extends State<HomeCalendar>
 
   // Add new state variables for pull-to-refresh with cached data first
   bool _isRefreshing = false;
-  List<Events> _freshEvents = [];
-  bool _hasFreshData = false;
+  bool _hasLoadedFromLocalStorage =
+      false; // Track if we've loaded from local storage
+
   bool _isFirstTimeUser = false; // Track if this is first time user
 
-  /// Handles pull-to-refresh action with cached data first strategy
+  /// Handles pull-to-refresh action - manual refresh only
   Future<void> _onRefresh() async {
     // Don't start another refresh if one is already in progress
     if (_isRefreshing) return;
 
     try {
-      // Set refresh state
+      // Set refresh state and show loading indicator
       _isRefreshing = true;
-      _hasFreshData = false;
-      _freshEvents.clear();
+      _isBackgroundLoading = true;
 
-      // Keep existing data visible while refreshing in background
-      // This ensures user sees cached data immediately (fast loading)
-      debugPrint('🔄 Starting pull-to-refresh with cached data first');
+      if (mounted) {
+        setState(() {});
+      }
 
-      // Start background refresh without clearing current data
-      await _refreshWithCachedDataFirst();
+      debugPrint('🔄 Starting manual pull-to-refresh');
+
+      // Clear current data and fetch fresh data from APIs
+      await fetchData(showUpdateInfo: true);
 
       if (mounted) {
         // Update refresh key
@@ -1464,155 +1446,11 @@ class HomeCalendarState extends State<HomeCalendar>
       debugPrint('Error during refresh: $e');
     } finally {
       _isRefreshing = false;
-    }
-  }
-
-  /// Refresh strategy: show cached data first, fetch fresh data in background
-  Future<void> _refreshWithCachedDataFirst() async {
-    try {
-      // Check connectivity first
-      final connectivityStatus = await connectivityResult.checkConnectivity();
-      if (connectivityStatus.contains(ConnectivityResult.none)) {
-        debugPrint('🔄 No connectivity, keeping cached data');
-        return;
-      }
-
-      // Store current events for comparison
-      final Set<String> currentEventIds =
-          eventsForAll.map((e) => e.uid).toSet();
-
-      // Start background loading indicator
-      _isBackgroundLoading = true;
-
-      // Fetch fresh data in background without clearing current data
-      await _fetchFreshDataInBackground();
-
-      // Only update if we have fresh data and it's different
-      if (_hasFreshData && _freshEvents.isNotEmpty) {
-        final Set<String> freshEventIds =
-            _freshEvents.map((e) => e.uid).toSet();
-        final Set<String> newEventIds =
-            freshEventIds.difference(currentEventIds);
-
-        if (newEventIds.isNotEmpty ||
-            _freshEvents.length != eventsForAll.length) {
-          debugPrint(
-              '🔄 Updating to fresh data: ${newEventIds.length} new events');
-          await _updateToFreshData();
-        } else {
-          debugPrint('🔄 No new data, keeping current cached data');
-        }
-      } else {
-        debugPrint('🔄 No fresh data available, keeping cached data');
-      }
-    } catch (e) {
-      debugPrint('Error in refresh with cached data: $e');
-      // Keep existing data on error
-    } finally {
       _isBackgroundLoading = false;
-    }
-  }
 
-  /// Fetch fresh data in background without affecting current UI
-  Future<void> _fetchFreshDataInBackground() async {
-    try {
-      // Create temporary lists to store fresh data
-      final List<Events> tempEventsForAll = [];
-      final Map<DateTime, List<Events>> tempEvents = {};
-
-      // Fetch all data concurrently with individual error handling
-      await Future.wait([
-        _fetchMeetingDataToTemp(tempEventsForAll, tempEvents),
-        _fetchLeaveRequestsToTemp(tempEventsForAll, tempEvents),
-        _fetchMeetingRoomBookingsToTemp(tempEventsForAll, tempEvents),
-        _fetchMeetingRoomInviteToTemp(tempEventsForAll, tempEvents),
-        _fetchCarBookingsToTemp(tempEventsForAll, tempEvents),
-        _fetchCarBookingsInviteToTemp(tempEventsForAll, tempEvents),
-        _fetchMinutesOfMeetingToTemp(tempEventsForAll, tempEvents),
-        _fetchMeetingMembersToTemp(tempEventsForAll, tempEvents),
-      ].map((future) => future.catchError((e) {
-            debugPrint('Error in background fetch: $e');
-            return null;
-          })));
-
-      // Store fresh data for later use
-      if (tempEventsForAll.isNotEmpty) {
-        _freshEvents = List.from(tempEventsForAll);
-        _hasFreshData = true;
-
-        // Cache the fresh data with error handling
-        try {
-          await _cacheFreshDataFromList(_freshEvents);
-        } catch (e) {
-          debugPrint('Error caching fresh data: $e');
-        }
-
-        try {
-          await offlineProvider.insertCalendar(_freshEvents);
-        } catch (e) {
-          debugPrint('Error inserting to offline provider: $e');
-        }
-
-        debugPrint('🔄 Fresh data fetched: ${_freshEvents.length} events');
-      } else {
-        debugPrint('🔄 No fresh data fetched from APIs');
-        _hasFreshData = false;
+      if (mounted) {
+        setState(() {});
       }
-    } catch (e) {
-      debugPrint('Error fetching fresh data in background: $e');
-      _hasFreshData = false;
-    }
-  }
-
-  /// Update UI to fresh data when available
-  Future<void> _updateToFreshData() async {
-    if (!_hasFreshData || _freshEvents.isEmpty) return;
-
-    try {
-      // Replace current data with fresh data
-      eventsForAll.clear();
-      events.value.clear();
-      eventsForAll.addAll(_freshEvents);
-      addEventOffline(_freshEvents);
-
-      // Clear caches to force rebuild
-      _clearCaches();
-
-      // Process events in background
-      _processEventsInBackground();
-
-      debugPrint('🔄 Successfully updated to fresh data');
-    } catch (e) {
-      debugPrint('Error updating to fresh data: $e');
-    }
-  }
-
-  /// Cache fresh data from list
-  Future<void> _cacheFreshDataFromList(List<Events> eventsList) async {
-    try {
-      // Convert events to JSON serializable format
-      final List<Map<String, dynamic>> eventsJson = eventsList.map((event) {
-        return event.toJson();
-      }).toList();
-
-      // Cache using performance cache service (primary) with error handling
-      try {
-        await PerformanceCacheService.cacheCalendarEvents(eventsJson);
-      } catch (e) {
-        debugPrint('Error with performance cache, using fallback: $e');
-      }
-
-      // Fallback cache using SharedPreferences
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('cached_calendar_events', jsonEncode(eventsJson));
-        await prefs.setInt(
-            'calendar_cache_timestamp', DateTime.now().millisecondsSinceEpoch);
-      } catch (e) {
-        debugPrint('Error with SharedPreferences cache: $e');
-      }
-    } catch (e) {
-      debugPrint('Error caching fresh data: $e');
     }
   }
 
@@ -2266,120 +2104,25 @@ class HomeCalendarState extends State<HomeCalendar>
     if (!mounted) return;
 
     final bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final List<Widget> categoryUpdates = [];
-
-    // Sort categories by predefined order
-    const categoryOrder = {
-      'Add Meeting': 1,
-      'Meeting Room Bookings': 2,
-      'Booking Car': 3,
-      'Minutes Of Meeting': 4,
-      'Leave': 5,
-    };
-
-    final sortedCategories = updatedEventsByCategory.entries.toList()
-      ..sort((a, b) =>
-          (categoryOrder[a.key] ?? 99).compareTo(categoryOrder[b.key] ?? 99));
-
-    // Create category update widgets
-    for (final entry in sortedCategories) {
-      final String categoryName = _getCategoryDisplayName(entry.key);
-      final Color categoryColor = categoryColors[entry.key] ?? Colors.grey;
-
-      categoryUpdates.add(
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          margin: const EdgeInsets.only(top: 5),
-          decoration: BoxDecoration(
-            color: categoryColor.withOpacity(0.15),
-            border: Border.all(color: categoryColor.withOpacity(0.3), width: 1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                categoryIcon[entry.key] != null ? Icons.circle : Icons.event,
-                size: 8,
-                color: categoryColor,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                categoryName,
-                style: TextStyle(
-                  color: isDarkMode
-                      ? Colors.white.withOpacity(0.9)
-                      : Colors.black87,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                decoration: BoxDecoration(
-                  color: categoryColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  '+${entry.value}',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     final snackBar = SnackBar(
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      content: Row(
         children: [
-          Row(
-            children: [
-              Icon(
-                Icons.update,
-                color: isDarkMode ? Colors.green[300] : Colors.green[700],
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  updatedEventCount > 0
-                      ? "Calendar Updated"
-                      : "Calendar Refreshed",
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
-                  ),
-                ),
-              ),
-            ],
+          Icon(
+            Icons.update,
+            color: isDarkMode ? Colors.green[300] : Colors.green[700],
+            size: 18,
           ),
-          if (updatedEventCount > 0) ...[
-            const SizedBox(height: 8),
-            Text(
-              updatedEventCount == 1
-                  ? "1 new event added"
-                  : "$updatedEventCount new events added",
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Calendar successfully updated",
               style: TextStyle(
-                fontSize: 13,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black87,
               ),
             ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: categoryUpdates,
-            ),
-          ],
+          ),
         ],
       ),
       backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
@@ -2392,7 +2135,7 @@ class HomeCalendarState extends State<HomeCalendar>
         ),
       ),
       margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 3),
       action: SnackBarAction(
         label: 'OK',
         textColor: ColorStandardization().colorDarkGold,
@@ -2930,11 +2673,6 @@ class HomeCalendarState extends State<HomeCalendar>
     // Only clear caches if we have new data
     if (eventsForAll.isNotEmpty) {
       _clearCaches();
-    }
-
-    // Save all events to offline storage to ensure data persistence (async to not block UI)
-    if (eventsForAll.isNotEmpty) {
-      Future(() => offlineProvider.insertCalendar(eventsForAll));
     }
 
     final dayEvents = _getEventsForDay(_selectedDay!);

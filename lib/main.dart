@@ -893,7 +893,7 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       Navigator(
         key: _navigatorKeys[1],
         onGenerateRoute: (_) => MaterialPageRoute(
-          builder: (_) => const HomeCalendar(),
+          builder: (_) => HomeCalendar(key: homeCalendarGlobalKey),
         ),
       ),
       Navigator(
@@ -934,107 +934,27 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   void _updateCalendarData() {
     if (_selectedIndex != 1) return; // Only update if calendar tab is selected
 
-    // Schedule calendar update after UI is fully initialized
+    // Schedule calendar activation after UI is fully initialized
     Future.delayed(const Duration(seconds: 1), () {
       if (mounted && !_isDisposed) {
-        // Find the calendar widget in the widget tree and update its data
-        final context = _navigatorKeys[1].currentContext;
-        if (context != null) {
-          // Clear any S3 related caches first to ensure fresh data
-          try {
-            // Since we're coming from login, assume profiles/images need refresh
-            // This helps clear any expired S3 URLs that might be cached
-            DefaultCacheManager().emptyCache();
-
-            // Log the refresh attempt
-            debugPrint('Refreshing calendar data after tab selection');
-          } catch (e) {
-            debugPrint('Error clearing cache: $e');
+        // Use global key to access HomeCalendar state and activate it
+        try {
+          final state = homeCalendarGlobalKey.currentState;
+          if (state != null) {
+            // Activate the calendar page which will handle first-time vs returning user logic
+            state.activateCalendarPage();
+            debugPrint('Successfully activated calendar page using global key');
+          } else {
+            debugPrint('HomeCalendar state not available via global key');
           }
-
-          // Use the HomeCalendar's refresh method if it's already available as a refreshable
-          final refreshables = <Refreshable>[];
-          void collectRefreshables(Element element) {
-            if (element.widget is Refreshable) {
-              refreshables.add(element.widget as Refreshable);
-            }
-            element.visitChildren(collectRefreshables);
-          }
-
-          // Start collecting from the Navigator's context
-          if (context is Element) {
-            context.visitChildren(collectRefreshables);
-          }
-
-          // Refresh any found HomeCalendar instances with complete refresh
-          for (final refreshable in refreshables) {
-            // Use the more thorough complete refresh for post-login scenarios
-            refreshable.forceCompleteRefresh();
-          }
-
-          // Also try to access HomeCalendarState directly if possible
-          try {
-            final state = context.findAncestorStateOfType<HomeCalendarState>();
-            if (state != null) {
-              // Force a complete refresh with data fetch to handle expired S3 URLs
-              state.forceCompleteRefresh();
-              debugPrint('Successfully refreshed calendar data');
-            }
-          } catch (e) {
-            debugPrint('Error refreshing calendar: $e');
-            // If direct state access fails, try a fallback approach
-            try {
-              _forceCalendarUpdate(context);
-            } catch (e) {
-              debugPrint('Error with fallback calendar refresh: $e');
-            }
-          }
+        } catch (e) {
+          debugPrint('Error activating calendar: $e');
         }
       }
     });
   }
 
-  // Fallback method to force calendar update using notification system
-  void _forceCalendarUpdate(BuildContext context) {
-    try {
-      // Use the notification system to trigger a refresh
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        // This will request a complete refresh of calendar data
-        debugPrint('Using fallback method to refresh calendar data');
-
-        // Find first calendar widget and trigger its refresh
-        final list = <Element>[];
-        void collectElements(Element element) {
-          if (element.widget.toString().contains('HomeCalendar')) {
-            list.add(element);
-          }
-          element.visitChildren(collectElements);
-        }
-
-        if (context is Element) {
-          context.visitChildren(collectElements);
-
-          if (list.isNotEmpty) {
-            // Try to force a refresh via state
-            final element = list.first;
-            try {
-              // Access any HomeCalendar instance
-              final state =
-                  element.findAncestorStateOfType<HomeCalendarState>();
-              if (state != null) {
-                // Use the enhanced complete refresh method instead
-                state.forceCompleteRefresh();
-              }
-            } catch (e) {
-              debugPrint('Error in fallback refresh: $e');
-            }
-          }
-        }
-      });
-    } catch (e) {
-      debugPrint('Error in force calendar update: $e');
-    }
-  }
+  // Fallback method to force calendar update using global key
 
   // Handle memory management
   void _performMemoryManagement() {
@@ -1129,7 +1049,6 @@ class MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
     return false;
   }
-
 
   // Optimize item tap handler
 

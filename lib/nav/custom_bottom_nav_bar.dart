@@ -17,7 +17,8 @@ class CustomBottomNavBar extends StatefulWidget {
   CustomBottomNavBarState createState() => CustomBottomNavBarState();
 }
 
-class CustomBottomNavBarState extends State<CustomBottomNavBar> with SingleTickerProviderStateMixin {
+class CustomBottomNavBarState extends State<CustomBottomNavBar>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<Color?> _colorAnimation;
 
@@ -66,7 +67,9 @@ class CustomBottomNavBarState extends State<CustomBottomNavBar> with SingleTicke
         TabItem(
           icon: Icon(
             Icons.fingerprint,
-            color: widget.currentIndex == 0 ? (isDarkMode ? Colors.green : Colors.orangeAccent) : (isDarkMode ? Colors.grey : Colors.grey),
+            color: widget.currentIndex == 0
+                ? (isDarkMode ? Colors.green : Colors.orangeAccent)
+                : (isDarkMode ? Colors.grey : Colors.grey),
             size: iconSize.clamp(28, 35),
           ),
         ),
@@ -78,8 +81,11 @@ class CustomBottomNavBarState extends State<CustomBottomNavBar> with SingleTicke
               bool isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
               // If it's dark mode, just use a fixed orange color
-              Color borderColor = isDarkMode ? Colors.orange : _colorAnimation.value!;
-              Color shadowColor = isDarkMode ? Colors.orange.withOpacity(0.7) : _colorAnimation.value!.withOpacity(0.7);
+              Color borderColor =
+                  isDarkMode ? Colors.orange : _colorAnimation.value!;
+              Color shadowColor = isDarkMode
+                  ? Colors.orange.withOpacity(0.7)
+                  : _colorAnimation.value!.withOpacity(0.7);
 
               return Container(
                 width: homeIconSize,
@@ -114,7 +120,9 @@ class CustomBottomNavBarState extends State<CustomBottomNavBar> with SingleTicke
         TabItem(
           icon: Icon(
             Icons.apps,
-            color: widget.currentIndex == 2 ? (isDarkMode ? Colors.green : Colors.orangeAccent) : (isDarkMode ? Colors.grey : Colors.grey),
+            color: widget.currentIndex == 2
+                ? (isDarkMode ? Colors.green : Colors.orangeAccent)
+                : (isDarkMode ? Colors.grey : Colors.grey),
             size: iconSize.clamp(28, 35),
           ),
         ),
@@ -127,7 +135,9 @@ class CustomBottomNavBarState extends State<CustomBottomNavBar> with SingleTicke
       height: navBarHeight.clamp(60, 80),
       curveSize: 90,
       top: -15,
-      shadowColor: isDarkMode ? Colors.black.withOpacity(0.5) : Colors.black38.withOpacity(0.1),
+      shadowColor: isDarkMode
+          ? Colors.black.withOpacity(0.5)
+          : Colors.black38.withOpacity(0.1),
       elevation: 16,
     );
   }

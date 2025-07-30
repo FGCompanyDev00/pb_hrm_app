@@ -98,29 +98,62 @@ class Events {
 
   factory Events.fromJson(Map<String, dynamic> json) {
     return Events(
-      title: json['title'],
+      title: _parseString(json['title']) ?? '',
       start: DateTime.parse(json['startDateTime']),
       end: DateTime.parse(json['endDateTime']),
-      desc: json['description'],
-      status: json['status'],
-      isMeeting: (json['isMeeting'] as num) == 1 ? true : false,
-      location: json['location'],
-      createdBy: json['createdBy'],
-      imgName: json['imgName'],
-      createdAt: json['createdAt'],
-      uid: json['uid'],
-      isRepeat: json['isRepeat'],
-      videoConference: json['videoConference'],
+      desc: _parseString(json['description']) ?? '',
+      status: _parseString(json['status']) ?? '',
+      isMeeting: _parseIsMeeting(json['isMeeting']),
+      location: _parseString(json['location']),
+      createdBy: _parseString(json['createdBy']),
+      imgName: _parseString(json['imgName']),
+      createdAt: _parseString(json['createdAt']),
+      uid: _parseString(json['uid']) ?? '',
+      isRepeat: _parseString(json['isRepeat']),
+      videoConference: _parseString(json['videoConference']),
       backgroundColor: json['backgroundColor'] != null
-          ? parseColorTime(json['backgroundColor'])
+          ? parseColorTime(json['backgroundColor'].toString())
           : null,
-      outmeetingUid: json['outmeetingUid'],
-      leaveType: json['leaveType'],
-      fileName: json['fileName'],
-      category: json['category'],
-      days: (json['days'] as num?)?.toDouble(),
+      outmeetingUid: _parseString(json['outmeetingUid']),
+      leaveType: _parseString(json['leaveType']),
+      fileName: _parseString(json['fileName']),
+      category: _parseString(json['category']) ?? '',
+      days: _parseDays(json['days']),
       members: parseMembers(json['members']),
     );
+  }
+
+  /// Helper method to safely parse string fields
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    return value.toString();
+  }
+
+  /// Helper method to safely parse isMeeting field
+  static bool _parseIsMeeting(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      return value == '1' || value.toLowerCase() == 'true';
+    }
+    return false;
+  }
+
+  /// Helper method to safely parse days field
+  static double? _parseDays(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   /// Returns formatted time for display
@@ -136,20 +169,20 @@ class Events {
     }
 
     try {
-    if (members is String) {
-      try {
-        // Parse the JSON string into a list of maps
+      if (members is String) {
+        try {
+          // Parse the JSON string into a list of maps
           if (members.isEmpty) {
             return [];
           }
-        final List<dynamic> decoded = jsonDecode(members);
-        return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (e) {
-        // Handle invalid JSON strings gracefully
+          final List<dynamic> decoded = jsonDecode(members);
+          return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        } catch (e) {
+          // Handle invalid JSON strings gracefully
           debugPrint('Error decoding members string: $e');
           return [];
-      }
-    } else if (members is List) {
+        }
+      } else if (members is List) {
         try {
           // Create a new list to avoid modifying a read-only list
           return members.map((e) {

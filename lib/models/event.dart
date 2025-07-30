@@ -73,17 +73,17 @@ class Events {
 
   factory Events.fromJson(Map<String, dynamic> json) {
     return Events(
-      title: json['title'],
+      title: json['title'] ?? '',
       startDateTime: DateTime.parse(json['startDateTime']),
       endDateTime: DateTime.parse(json['endDateTime']),
-      description: json['description'],
-      status: json['status'],
-      isMeeting: (json['isMeeting'] as num) == 1 ? true : false,
+      description: json['description'] ?? '',
+      status: json['status'] ?? '',
+      isMeeting: _parseIsMeeting(json['isMeeting']),
       location: json['location'],
       createdBy: json['createdBy'],
       imgName: json['imgName'],
       createdAt: json['createdAt'],
-      uid: json['uid'],
+      uid: json['uid'] ?? '',
       isRepeat: json['isRepeat'],
       videoConference: json['videoConference'],
       backgroundColor: json['backgroundColor'] != null
@@ -91,10 +91,36 @@ class Events {
           : null,
       outmeetingUid: json['outmeetingUid'],
       leaveType: json['leaveType'],
-      category: json['category'],
-      days: (json['days'] as num?)?.toDouble(),
+      category: json['category'] ?? '',
+      days: _parseDays(json['days']),
       members: parseMembers(json['members']),
     );
+  }
+
+  /// Helper method to safely parse isMeeting field
+  static bool _parseIsMeeting(dynamic value) {
+    if (value == null) return false;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      return value == '1' || value.toLowerCase() == 'true';
+    }
+    return false;
+  }
+
+  /// Helper method to safely parse days field
+  static double? _parseDays(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      try {
+        return double.parse(value);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   /// Returns formatted time for display
