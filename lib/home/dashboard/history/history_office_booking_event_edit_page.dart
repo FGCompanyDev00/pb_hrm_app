@@ -486,10 +486,12 @@ class OfficeBookingEventEditPageState
     setState(() {
       _minutesOfMeetingTitleController.text = data['title'] ?? '';
 
-      // Convert fromdate and todate to display format
+      // Convert fromdate and todate to display format (date only)
       if (data['fromdate'] != null) {
         try {
           DateTime fromDate = DateTime.parse(data['fromdate']);
+          // Store the full datetime for later use in update
+          _startDateTime = fromDate;
           _minutesOfMeetingFromController.text =
               DateFormat('dd-MM-yyyy').format(fromDate);
         } catch (e) {
@@ -500,6 +502,8 @@ class OfficeBookingEventEditPageState
       if (data['todate'] != null) {
         try {
           DateTime toDate = DateTime.parse(data['todate']);
+          // Store the full datetime for later use in update
+          _endDateTime = toDate;
           _minutesOfMeetingToController.text =
               DateFormat('dd-MM-yyyy').format(toDate);
         } catch (e) {
@@ -716,14 +720,18 @@ class OfficeBookingEventEditPageState
           label: AppLocalizations.of(context)!.fromDateLabel,
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () => _selectDateForLeave(context, _leaveFromController, true),
         ),
         const SizedBox(height: 16.0),
         // To Date Label and Picker
         _buildStyledTextField(
-          controller: _leaveFromController,
+          controller: _leaveToController,
           label: AppLocalizations.of(context)!.toDateLabel,
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () => _selectDateForLeave(context, _leaveToController, false),
         ),
         const SizedBox(height: 16.0),
         // Reason Label and Input
@@ -762,6 +770,9 @@ class OfficeBookingEventEditPageState
           label: AppLocalizations.of(context)!.fromDateLabel,
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () =>
+              _selectDateTimeForMeeting(context, _meetingFromController, true),
         ),
         const SizedBox(height: 16.0),
         // To Date Label and Picker
@@ -770,6 +781,9 @@ class OfficeBookingEventEditPageState
           label: AppLocalizations.of(context)!.toDateLabel,
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () =>
+              _selectDateTimeForMeeting(context, _meetingToController, false),
         ),
         const SizedBox(height: 16.0),
         // Room Label and Dropdown
@@ -833,6 +847,9 @@ class OfficeBookingEventEditPageState
           label: AppLocalizations.of(context)!.dateInLabel,
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () =>
+              _selectDateTimeForCar(context, _carDateInController, true),
         ),
         const SizedBox(height: 16.0),
         // Date Out Label and Picker
@@ -841,6 +858,9 @@ class OfficeBookingEventEditPageState
           label: AppLocalizations.of(context)!.dateOutLabel,
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () =>
+              _selectDateTimeForCar(context, _carDateOutController, false),
         ),
       ],
     );
@@ -862,18 +882,24 @@ class OfficeBookingEventEditPageState
         // From Date Label and Picker
         _buildStyledTextField(
           controller: _minutesOfMeetingFromController,
-          label: AppLocalizations.of(context)!.fromDateLabel,
+          label: 'From Date',
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () => _selectDateOnlyForMinutesMeeting(
+              context, _minutesOfMeetingFromController, true),
         ),
         const SizedBox(height: 16.0),
 
         // To Date Label and Picker
         _buildStyledTextField(
           controller: _minutesOfMeetingToController,
-          label: AppLocalizations.of(context)!.toDateLabel,
+          label: 'To Date',
           isRequired: true,
           prefixIcon: Icons.calendar_today,
+          readOnly: true,
+          onTap: () => _selectDateOnlyForMinutesMeeting(
+              context, _minutesOfMeetingToController, false),
         ),
         const SizedBox(height: 16.0),
 
@@ -1141,19 +1167,38 @@ class OfficeBookingEventEditPageState
           String fromDateFormatted;
           String toDateFormatted;
           try {
-            // Parse from display format to DateTime
-            DateTime fromDate = DateFormat('dd-MM-yyyy')
+            // Parse from display format (dd-MM-yyyy HH:mm) to DateTime
+            DateTime fromDate = DateFormat('dd-MM-yyyy HH:mm')
                 .parse(_minutesOfMeetingFromController.text);
-            DateTime toDate = DateFormat('dd-MM-yyyy')
+            DateTime toDate = DateFormat('dd-MM-yyyy HH:mm')
                 .parse(_minutesOfMeetingToController.text);
 
-            // Format to API format
+            // Format to API format (yyyy-MM-dd)
             fromDateFormatted = DateFormat('yyyy-MM-dd').format(fromDate);
             toDateFormatted = DateFormat('yyyy-MM-dd').format(toDate);
           } catch (e) {
-            // If dates can't be parsed, just use the text as is
-            fromDateFormatted = _minutesOfMeetingFromController.text;
-            toDateFormatted = _minutesOfMeetingToController.text;
+            // If dates can't be parsed, try parsing just the date part
+            try {
+              DateTime fromDate = DateFormat('dd-MM-yyyy')
+                  .parse(_minutesOfMeetingFromController.text);
+              DateTime toDate = DateFormat('dd-MM-yyyy')
+                  .parse(_minutesOfMeetingToController.text);
+
+              fromDateFormatted = DateFormat('yyyy-MM-dd').format(fromDate);
+              toDateFormatted = DateFormat('yyyy-MM-dd').format(toDate);
+            } catch (e2) {
+              // If still can't parse, use the stored DateTime objects
+              if (_startDateTime != null && _endDateTime != null) {
+                fromDateFormatted =
+                    DateFormat('yyyy-MM-dd').format(_startDateTime!);
+                toDateFormatted =
+                    DateFormat('yyyy-MM-dd').format(_endDateTime!);
+              } else {
+                // Last resort: use the text as is
+                fromDateFormatted = _minutesOfMeetingFromController.text;
+                toDateFormatted = _minutesOfMeetingToController.text;
+              }
+            }
           }
 
           // Debug the selectedMembers list
@@ -1511,6 +1556,196 @@ class OfficeBookingEventEditPageState
         // Format for display (dd-MM-yyyy)
         dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
       });
+    }
+  }
+
+  /// Select date-only picker for minutes of meeting
+  Future<void> _selectDateOnlyForMinutesMeeting(BuildContext context,
+      TextEditingController dateController, bool isStartDate) async {
+    final DateTime currentDate = DateTime.now();
+    DateTime initialDate;
+
+    // Try to parse the existing date
+    try {
+      initialDate = DateFormat('dd-MM-yyyy').parse(dateController.text);
+    } catch (e) {
+      initialDate = isStartDate
+          ? (_startDateTime ?? currentDate)
+          : (_endDateTime ?? currentDate);
+    }
+
+    final DateTime firstDate = currentDate.subtract(const Duration(days: 365));
+    final DateTime lastDate = currentDate.add(const Duration(days: 365 * 5));
+
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        if (isStartDate) {
+          // Set time to 00:00 for start date
+          _startDateTime =
+              DateTime(pickedDate.year, pickedDate.month, pickedDate.day, 0, 0);
+        } else {
+          // Set time to 00:00 for end date
+          _endDateTime =
+              DateTime(pickedDate.year, pickedDate.month, pickedDate.day, 0, 0);
+        }
+
+        // Display format: date only
+        dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
+      });
+    }
+  }
+
+  /// Select date and time picker for meeting room booking
+  Future<void> _selectDateTimeForMeeting(BuildContext context,
+      TextEditingController dateController, bool isStartDate) async {
+    final DateTime currentDate = DateTime.now();
+    DateTime initialDate;
+
+    // Try to parse the existing datetime
+    try {
+      initialDate = DateFormat('dd-MM-yyyy HH:mm').parse(dateController.text);
+    } catch (e) {
+      // If parsing fails, try to parse just the date
+      try {
+        initialDate = DateFormat('dd-MM-yyyy').parse(dateController.text);
+      } catch (e2) {
+        initialDate = currentDate;
+      }
+    }
+
+    final DateTime firstDate = currentDate.subtract(const Duration(days: 365));
+    final DateTime lastDate = currentDate.add(const Duration(days: 365 * 5));
+
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+      );
+
+      if (pickedTime != null) {
+        final DateTime pickedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        setState(() {
+          if (isStartDate) {
+            _startDateTime = pickedDateTime;
+            // Ensure end date/time is after start date/time
+            if (_endDateTime != null &&
+                _endDateTime!.isBefore(_startDateTime!)) {
+              _endDateTime = _startDateTime!.add(const Duration(hours: 1));
+              _meetingToController.text =
+                  DateFormat('dd-MM-yyyy HH:mm').format(_endDateTime!);
+            }
+          } else {
+            _endDateTime = pickedDateTime;
+          }
+
+          dateController.text =
+              DateFormat('dd-MM-yyyy HH:mm').format(pickedDateTime);
+        });
+      }
+    }
+  }
+
+  /// Select date picker for leave requests (date only, no time)
+  Future<void> _selectDateForLeave(BuildContext context,
+      TextEditingController dateController, bool isStartDate) async {
+    final DateTime currentDate = DateTime.now();
+    DateTime initialDate;
+
+    // Try to parse the existing date
+    try {
+      initialDate = DateFormat('dd-MM-yyyy').parse(dateController.text);
+    } catch (e) {
+      initialDate = currentDate;
+    }
+
+    final DateTime firstDate = currentDate.subtract(const Duration(days: 365));
+    final DateTime lastDate = currentDate.add(const Duration(days: 365 * 5));
+
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        // Display format: date only
+        dateController.text = DateFormat('dd-MM-yyyy').format(pickedDate);
+      });
+    }
+  }
+
+  /// Select date and time picker for car bookings
+  Future<void> _selectDateTimeForCar(BuildContext context,
+      TextEditingController dateController, bool isStartDate) async {
+    final DateTime currentDate = DateTime.now();
+    DateTime initialDate;
+
+    // Try to parse the existing datetime
+    try {
+      initialDate = DateFormat('dd-MM-yyyy HH:mm').parse(dateController.text);
+    } catch (e) {
+      // If parsing fails, try to parse just the date
+      try {
+        initialDate = DateFormat('dd-MM-yyyy').parse(dateController.text);
+      } catch (e2) {
+        initialDate = currentDate;
+      }
+    }
+
+    final DateTime firstDate = currentDate.subtract(const Duration(days: 365));
+    final DateTime lastDate = currentDate.add(const Duration(days: 365 * 5));
+
+    final DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
+
+    if (pickedDate != null) {
+      final TimeOfDay? pickedTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+      );
+
+      if (pickedTime != null) {
+        final DateTime pickedDateTime = DateTime(
+          pickedDate.year,
+          pickedDate.month,
+          pickedDate.day,
+          pickedTime.hour,
+          pickedTime.minute,
+        );
+
+        setState(() {
+          // Display format: date and time
+          dateController.text =
+              DateFormat('dd-MM-yyyy HH:mm').format(pickedDateTime);
+        });
+      }
     }
   }
 

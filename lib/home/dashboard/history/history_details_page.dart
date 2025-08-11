@@ -628,13 +628,7 @@ class DetailsPageState extends State<DetailsPage> {
               '${formatDate(data?["fromdate"])} - ${formatDate(data?["todate"])}',
           'color': Colors.green
         },
-        {
-          'icon': Icons.access_time,
-          'title': 'Time',
-          'value':
-              '${formatDate(data?["fromdate"], includeTime: true)} - ${formatDate(data?["todate"], includeTime: true)}',
-          'color': Colors.orange
-        },
+        // Time field removed for minutes of meeting - not needed
         {
           'icon': Icons.description,
           'title': 'Description',

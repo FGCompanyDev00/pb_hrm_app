@@ -1,6 +1,5 @@
 // event_detail_view.dart
 
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
@@ -405,7 +404,6 @@ class EventDetailViewState extends State<EventDetailView>
     };
   }
 
-
   Widget _buildMembersList(List<dynamic> members) {
     if (members.isEmpty) return const SizedBox.shrink();
 
@@ -800,7 +798,7 @@ class EventDetailViewState extends State<EventDetailView>
   }
 
   /// Builds the list of event details.
-  Widget _buildEventDetails() {
+  Widget _buildEventDetails(bool isMeetingRoomBooking) {
     final details = _getEventDetails();
     String? title = widget.event['title'];
     String? location = widget.event['location'];
@@ -835,22 +833,24 @@ class EventDetailViewState extends State<EventDetailView>
             '${AppLocalizations.of(context)!.time} : $startDisplay12 - $endDisplay12',
             Icons.punch_clock_outlined,
           ),
-        if (location != "" && location != null)
+        if (leaveType != "" && leaveType != null)
           ListTile(
             leading: const SizedBox.shrink(),
             title: Text(
-              '${AppLocalizations.of(context)!.location} : $location',
+              '${AppLocalizations.of(context)!.typeOfLeave} : $leaveType',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.orange,
               ),
             ),
           ),
-        if (leaveType != "" && leaveType != null)
+
+        // Location display for meeting room bookings
+        if (isMeetingRoomBooking && location != null && location.isNotEmpty)
           ListTile(
             leading: const SizedBox.shrink(),
             title: Text(
-              '${AppLocalizations.of(context)!.typeOfLeave} : $leaveType',
+              '${AppLocalizations.of(context)!.location} : $location',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.orange,
@@ -917,6 +917,7 @@ class EventDetailViewState extends State<EventDetailView>
     final details = _getEventDetails();
     final isMinutesOfMeeting = _eventType == 'Minutes Of Meeting';
     final isMeeting = _eventType != 'Minutes Of Meeting';
+    final isMeetingRoomBooking = _eventType == 'Meeting Room Bookings';
     final members = widget.event['members'] ?? [];
     final size = MediaQuery.sizeOf(context);
 
@@ -936,11 +937,13 @@ class EventDetailViewState extends State<EventDetailView>
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  if (isMeeting) _buildCreatorSection(details),
+                  // Only show creator section for non-meeting room booking events
+                  if (isMeeting && !isMeetingRoomBooking)
+                    _buildCreatorSection(details),
                   const SizedBox(height: 8),
                   _buildEventType(),
                   const SizedBox(height: 20),
-                  _buildEventDetails(),
+                  _buildEventDetails(isMeetingRoomBooking),
                   const SizedBox(height: 12),
                   if (members.isNotEmpty) _buildMembersList(members),
                 ],

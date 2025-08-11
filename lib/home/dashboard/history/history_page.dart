@@ -238,7 +238,7 @@ class HistoryPageState extends State<HistoryPage>
       case 'meeting':
         return 'Add meeting and booking Room';
       case 'minutes of meeting':
-        return 'Add meeting and booking Room';
+        return 'Minutes of Meeting';
       case 'car':
         return 'Booking car';
       case 'leave':
@@ -299,8 +299,8 @@ class HistoryPageState extends State<HistoryPage>
           // Convert string dates back to DateTime
           final Map<String, dynamic> typedItem =
               Map<String, dynamic>.from(item);
-          if (typedItem['updated_at'] != null) {
-            typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
+          if (typedItem['sort_date'] != null) {
+            typedItem['sort_date'] = DateTime.parse(typedItem['sort_date']);
           }
           return typedItem;
         }).toList();
@@ -337,8 +337,8 @@ class HistoryPageState extends State<HistoryPage>
           // Convert string dates back to DateTime
           final Map<String, dynamic> typedItem =
               Map<String, dynamic>.from(item);
-          if (typedItem['updated_at'] != null) {
-            typedItem['updated_at'] = DateTime.parse(typedItem['updated_at']);
+          if (typedItem['sort_date'] != null) {
+            typedItem['sort_date'] = DateTime.parse(typedItem['sort_date']);
           }
           return typedItem;
         }).toList();
@@ -489,21 +489,21 @@ class HistoryPageState extends State<HistoryPage>
       // Only continue if we have data and the widget is still mounted
       if (!mounted) return;
 
-      // Sort the temporary lists by 'updated_at' in descending order
+      // Sort the temporary lists by 'sort_date' in descending order (latest first)
       tempPendingItems.sort((a, b) {
         DateTime aDate =
-            a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+            a['sort_date'] ?? DateTime.fromMillisecondsSinceEpoch(0);
         DateTime bDate =
-            b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bDate.compareTo(aDate); // Descending order
+            b['sort_date'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate); // Descending order - latest first
       });
 
       tempHistoryItems.sort((a, b) {
         DateTime aDate =
-            a['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+            a['sort_date'] ?? DateTime.fromMillisecondsSinceEpoch(0);
         DateTime bDate =
-            b['updated_at'] ?? DateTime.fromMillisecondsSinceEpoch(0);
-        return bDate.compareTo(aDate); // Descending order
+            b['sort_date'] ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDate.compareTo(aDate); // Descending order - latest first
       });
 
       // Cache the new data
@@ -512,9 +512,9 @@ class HistoryPageState extends State<HistoryPage>
         final Map<String, dynamic> serializable =
             Map<String, dynamic>.from(item);
         // Convert DateTime to string for serialization
-        if (serializable['updated_at'] != null) {
-          serializable['updated_at'] =
-              serializable['updated_at'].toIso8601String();
+        if (serializable['sort_date'] != null) {
+          serializable['sort_date'] =
+              serializable['sort_date'].toIso8601String();
         }
         return serializable;
       }).toList();
@@ -524,9 +524,9 @@ class HistoryPageState extends State<HistoryPage>
         final Map<String, dynamic> serializable =
             Map<String, dynamic>.from(item);
         // Convert DateTime to string for serialization
-        if (serializable['updated_at'] != null) {
-          serializable['updated_at'] =
-              serializable['updated_at'].toIso8601String();
+        if (serializable['sort_date'] != null) {
+          serializable['sort_date'] =
+              serializable['sort_date'].toIso8601String();
         }
         return serializable;
       }).toList();
@@ -588,8 +588,6 @@ class HistoryPageState extends State<HistoryPage>
       'statusColorValue': statusColorObj.value, // Store as integer value
       'iconColor': typeColorHex, // Store as hex string
       'iconColorValue': typeColorObj.value, // Store as integer value
-      'updated_at': DateTime.tryParse(item['updated_at'] ?? '') ??
-          DateTime.fromMillisecondsSinceEpoch(0),
       'img_name': item['img_name'] ??
           'https://via.placeholder.com/150', // Placeholder image
       'img_path': item['img_path'] ?? '',
@@ -608,6 +606,8 @@ class HistoryPageState extends State<HistoryPage>
           'remark': item['remark'] ?? '',
           'employee_id': item['employee_id'],
           'types': item['types'],
+          'sort_date': DateTime.tryParse(item['date_create'] ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0),
         });
         break;
 
@@ -622,6 +622,8 @@ class HistoryPageState extends State<HistoryPage>
           'requestor_id': item['requestor_id'],
           'types': item['types'],
           'id': item['take_leave_request_id']?.toString() ?? '',
+          'sort_date': DateTime.tryParse(item['created_at'] ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0),
         });
         break;
 
@@ -649,6 +651,8 @@ class HistoryPageState extends State<HistoryPage>
           'requestor_id': item['requestor_id'],
           'types': item['types'],
           'id': item['uid']?.toString() ?? '',
+          'sort_date': DateTime.tryParse(item['created_date'] ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0),
         });
         break;
 
@@ -665,6 +669,8 @@ class HistoryPageState extends State<HistoryPage>
           'employee_id': item['created_by'],
           'types': item['types'],
           'guests': item['guests'] ?? [], // Ensure we include guests data
+          'sort_date': DateTime.tryParse(item['created_at'] ?? '') ??
+              DateTime.fromMillisecondsSinceEpoch(0),
         });
         break;
 
@@ -1207,6 +1213,19 @@ class HistoryPageState extends State<HistoryPage>
         item['startDate'] != null ? formatDate(item['startDate']) : 'N/A';
     String endDate =
         item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
+
+    // Format creation date for display
+    String creationDate = 'N/A';
+    if (item['sort_date'] != null) {
+      try {
+        final DateTime parsedDate = item['sort_date'] is String
+            ? DateTime.parse(item['sort_date'])
+            : item['sort_date'];
+        creationDate = DateFormat('dd-MM-yyyy HH:mm').format(parsedDate);
+      } catch (e) {
+        creationDate = 'Invalid Date';
+      }
+    }
 
     return GestureDetector(
       onTap: () {
