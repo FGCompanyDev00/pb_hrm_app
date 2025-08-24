@@ -9,7 +9,7 @@ import 'package:pb_hrsystem/core/utils/user_preferences.dart';
 import 'package:pb_hrsystem/core/widgets/timetable_day/timetable_day_veiw.dart';
 import 'package:pb_hrsystem/services/services_locator.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/l10n/app_localizations.dart';
 
 class TimetablePage extends StatefulWidget {
   final DateTime date;

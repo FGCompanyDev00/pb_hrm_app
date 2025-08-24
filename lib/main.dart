@@ -38,7 +38,7 @@ import 'package:pb_hrsystem/services/session_service.dart';
 import 'package:pb_hrsystem/splash/splashscreen.dart';
 import 'package:pb_hrsystem/user_model.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/l10n/app_localizations.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'settings/theme_notifier.dart';
 import 'home/home_calendar.dart';

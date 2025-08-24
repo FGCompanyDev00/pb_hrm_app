@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pb_hrsystem/core/standard/color.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/l10n/app_localizations.dart';
 import 'package:pb_hrsystem/core/widgets/snackbar/snackbar.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';

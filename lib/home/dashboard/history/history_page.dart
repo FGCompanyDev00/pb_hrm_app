@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -1215,15 +1215,10 @@ class HistoryPageState extends State<HistoryPage>
         item['endDate'] != null ? formatDate(item['endDate']) : 'N/A';
 
     // Format creation date for display
-    String creationDate = 'N/A';
     if (item['sort_date'] != null) {
       try {
-        final DateTime parsedDate = item['sort_date'] is String
-            ? DateTime.parse(item['sort_date'])
-            : item['sort_date'];
-        creationDate = DateFormat('dd-MM-yyyy HH:mm').format(parsedDate);
+      // ignore: empty_catches
       } catch (e) {
-        creationDate = 'Invalid Date';
       }
     }
 

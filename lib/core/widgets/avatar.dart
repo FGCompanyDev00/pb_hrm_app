@@ -2,7 +2,7 @@
 
 import 'package:advanced_calendar_day_view/calendar_day_view.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:pb_hrsystem/l10n/app_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:pb_hrsystem/core/utils/image_utils.dart';
 
