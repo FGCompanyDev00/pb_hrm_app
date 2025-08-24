@@ -392,7 +392,6 @@ class ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-
   Future<void> _downloadQRCode() async {
     try {
       final RenderRepaintBoundary? boundary =
@@ -418,8 +417,8 @@ class ProfileScreenState extends State<ProfileScreen>
       final result = await SaverGallery.saveImage(
         uint8List,
         quality: 100,
-        fileName: "qr_code.png",
-        skipIfExists: false,
+        name: "qr_code.png",
+        androidExistNotSave: false,
       );
 
       if (result.isSuccess) {
@@ -466,8 +465,8 @@ class ProfileScreenState extends State<ProfileScreen>
       final result = await SaverGallery.saveImage(
         uint8List,
         quality: 100,
-        fileName: "qr_code.png",
-        skipIfExists: false,
+        name: "qr_code.png",
+        androidExistNotSave: false,
       );
 
       if (result.isSuccess) {

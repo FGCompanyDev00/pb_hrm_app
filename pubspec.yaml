@@ -1,166 +1,155 @@
 name: pb_hrsystem
-description: "A new Flutter project."
+description: "PSVB HR System - Universal Flutter App for macOS/iOS"
 publish_to: 'none'
 
 version: 1.1.9+9
 
 environment:
   sdk: ">=3.4.0 <4.0.0"
+  flutter: ">=3.4.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  dio: ^5.7.0
-  android_alarm_manager_plus: ^3.0.4
-  awesome_dialog: ^3.2.1
-  jwt_decoder: ^2.0.1
-  device_info_plus: ^11.3.0
-  qr_flutter: ^4.1.0
-  flutter_pdfview: ^1.3.2
-  simple_animations: ^3.1.1
-  web_socket_channel: ^3.0.1
-  carousel_slider: ^5.0.0
-  cupertino_icons: ^1.0.8
-  http: ^1.2.1
-  flutter_local_notifications: ^17.2.2
-  permission_handler: ^11.3.1
-  cached_network_image: ^3.3.1
-  intl: any
-  flutter_localization: ^0.2.2
+  # Core Flutter packages
   flutter_localizations:
     sdk: flutter
-  provider: ^6.1.2
-  table_calendar: ^3.1.2
-  local_auth: ^2.2.0
-  flutter_hooks: ^0.18.0
-  hooks_riverpod: ^1.0.0
-  flutter_easyloading: ^3.0.5
+
+  # HTTP & Network
+  dio: ^5.7.0
+  http: ^1.2.1
+  web_socket_channel: ^3.0.1
+  connectivity_plus: ^6.0.5
+  internet_connection_checker: ^0.0.1+4
+  dio_smart_retry: ^5.0.0
+
+  # UI & Design
+  cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
-  shared_preferences: ^2.2.3
-  convex_bottom_bar: ^3.2.0
-  share_plus: ^10.0.2
-  path_provider: ^2.1.3
+  flutter_easyloading: ^3.0.5
+  lottie: ^3.3.1
+  flutter_animate: ^4.5.2
+  simple_animations: ^3.1.1
+  carousel_slider: ^5.0.0
   dotted_border: ^2.1.0
-  saver_gallery: ^3.0.5
-  flutter_image_compress: ^2.3.0
-  image_picker: ^1.1.2
   flutter_slidable: ^3.1.1
   fluttertoast: ^8.2.8
-  file_picker: ^8.0.6
-  geolocator: ^12.0.0
-  google_maps_flutter: ^2.7.1
-  url_launcher: ^6.3.0
-  flutter_secure_storage: ^9.2.2
-  photo_view: ^0.15.0
-  timetable_view: ^0.3.0
-  location: ^6.0.2
-  connectivity_plus: ^6.0.5
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-  logger: ^2.4.0
-  get_it: ^7.2.0
-  internet_connection_checker: ^0.0.1+4
-  flutter_datetime_format: ^0.0.1
-  advanced_calendar_day_view:
-    path: "packages/advanced_calendar_day_view"
-  auto_route: ^9.2.2
   custom_refresh_indicator: ^4.0.1
+  convex_bottom_bar: ^3.2.0
+
+  # State Management
+  provider: ^6.1.2
+  flutter_hooks: ^0.18.0
+  hooks_riverpod: ^1.0.0
+
+  # Localization & Internationalization
+  intl: ^0.19.0
+  flutter_localization: ^0.2.2
+
+  # Calendar & Date
+  table_calendar: ^3.1.2
+  timetable_view: ^0.3.0
+  flutter_datetime_format: ^0.0.1
+
+  # Authentication & Security
+  local_auth: ^2.2.0
+  flutter_secure_storage: ^9.2.2
+  jwt_decoder: ^2.0.1
+  encrypt: ^5.0.3
+
+  # Device & Platform
+  device_info_plus: ^11.3.0
   package_info_plus: ^8.3.0
   platform: ^3.1.6
-  mime: any
-  http_parser: any
-  sqflite: ^2.4.1
-  path: ^1.8.3
-  back_button_interceptor: ^8.0.0
-  encrypt: ^5.0.3
-  flutter_dotenv: ^5.2.1
-  dio_smart_retry: ^5.0.0
-  firebase_messaging: ^15.2.3
-  firebase_core: ^3.11.0
-  flutter_animate: ^4.5.2
-  flutter_background_service: ^5.0.5
-  flutter_background_service_ios: ^5.0.0
-  workmanager: ^0.5.2
+  android_alarm_manager_plus: ^3.0.4
+
+  # Media & Files
+  image_picker: ^1.1.2
+  file_picker: ^8.0.6
+  flutter_image_compress: ^2.3.0
+  photo_view: ^0.15.0
+  cached_network_image: ^3.3.1
+  saver_gallery: ^3.0.5
   flutter_cache_manager: ^3.3.1
-  html: ^0.15.4
-  lottie: ^3.3.1
+
+  # QR & Barcode
+  qr_flutter: ^4.1.0
+
+  # PDF & Documents
+  flutter_pdfview: ^1.3.2
+
+  # Location & Maps
+  geolocator: ^12.0.0
+  google_maps_flutter: ^2.7.1
+  location: ^6.0.2
+
+  # Notifications
+  flutter_local_notifications: ^17.2.2
+  firebase_messaging: ^15.2.3
+
+  # Permissions
+  permission_handler: ^11.3.1
+
+  # Storage & Database
+  shared_preferences: ^2.2.3
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  sqflite: ^2.4.1
+  path_provider: ^2.1.3
+  path: ^1.8.3
+
+  # Utilities
+  logger: ^2.4.0
+  get_it: ^7.2.0
+  back_button_interceptor: ^8.0.0
+  flutter_dotenv: ^5.2.1
+  workmanager: ^0.5.2
+  flutter_background_service: ^5.0.5
+  flutter_background_service_ios: ^5.0.3
+
+  # Navigation & Routing
+  auto_route: ^9.2.2
+
+  # Sharing & Launching
+  share_plus: ^10.0.2
+  url_launcher: ^6.3.0
+
+  # Firebase
+  firebase_core: ^3.11.0
+
+  # Custom Package
+  advanced_calendar_day_view:
+    path: "packages/advanced_calendar_day_view"
+
+  # App Store & Version
   flutter_in_store_app_version_checker: ^1.9.0
+
+  # HTML & Parsing
+  html: ^0.15.4
+  mime: ^1.0.0
+  http_parser: ^4.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  
+  # Code Quality
   flutter_lints: ^4.0.0
+  
+  # Build & Generation
   build_runner: ^2.1.7
-  intl_generator: any
   hive_generator: ^2.0.0
 
 flutter:
   generate: true
   uses-material-design: true
 
+  # Asset Management - Explicitly include all asset directories
   assets:
+    - assets/
+    - assets/flags/
     - assets/icons/
     - assets/inventory/
-    - assets/background.png
-    - assets/logo.png
-    - assets/notification_image.png
-    - assets/location_image.png
-    - assets/camera_image.png
-    - assets/ready_image.png
-    - assets/ready_bg.png
-    - assets/home_banner.png
-    - assets/profile_picture.png
-    - assets/qr_code.png
-    - assets/darkbg.png
-    - assets/bg_2.png
-    - assets/success_icon.png
-    - assets/banner1.png
-    - assets/banner2.png
-    - assets/banner3.png
-    - assets/flags/english.png
-    - assets/flags/laos.png
-    - assets/flags/chinese.png
-    - assets/avatar_placeholder.png
-    - assets/data-2.png
-    - assets/firstline.png
-    - assets/people.png
-    - assets/shop-add.png
-    - assets/status-up.png
-    - assets/leave_icon.png
-    - assets/meeting_room.png
-    - assets/Vector-2.png
-    - assets/layer.png
-    - assets/element-plus.png
-    - assets/playstore.png
-    - assets/calendar.png
-    - assets/car.png
-    - assets/leave_calendar.png
-    - assets/cancel.png
-    - assets/account_settings.png
-    - assets/box-time.png
-    - assets/calendar-icon.png
-    - assets/title.png
-    - assets/task.png
-    - assets/android_device.png
-    - assets/ios_device.png
-    - assets/notification-status.png
-    - assets/meeting_room.png
-    - assets/car_return.png
-    - assets/KPI.png
-    - assets/inventory.png
-    - assets/lock-circle.png
-    - assets/fingerprint.png
-    - assets/history.png
-    - assets/pending.png
-    - assets/meeting_room.png
-    - assets/home.png
-    - assets/office.png
-    - assets/offsite.png
-    - assets/chat_image.png
-    - assets/attendance.png
-    - assets/chat_icon.png
-    - assets/room.png
-    - assets/debug.png
     - .env.demo
     - .env.production

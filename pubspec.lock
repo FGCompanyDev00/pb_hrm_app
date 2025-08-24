@@ -80,14 +80,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.3.0+1"
-  awesome_dialog:
-    dependency: "direct main"
-    description:
-      name: awesome_dialog
-      sha256: "41c41ae4b30b5c7f26bb3d9f9c87010ed1cab0bb4d4ac0cc513e5799c37e9d82"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.1"
   back_button_interceptor:
     dependency: "direct main"
     description:
@@ -1084,14 +1076,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.19.0"
-  intl_generator:
-    dependency: "direct dev"
-    description:
-      name: intl_generator
-      sha256: "120e03ccefe0c215801e44a8ccbaeabe6c895c5792f44298133745ab0a0e0bf5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.1"
   io:
     dependency: transitive
     description:
@@ -1272,10 +1256,10 @@ packages:
     dependency: "direct main"
     description:
       name: mime
-      sha256: "41a20518f0cb1256669420fdba0cd90d21561e560ac240f26ef8322e45bb7ed6"
+      sha256: "801fd0b26f14a4a58ccb09d5892c3fbdeff209594300a542492cf13fba9d247a"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.0"
+    version: "1.0.6"
   nested:
     dependency: transitive
     description:
@@ -1548,22 +1532,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.0"
-  rive:
-    dependency: transitive
-    description:
-      name: rive
-      sha256: "2551a44fa766a7ed3f52aa2b94feda6d18d00edc25dee5f66e72e9b365bb6d6c"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.13.20"
-  rive_common:
-    dependency: transitive
-    description:
-      name: rive_common
-      sha256: "2ba42f80d37a4efd0696fb715787c4785f8a13361e8aea9227c50f1e78cf763a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.15"
   riverpod:
     dependency: transitive
     description:
@@ -1592,10 +1560,10 @@ packages:
     dependency: "direct main"
     description:
       name: saver_gallery
-      sha256: "35f838453cbf17d4b710d0783ced0d2c9aeb79a607f290684b9c3c798c22beb8"
+      sha256: "5f4123ec1cd5ed9fcd93198ab30ffe0c7746afcbf6846445432de93240fa7b4e"
       url: "https://pub.dev"
     source: hosted
-    version: "3.0.10"
+    version: "3.0.6"
   share_plus:
     dependency: "direct main"
     description:

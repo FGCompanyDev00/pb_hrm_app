@@ -1,7 +1,7 @@
 {
   "@@locale": "zh",
   "appTitle": "PSVB Next",
-  "welcomeToPSBV": "欢迎来到 PSVB Next",
+  "welcomeTopsvb": "欢迎来到 PSVB Next",
   "welcomeSubtitle1": "您不仅仅是另一个客户.",
   "welcomeSubtitle2": "我们不仅仅是另一家银行...",
   "emptyCredentialsMessage": "请输入您的用户名和密码。",

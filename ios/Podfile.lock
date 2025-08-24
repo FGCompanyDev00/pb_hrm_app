@@ -165,8 +165,6 @@ PODS:
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
-  - rive_common (0.0.1):
-    - Flutter
   - saver_gallery (0.0.1):
     - Flutter
   - SDWebImage (5.20.0):
@@ -213,7 +211,6 @@ DEPENDENCIES:
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
-  - rive_common (from `.symlinks/plugins/rive_common/ios`)
   - saver_gallery (from `.symlinks/plugins/saver_gallery/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -288,8 +285,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
-  rive_common:
-    :path: ".symlinks/plugins/rive_common/ios"
   saver_gallery:
     :path: ".symlinks/plugins/saver_gallery/ios"
   share_plus:
@@ -341,7 +336,6 @@ SPEC CHECKSUMS:
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  rive_common: dd421daaf9ae69f0125aa761dd96abd278399952
   saver_gallery: af2d0c762dafda254e0ad025ef0dabd6506cd490
   SDWebImage: 73c6079366fea25fa4bb9640d5fb58f0893facd8
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380

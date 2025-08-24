@@ -37,7 +37,7 @@ class EventRecordAdapter extends TypeAdapter<EventRecord> {
       days: fields[17] as double?,
       members: (fields[18] as List?)
           ?.map((dynamic e) => (e as Map).cast<String, dynamic>())
-          .toList(),
+          ?.toList(),
     );
   }
 
