@@ -1,3 +1,5 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -19,7 +21,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get welcomeSubtitle2 => 'We\'re not just another Bank...';
 
   @override
-  String get emptyCredentialsMessage => 'Please enter your username and password.';
+  String get emptyCredentialsMessage =>
+      'Please enter your username and password.';
 
   @override
   String get networkErrorMessage => 'Network error. Please try again later.';
@@ -55,7 +58,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notification => 'Notification';
 
   @override
-  String get weWantToSendYou => 'We want to send you various information notifications, whether it is leave approval, making various items in the system, evaluation...';
+  String get weWantToSendYou =>
+      'We want to send you various information notifications, whether it is leave approval, making various items in the system, evaluation...';
 
   @override
   String get next => 'Next';
@@ -67,13 +71,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get locationInformation => 'Location Information';
 
   @override
-  String get weCollectInformation => 'We collect information about your location when using it to provide the best service near you...';
+  String get weCollectInformation =>
+      'We collect information about your location when using it to provide the best service near you...';
 
   @override
   String get cameraAndPhoto => 'Camera and Photo';
 
   @override
-  String get manyFunctions => 'Many functions in our app require access to the camera or gallery...';
+  String get manyFunctions =>
+      'Many functions in our app require access to the camera or gallery...';
 
   @override
   String get readyToGo => 'You\'re ready to go!';
@@ -85,16 +91,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionDenied => 'Permission Denied';
 
   @override
-  String get locationPermissionRequired => 'Location permission is required to proceed.';
+  String get locationPermissionRequired =>
+      'Location permission is required to proceed.';
 
   @override
   String get ok => 'OK';
 
   @override
-  String get cameraPermissionRequired => 'Camera permission is required to proceed.';
+  String get cameraPermissionRequired =>
+      'Camera permission is required to proceed.';
 
   @override
-  String get notificationPermissionRequired => 'Notification permission is required to proceed.';
+  String get notificationPermissionRequired =>
+      'Notification permission is required to proceed.';
 
   @override
   String get meeting => 'Meeting';
@@ -343,7 +352,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get requestor => 'Requestor';
 
   @override
-  String get registerYourPresence => 'Register Your Presence and Start Your Work';
+  String get registerYourPresence =>
+      'Register Your Presence and Start Your Work';
 
   @override
   String get checkinTime => 'Check in time can be late by 01:00';
@@ -424,7 +434,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get biometricDisabled => 'Biometric Authentication Disabled';
 
   @override
-  String get enableBiometric => 'Please enable biometric authentication in settings.';
+  String get enableBiometric =>
+      'Please enable biometric authentication in settings.';
 
   @override
   String get authenticateToLogin => 'Please authenticate to login';
@@ -442,7 +453,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newNotification => 'New Notification';
 
   @override
-  String get notificationChannelDescription => 'Notifications about assignments, project updates, and member changes in psvb Next app.';
+  String get notificationChannelDescription =>
+      'Notifications about assignments, project updates, and member changes in psvb Next app.';
 
   @override
   String get pageIndicator1of3 => '1 of 3';
@@ -457,19 +469,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permissionRestricted => 'Permission status: restricted';
 
   @override
-  String get locationAccessPermanentlyDenied => 'Location access is permanently denied. Please open your settings to enable it.';
+  String get locationAccessPermanentlyDenied =>
+      'Location access is permanently denied. Please open your settings to enable it.';
 
   @override
   String get error => 'Error';
 
   @override
-  String get cameraAccessPermanentlyDenied => 'Camera access is permanently denied. Please open your settings to enable it.';
+  String get cameraAccessPermanentlyDenied =>
+      'Camera access is permanently denied. Please open your settings to enable it.';
 
   @override
   String get permissionStatus => 'Permission Status';
 
   @override
-  String get registerPresenceStartWork => 'Register Your Presence and Start Your Work';
+  String get registerPresenceStartWork =>
+      'Register Your Presence and Start Your Work';
 
   @override
   String get viewAll => 'View All';
@@ -525,7 +540,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get checkInNotAllowed => 'Check-In Not Allowed';
 
   @override
-  String get checkInNotAllowedMessage => 'Your location is not available. please come to the office area';
+  String get checkInNotAllowedMessage =>
+      'Your location is not available. please come to the office area';
 
   @override
   String get checkInLateNotAllowed => 'Check-In not allowed now.';
@@ -534,7 +550,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get biometricNotEnabled => 'Biometric Not Enabled';
 
   @override
-  String get enableBiometricFirst => 'Please enable biometric authentication in the settings first.';
+  String get enableBiometricFirst =>
+      'Please enable biometric authentication in the settings first.';
 
   @override
   String get authenticateToContinue => 'Please authenticate to continue.';
@@ -555,7 +572,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get alreadyCheckedIn => 'Already Checked In';
 
   @override
-  String get alreadyCheckedInMessage => 'You have already checked in. For check out, please wait at least 6 hours before you can do check-out';
+  String get alreadyCheckedInMessage =>
+      'You have already checked in. For check out, please wait at least 6 hours before you can do check-out';
 
   @override
   String get deviceIdError => 'Device ID is missing or invalid.';
@@ -612,13 +630,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveImage => 'Save Image';
 
   @override
-  String get saveImageConfirmation => 'Do you want to save this image to your gallery?';
+  String get saveImageConfirmation =>
+      'Do you want to save this image to your gallery?';
 
   @override
   String get errorSharingQRCode => 'Error sharing QR code';
 
   @override
-  String get qrCodeNotRendered => 'QR Code is not rendered yet. Please wait and try again.';
+  String get qrCodeNotRendered =>
+      'QR Code is not rendered yet. Please wait and try again.';
 
   @override
   String errorDownloadingQRCode(Object e) {
@@ -637,10 +657,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get qrCodeSavedToGallery => 'QR Code saved to gallery';
 
   @override
-  String get errorDownloadingQRCodeGeneral => 'Error downloading QR code. Please try again.';
+  String get errorDownloadingQRCodeGeneral =>
+      'Error downloading QR code. Please try again.';
 
   @override
-  String get errorSavingQRCodeGeneral => 'Error saving QR code. Please try again.';
+  String get errorSavingQRCodeGeneral =>
+      'Error saving QR code. Please try again.';
 
   @override
   String errorFetchingMembers(Object e) {
@@ -671,10 +693,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appVersion => 'PSBV Next Demo v1.0.15';
 
   @override
-  String get biometricNotAvailable => 'Biometric authentication is not available.';
+  String get biometricNotAvailable =>
+      'Biometric authentication is not available.';
 
   @override
-  String get authenticateToEnableBiometrics => 'Please authenticate to enable biometric login';
+  String get authenticateToEnableBiometrics =>
+      'Please authenticate to enable biometric login';
 
   @override
   String errorEnablingBiometrics(Object e) {
@@ -750,7 +774,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get failedToLoadRoles => 'Failed to load roles';
 
   @override
-  String get invalidResponseStructure => 'Invalid response structure received from the server.';
+  String get invalidResponseStructure =>
+      'Invalid response structure received from the server.';
 
   @override
   String get failedToLoadProfileData => 'Failed to load profile data.';
@@ -765,13 +790,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get offlineMode => 'Offline Mode';
 
   @override
-  String get checkInSavedOffline => 'Your check-in has been saved and will be synced when you\'re back online.';
+  String get checkInSavedOffline =>
+      'Your check-in has been saved and will be synced when you\'re back online.';
 
   @override
-  String get checkOutSavedOffline => 'Your check-out has been saved and will be synced when you\'re back online.';
+  String get checkOutSavedOffline =>
+      'Your check-out has been saved and will be synced when you\'re back online.';
 
   @override
-  String get loginErrorMessage => 'Login failed. Please check your credentials and try again.';
+  String get loginErrorMessage =>
+      'Login failed. Please check your credentials and try again.';
 
   @override
   String get calendar => 'Calendar';
@@ -825,13 +853,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get locationPermissionDenied => 'Location permission denied.';
 
   @override
-  String get pleaseGrantLocationPermission => 'Please grant location permission.';
+  String get pleaseGrantLocationPermission =>
+      'Please grant location permission.';
 
   @override
-  String get locationPermissionDeniedForever => 'Location permission denied permanently.';
+  String get locationPermissionDeniedForever =>
+      'Location permission denied permanently.';
 
   @override
-  String get pleaseEnableLocationPermissionFromSettings => 'Please enable location permission from settings.';
+  String get pleaseEnableLocationPermissionFromSettings =>
+      'Please enable location permission from settings.';
 
   @override
   String get carReturn => 'Car Return';
@@ -840,7 +871,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiErrorTitle => 'API Error';
 
   @override
-  String get apiErrorMessage => 'The API is currently unavailable. Please try again later.';
+  String get apiErrorMessage =>
+      'The API is currently unavailable. Please try again later.';
 
   @override
   String get serverIssueMessage => 'There is an issue with the server.';
@@ -885,19 +917,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serverError => 'Server Error';
 
   @override
-  String get serverErrorMessage => 'There was an issue connecting to the server. Please try again later.';
+  String get serverErrorMessage =>
+      'There was an issue connecting to the server. Please try again later.';
 
   @override
   String get noInternet => 'No Internet Connection';
 
   @override
-  String get offlineMessage => 'You are currently offline. Would you like to continue in offline mode?';
+  String get offlineMessage =>
+      'You are currently offline. Would you like to continue in offline mode?';
 
   @override
   String get unauthorizedError => 'Unauthorized';
 
   @override
-  String get offlineAccessDenied => 'You cannot use offline mode without authorization.';
+  String get offlineAccessDenied =>
+      'You cannot use offline mode without authorization.';
 
   @override
   String get offline => 'Offline';
@@ -948,5 +983,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tokenExpiredTitle => 'Session Expired';
 
   @override
-  String get tokenExpiredMessage => 'Your session has expired. Please log in again.';
+  String get tokenExpiredMessage =>
+      'Your session has expired. Please log in again.';
 }

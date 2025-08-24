@@ -1,3 +1,5 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -442,7 +444,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get newNotification => '新通知';
 
   @override
-  String get notificationChannelDescription => '有关任务分配、项目更新和PSBV Next应用中成员更改的通知。';
+  String get notificationChannelDescription =>
+      '有关任务分配、项目更新和PSBV Next应用中成员更改的通知。';
 
   @override
   String get pageIndicator1of3 => '1/3';

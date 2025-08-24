@@ -44,7 +44,6 @@ dependencies:
   hooks_riverpod: ^1.0.0
 
   # Localization & Internationalization
-  intl: ^0.19.0
   flutter_localization: ^0.2.2
 
   # Calendar & Date
@@ -133,7 +132,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  
+
+dependency_overrides:
+  intl: any
+
   # Code Quality
   flutter_lints: ^4.0.0
   

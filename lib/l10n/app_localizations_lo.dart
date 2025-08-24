@@ -1,3 +1,5 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
 import 'app_localizations.dart';
 
 // ignore_for_file: type=lint
@@ -19,7 +21,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get welcomeSubtitle2 => 'ພວກເຮົາບໍ່ແມ່ນພຽງແຕ່ທະນາຄານອື່ນໆ...';
 
   @override
-  String get emptyCredentialsMessage => 'ກະລຸນາປ້ອນຊື່ຜູ້ໃຊ້ແລະລະຫັດຜ່ານຂອງທ່ານ.';
+  String get emptyCredentialsMessage =>
+      'ກະລຸນາປ້ອນຊື່ຜູ້ໃຊ້ແລະລະຫັດຜ່ານຂອງທ່ານ.';
 
   @override
   String get networkErrorMessage => 'ມີບັນຫາເຄືອຂ່າຍ. ກະລຸນາລອງໃໝ່.';
@@ -55,7 +58,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get notification => 'ການແຈ້ງເຕືອນ';
 
   @override
-  String get weWantToSendYou => 'ພວກເຮົາຕ້ອງການສົ່ງແຈ້ງເຕືອນຕ່າງໆທີ່ສຳຄັນໃຫ້ທ່ານ, ເຊັ່ນການອະນຸຍາດພັກ, ການດຳເນີນການໃນໂຄງການ, ການປະເມີນ...';
+  String get weWantToSendYou =>
+      'ພວກເຮົາຕ້ອງການສົ່ງແຈ້ງເຕືອນຕ່າງໆທີ່ສຳຄັນໃຫ້ທ່ານ, ເຊັ່ນການອະນຸຍາດພັກ, ການດຳເນີນການໃນໂຄງການ, ການປະເມີນ...';
 
   @override
   String get next => 'ຕໍ່ໄປ';
@@ -67,13 +71,15 @@ class AppLocalizationsLo extends AppLocalizations {
   String get locationInformation => 'ຂໍ້ມູນສະຖານທີ່';
 
   @override
-  String get weCollectInformation => 'ພວກເຮົາເກັບຂໍ້ມູນສະຖານທີ່ຂອງທ່ານໃນຂະນະທີ່ທ່ານໃຊ້ງານ ເພື່ອໃຫ້ບໍລິການທີ່ດີທີ່ສຸດ...';
+  String get weCollectInformation =>
+      'ພວກເຮົາເກັບຂໍ້ມູນສະຖານທີ່ຂອງທ່ານໃນຂະນະທີ່ທ່ານໃຊ້ງານ ເພື່ອໃຫ້ບໍລິການທີ່ດີທີ່ສຸດ...';
 
   @override
   String get cameraAndPhoto => 'ກ້ອງແລະຮູບ';
 
   @override
-  String get manyFunctions => 'ຟັງຊັນຕ່າງໆໃນແອັບພລິເຄຊັນນີ້ຕ້ອງການການເຂົ້າເຖິງກ້ອງຫຼືຄັງຮູບ...';
+  String get manyFunctions =>
+      'ຟັງຊັນຕ່າງໆໃນແອັບພລິເຄຊັນນີ້ຕ້ອງການການເຂົ້າເຖິງກ້ອງຫຼືຄັງຮູບ...';
 
   @override
   String get readyToGo => 'ທ່ານພ້ອມແລ້ວ!';
@@ -85,7 +91,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get permissionDenied => 'ຍົກເລີກອະນຸຍາດ';
 
   @override
-  String get locationPermissionRequired => 'ຈຳເປັນຕ້ອງໄດ້ຮັບອະນຸຍາດສະຖານທີ່ເພື່ອສືບຕໍ່.';
+  String get locationPermissionRequired =>
+      'ຈຳເປັນຕ້ອງໄດ້ຮັບອະນຸຍາດສະຖານທີ່ເພື່ອສືບຕໍ່.';
 
   @override
   String get ok => 'ຕົກລົງ';
@@ -94,7 +101,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get cameraPermissionRequired => 'ຕ້ອງການອະນຸຍາດກ້ອງເພື່ອສືບຕໍ່.';
 
   @override
-  String get notificationPermissionRequired => 'ຕ້ອງການອະນຸຍາດແຈ້ງເຕືອນເພື່ອສືບຕໍ່.';
+  String get notificationPermissionRequired =>
+      'ຕ້ອງການອະນຸຍາດແຈ້ງເຕືອນເພື່ອສືບຕໍ່.';
 
   @override
   String get meeting => 'ປະຊຸມ';
@@ -442,7 +450,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get newNotification => 'ແຈ້ງເຕືອນໃໝ່';
 
   @override
-  String get notificationChannelDescription => 'ແຈ້ງເຕືອນກ່ຽວກັບການມອບໝາຍຫຍຸ້ມງານ, ໄດ້ການປັບປຸງໂຄງການ, ແລະການປ່ຽນແປງພະນັກງານຂອງພາຍໃນລະບົບ psvb Next.';
+  String get notificationChannelDescription =>
+      'ແຈ້ງເຕືອນກ່ຽວກັບການມອບໝາຍຫຍຸ້ມງານ, ໄດ້ການປັບປຸງໂຄງການ, ແລະການປ່ຽນແປງພະນັກງານຂອງພາຍໃນລະບົບ psvb Next.';
 
   @override
   String get pageIndicator1of3 => '1/3';
@@ -457,19 +466,22 @@ class AppLocalizationsLo extends AppLocalizations {
   String get permissionRestricted => 'ສະຖານະອະນຸຍາດ: ຈຳກັດ';
 
   @override
-  String get locationAccessPermanentlyDenied => 'ການເຂົ້າເຖິງສະຖານທີ່ຖືກປະຕິເສດຢ່າງຖາວອນ. ກະລຸນາເປີດການຕັ້ງຄ່າເພື່ອໃຫ້ມັນເປັນໃຊ້ງານ.';
+  String get locationAccessPermanentlyDenied =>
+      'ການເຂົ້າເຖິງສະຖານທີ່ຖືກປະຕິເສດຢ່າງຖາວອນ. ກະລຸນາເປີດການຕັ້ງຄ່າເພື່ອໃຫ້ມັນເປັນໃຊ້ງານ.';
 
   @override
   String get error => 'ຜິດພາດ';
 
   @override
-  String get cameraAccessPermanentlyDenied => 'ການເຂົ້າເຖິງກ້ອງຖືກປະຕິເສດຢ່າງຖາວອນ. ກະລຸນາເປີດການຕັ້ງຄ່າເພື່ອໃຫ້ມັນເປັນໃຊ້ງານ.';
+  String get cameraAccessPermanentlyDenied =>
+      'ການເຂົ້າເຖິງກ້ອງຖືກປະຕິເສດຢ່າງຖາວອນ. ກະລຸນາເປີດການຕັ້ງຄ່າເພື່ອໃຫ້ມັນເປັນໃຊ້ງານ.';
 
   @override
   String get permissionStatus => 'ສະຖານະການອະນຸຍາດ';
 
   @override
-  String get registerPresenceStartWork => 'ລົງທະບຽນການມາຮ່ວມແລະເລີ່ມຕົ້ນວຽກງານຂອງທ່ານ';
+  String get registerPresenceStartWork =>
+      'ລົງທະບຽນການມາຮ່ວມແລະເລີ່ມຕົ້ນວຽກງານຂອງທ່ານ';
 
   @override
   String get viewAll => 'ເບິ່ງເພີ່ມ';
@@ -525,7 +537,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get checkInNotAllowed => 'ການເຂົ້າແລະອອກບໍ່ຖືກອະນຸຍາດ';
 
   @override
-  String get checkInNotAllowedMessage => 'ສະຖານທີ່ຂອງທ່ານບໍ່ມີ. ກະລຸນາມາຢູ່ເຂດສູນງານ';
+  String get checkInNotAllowedMessage =>
+      'ສະຖານທີ່ຂອງທ່ານບໍ່ມີ. ກະລຸນາມາຢູ່ເຂດສູນງານ';
 
   @override
   String get checkInLateNotAllowed => 'ບໍ່ອະນຸຍາດການຕິດຕາມຕອນນ';
@@ -534,7 +547,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get biometricNotEnabled => 'ການພິມນິ້ວມືບໍ່ຖືກເປີດໃຊ້';
 
   @override
-  String get enableBiometricFirst => 'ກະລຸນາເປີດການພິມນິ້ວມືໃນການຕັ້ງຄ່າແລ້ວກ່ອນ.';
+  String get enableBiometricFirst =>
+      'ກະລຸນາເປີດການພິມນິ້ວມືໃນການຕັ້ງຄ່າແລ້ວກ່ອນ.';
 
   @override
   String get authenticateToContinue => 'ກະລຸນາການຕິດຕັ້ງເພື່ອດຳເນີນຕໍ່.';
@@ -555,7 +569,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get alreadyCheckedIn => 'ທ່ານໄດ້ເຂົ້າແລະອອກສຳເລັດແລ້ວ';
 
   @override
-  String get alreadyCheckedInMessage => 'ທ່ານໄດ້ການລາງທະບຽນແລ້ວ. ສໍາລັບການອອກໄປ, ກະລຸນາລໍຖ້າໄປຫາ 6 ຊົ່ວໂມງກ່ອນທີ່ທ່ານຈະສາມາດອອກໄປ.';
+  String get alreadyCheckedInMessage =>
+      'ທ່ານໄດ້ການລາງທະບຽນແລ້ວ. ສໍາລັບການອອກໄປ, ກະລຸນາລໍຖ້າໄປຫາ 6 ຊົ່ວໂມງກ່ອນທີ່ທ່ານຈະສາມາດອອກໄປ.';
 
   @override
   String get deviceIdError => 'ລະຫັດເຄື່ອງຄອມພິວເຕີຂອງທ່ານຂາດ ຫລືບໍ່ຖືກຕ້ອງ.';
@@ -612,13 +627,15 @@ class AppLocalizationsLo extends AppLocalizations {
   String get saveImage => 'ບັນທຶກຮູບພາບ';
 
   @override
-  String get saveImageConfirmation => 'ທ່ານຕ້ອງການບັນທຶກຮູບພາບນີ້ໄປໃນການບັນທຶກຂອງທ່ານບໍ?';
+  String get saveImageConfirmation =>
+      'ທ່ານຕ້ອງການບັນທຶກຮູບພາບນີ້ໄປໃນການບັນທຶກຂອງທ່ານບໍ?';
 
   @override
   String get errorSharingQRCode => 'ຜິດພາດແບ່ງປັນ QR code';
 
   @override
-  String get qrCodeNotRendered => 'QR Code ບໍ່ຖືກກວດພິມຢູ່ທີ່ນີ້. ກະລຸນາລໍຖ້າແລະລອງໃໝ່.';
+  String get qrCodeNotRendered =>
+      'QR Code ບໍ່ຖືກກວດພິມຢູ່ທີ່ນີ້. ກະລຸນາລໍຖ້າແລະລອງໃໝ່.';
 
   @override
   String errorDownloadingQRCode(Object e) {
@@ -637,10 +654,12 @@ class AppLocalizationsLo extends AppLocalizations {
   String get qrCodeSavedToGallery => 'QR Code ຖືກບັນທຶກໄປໃນການບັນທຶກ';
 
   @override
-  String get errorDownloadingQRCodeGeneral => 'ຜິດພາດໃນການດາວໂຫຼດ QR Code. ກະລຸນາລອງໃໝ່.';
+  String get errorDownloadingQRCodeGeneral =>
+      'ຜິດພາດໃນການດາວໂຫຼດ QR Code. ກະລຸນາລອງໃໝ່.';
 
   @override
-  String get errorSavingQRCodeGeneral => 'ຜິດພາດໃນການບັນທຶກ QR Code. ກະລຸນາລອງໃໝ່.';
+  String get errorSavingQRCodeGeneral =>
+      'ຜິດພາດໃນການບັນທຶກ QR Code. ກະລຸນາລອງໃໝ່.';
 
   @override
   String errorFetchingMembers(Object e) {
@@ -674,7 +693,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get biometricNotAvailable => 'ການຢືນຢັນດ້ານຣູບພາບບໍ່ມີຢູ່.';
 
   @override
-  String get authenticateToEnableBiometrics => 'ກະລຸນາຢືນຢັນເພື່ອເປີດການຢືນຢັນດ້ານຣູບພາບ';
+  String get authenticateToEnableBiometrics =>
+      'ກະລຸນາຢືນຢັນເພື່ອເປີດການຢືນຢັນດ້ານຣູບພາບ';
 
   @override
   String errorEnablingBiometrics(Object e) {
@@ -765,13 +785,16 @@ class AppLocalizationsLo extends AppLocalizations {
   String get offlineMode => 'ໂມດຊອບໄລນ';
 
   @override
-  String get checkInSavedOffline => 'ການເຂົ້າລາຍຊື່ຂອງທ່ານໄດ້ຖືກບັນທຶກແລ້ວ ແລະຈະຖືກສະແດງເມື່ອທ່ານກັບຄືນໄປມີອິນເຕີເນັດ.';
+  String get checkInSavedOffline =>
+      'ການເຂົ້າລາຍຊື່ຂອງທ່ານໄດ້ຖືກບັນທຶກແລ້ວ ແລະຈະຖືກສະແດງເມື່ອທ່ານກັບຄືນໄປມີອິນເຕີເນັດ.';
 
   @override
-  String get checkOutSavedOffline => 'ການອອກລາຍຊື່ຂອງທ່ານໄດ້ຖືກບັນທຶກແລ້ວ ແລະຈະຖືກສະແດງເມື່ອທ່ານກັບຄືນໄປມີອິນເຕີເນັດ.';
+  String get checkOutSavedOffline =>
+      'ການອອກລາຍຊື່ຂອງທ່ານໄດ້ຖືກບັນທຶກແລ້ວ ແລະຈະຖືກສະແດງເມື່ອທ່ານກັບຄືນໄປມີອິນເຕີເນັດ.';
 
   @override
-  String get loginErrorMessage => 'ການເຂົ້າລະບົບລົ້ມເຫລວ. ກະລຸນາກວດສອບຂໍ້ມູນຂອງທ່ານແລະລອງໃໝ່.';
+  String get loginErrorMessage =>
+      'ການເຂົ້າລະບົບລົ້ມເຫລວ. ກະລຸນາກວດສອບຂໍ້ມູນຂອງທ່ານແລະລອງໃໝ່.';
 
   @override
   String get calendar => 'ປະຕິທິນ';
@@ -828,10 +851,12 @@ class AppLocalizationsLo extends AppLocalizations {
   String get pleaseGrantLocationPermission => 'ກະລຸນາອະນຸຍາດການໃຊ້ຕຳແໜ່ງ.';
 
   @override
-  String get locationPermissionDeniedForever => 'ການອະນຸຍາດຕຳແໜ່ງຖືກປະຕິເສດຢ່າງຖາວອນ.';
+  String get locationPermissionDeniedForever =>
+      'ການອະນຸຍາດຕຳແໜ່ງຖືກປະຕິເສດຢ່າງຖາວອນ.';
 
   @override
-  String get pleaseEnableLocationPermissionFromSettings => 'ກະລຸນາເປີດໃຊ້ການອະນຸຍາດຕຳແໜ່ງຈາກການຕັ້ງຄ່າ.';
+  String get pleaseEnableLocationPermissionFromSettings =>
+      'ກະລຸນາເປີດໃຊ້ການອະນຸຍາດຕຳແໜ່ງຈາກການຕັ້ງຄ່າ.';
 
   @override
   String get carReturn => 'ການສົ່ງລົດຄືນ';
@@ -840,7 +865,8 @@ class AppLocalizationsLo extends AppLocalizations {
   String get apiErrorTitle => 'ຄວາມຜິດພາດ API';
 
   @override
-  String get apiErrorMessage => 'API ກຳລັງບໍ່ມີຢູ່. ກະລຸນາລອງອີກຄັ້ງໃນຄວາມຫຼັບຫຼັບ.';
+  String get apiErrorMessage =>
+      'API ກຳລັງບໍ່ມີຢູ່. ກະລຸນາລອງອີກຄັ້ງໃນຄວາມຫຼັບຫຼັບ.';
 
   @override
   String get serverIssueMessage => 'ມີປັນຫາກັບເຄື່ອງເຄື່ອງບໍລິການ.';
@@ -885,19 +911,22 @@ class AppLocalizationsLo extends AppLocalizations {
   String get serverError => 'ຜິດພາດຂອງ Server';
 
   @override
-  String get serverErrorMessage => 'ມີປັນຫາການຕິດຕໍ່ກັບ Server. ກະລຸນາລອງອີກຄັ້ງ.';
+  String get serverErrorMessage =>
+      'ມີປັນຫາການຕິດຕໍ່ກັບ Server. ກະລຸນາລອງອີກຄັ້ງ.';
 
   @override
   String get noInternet => 'ບໍ່ມີການເຊື່ອມຕໍ່ອິນເຕີເນັດ';
 
   @override
-  String get offlineMessage => 'ທ່ານກຳລັງອອຟຟິນ. ທ່ານຢາກສົກຕໍ່ບໍ່ຢູ່ແນວອອຟຟິນບໍ?';
+  String get offlineMessage =>
+      'ທ່ານກຳລັງອອຟຟິນ. ທ່ານຢາກສົກຕໍ່ບໍ່ຢູ່ແນວອອຟຟິນບໍ?';
 
   @override
   String get unauthorizedError => 'ບໍ່ອະນຸຍາດ';
 
   @override
-  String get offlineAccessDenied => 'ທ່ານບໍ່ສາມາດໃຊ້ລະບົບອອຟຟິນໄດ້ ບໍ່ມີການອະນຸຍາດ.';
+  String get offlineAccessDenied =>
+      'ທ່ານບໍ່ສາມາດໃຊ້ລະບົບອອຟຟິນໄດ້ ບໍ່ມີການອະນຸຍາດ.';
 
   @override
   String get offline => 'ອອບລາຍ';
@@ -948,5 +977,6 @@ class AppLocalizationsLo extends AppLocalizations {
   String get tokenExpiredTitle => 'ໄລຍະເວລາສິ້ນສຸດ';
 
   @override
-  String get tokenExpiredMessage => 'ໄລຍະເວລາຂອງທ່ານໄດ້ສິ້ນສຸດ. ກະລຸນາເຂົ້າລະບົບໃໝ່.';
+  String get tokenExpiredMessage =>
+      'ໄລຍະເວລາຂອງທ່ານໄດ້ສິ້ນສຸດ. ກະລຸນາເຂົ້າລະບົບໃໝ່.';
 }
