@@ -7,7 +7,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:pb_hrsystem/models/inventory_cart_item.dart';
 import 'inventory_app_bar.dart';
+import 'inventory_order_detail_page.dart';
 
 class InventoryRequestForm extends StatefulWidget {
   final String categoryUid;
@@ -27,9 +29,13 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
   final TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _items = [];
   List<Map<String, dynamic>> _filteredItems = [];
+  final List<InventoryCartItem> _cartItems = [];
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
+  
+  // Base URL for images
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   @override
   void initState() {
@@ -58,6 +64,59 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
         }).toList();
       }
     });
+  }
+
+  void _addToCart(Map<String, dynamic> item) {
+    final cartItem = InventoryCartItem.fromInventoryItem(item, widget.categoryName);
+    
+    // Check if item already exists in cart
+    final existingIndex = _cartItems.indexWhere((cartItem) => cartItem.barcode == item['barcode']);
+    
+    if (existingIndex != -1) {
+      // Increment quantity if item already exists
+      setState(() {
+        _cartItems[existingIndex] = _cartItems[existingIndex].copyWith(
+          quantity: _cartItems[existingIndex].quantity + 1,
+        );
+      });
+      _showAddedToCartSnackBar('${item['name']} quantity increased');
+    } else {
+      // Add new item to cart
+      setState(() {
+        _cartItems.add(cartItem);
+      });
+      _showAddedToCartSnackBar('${item['name']} added to cart');
+    }
+  }
+
+  void _openOrderDetail() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InventoryOrderDetailPage(
+          cartItems: _cartItems,
+          categoryName: widget.categoryName,
+        ),
+      ),
+    ).then((result) {
+      // Refresh cart if order was submitted successfully
+      if (result == true) {
+        setState(() {
+          _cartItems.clear();
+        });
+      }
+    });
+  }
+
+  void _showAddedToCartSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _fetchCategoryItems() async {
@@ -137,6 +196,43 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
           appBar: InventoryAppBar(
             title: widget.categoryName,
             showBack: true,
+            actions: [
+              // Cart Icon with Badge
+              Stack(
+                children: [
+                  IconButton(
+                    onPressed: _cartItems.isEmpty ? null : _openOrderDetail,
+                    icon: const Icon(Icons.shopping_cart),
+                    tooltip: 'View Cart',
+                  ),
+                  if (_cartItems.isNotEmpty)
+                    Positioned(
+                      right: 8,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Text(
+                          '${_cartItems.length}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
           ),
           body: Column(
             children: [
@@ -272,9 +368,12 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
         itemBuilder: (context, index) {
           final item = _filteredItems[index];
           final String name = item['name'] ?? 'Unknown Item';
-          final String description = item['description'] ?? 'No description available';
-          final String status = item['status'] ?? 'Available';
-          final String imageUrl = item['img_name'] ?? '';
+          // final String description = item['description'] ?? 'No description available'; // Not used, using name instead
+          // final String status = item['status'] ?? 'Available'; // Not used in current UI
+          final String rawImageUrl = item['img_name'] ?? item['img_ref'] ?? '';
+          final String imageUrl = rawImageUrl.isNotEmpty
+              ? (rawImageUrl.startsWith('http') ? rawImageUrl : '$_imageBaseUrl$rawImageUrl')
+              : '';
           
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
@@ -314,6 +413,18 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
                                 child: Image.network(
                                   imageUrl,
                                   fit: BoxFit.cover,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                            : null,
+                                        strokeWidth: 2,
+                                        color: const Color(0xFFDBB342),
+                                      ),
+                                    );
+                                  },
                                   errorBuilder: (context, error, stackTrace) => Icon(
                                     Icons.computer,
                                     color: isDarkMode ? Colors.white : const Color(0xFFDBB342),
@@ -333,7 +444,7 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              name,
+                              item['barcode'] ?? 'No Barcode',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
@@ -342,7 +453,7 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              description,
+                              name, // Use name as description
                               style: TextStyle(
                                 fontSize: 14,
                                 color: isDarkMode ? Colors.white70 : Colors.grey[600],
@@ -353,6 +464,27 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
                           ],
                         ),
                       ),
+                      // Add Button
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        child: ElevatedButton(
+                          onPressed: () => _addToCart(item),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFDBB342),
+                            foregroundColor: Colors.white,
+                            shape: const CircleBorder(),
+                            padding: const EdgeInsets.all(12),
+                            minimumSize: const Size(48, 48),
+                          ),
+                          child: const Icon(Icons.add, size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      // For Office Label
                       Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
@@ -362,20 +494,16 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
                           color: const Color(0xFFDBB342).withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Text(
-                          status,
-                          style: const TextStyle(
+                        child: const Text(
+                          'For Office',
+                          style: TextStyle(
                             fontSize: 12,
                             color: Color(0xFFDBB342),
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
+                      const SizedBox(width: 16),
                       Icon(
                         Icons.category_outlined,
                         size: 16,
@@ -408,6 +536,25 @@ class _InventoryRequestFormState extends State<InventoryRequestForm> {
                             ),
                           ],
                         ),
+                      const SizedBox(width: 16),
+                      // Stock Information
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 16,
+                            color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Stock: ${item['instock'] ?? '0'} ${item['unit'] ?? ''}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ],
