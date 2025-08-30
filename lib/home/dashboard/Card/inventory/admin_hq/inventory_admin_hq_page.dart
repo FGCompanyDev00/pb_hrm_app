@@ -1,52 +1,48 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'inventory_request_form.dart';
-import 'inventory_approval_page.dart';
-import 'inventory_app_bar.dart';
-import 'dart:async'; // Added for Timer
+import 'package:pb_hrsystem/services/user_role_service.dart';
+
+import '../inventory_app_bar.dart';
+import 'my_request_page.dart';
+import 'approval_waiting_page.dart';
+import 'approval_in_branch_page.dart';
+import 'approval_from_branch_page.dart';
+import 'my_receive_page.dart';
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:pb_hrsystem/services/user_role_service.dart';
-import 'admin_hq/inventory_admin_hq_page.dart';
 
-class InventoryManagementPage extends StatefulWidget {
-  const InventoryManagementPage({super.key});
+/// AdminHQ-specific inventory management page
+/// Displays role-based menu items: My Request, Approval Waiting, Approval in Branch, Approval from Branch, My Receive
+class InventoryAdminHQPage extends StatefulWidget {
+  const InventoryAdminHQPage({super.key});
 
   @override
-  State<InventoryManagementPage> createState() =>
-      _InventoryManagementPageState();
+  State<InventoryAdminHQPage> createState() => _InventoryAdminHQPageState();
 }
 
-class _InventoryManagementPageState extends State<InventoryManagementPage> {
+class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
   // Banner state
   List<String> _banners = [];
   late PageController _bannerPageController;
   late ValueNotifier<int> _currentBannerPageNotifier;
   Timer? _bannerAutoSwipeTimer;
 
-  // Inventory categories fetched from API
-  List<Map<String, dynamic>> _categories = [];
-  bool _isLoading = true;
-  bool _isError = false;
-  String _errorMessage = '';
-
   // User role state
   bool _isAdminHQ = false;
-  bool _isRoleLoading = true;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    debugPrint('🔍 [InventoryAdminHQPage] initState called');
     _bannerPageController = PageController();
     _currentBannerPageNotifier = ValueNotifier<int>(0);
     _startBannerAutoSwipe();
     _checkUserRole();
-    _fetchCategories();
     _loadBanners();
   }
 
@@ -61,32 +57,30 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
   /// Check if the current user has AdminHQ role
   Future<void> _checkUserRole() async {
     try {
-      debugPrint('🔍 [InventoryManagementPage] Starting role check...');
+      debugPrint('🔍 [InventoryAdminHQPage] Starting role check...');
       final isAdminHQ = await UserRoleService.isAdminHQ();
-      debugPrint('🔍 [InventoryManagementPage] Role check result: isAdminHQ = $isAdminHQ');
+      debugPrint('🔍 [InventoryAdminHQPage] Role check result: isAdminHQ = $isAdminHQ');
       setState(() {
         _isAdminHQ = isAdminHQ;
-        _isRoleLoading = false;
+        _isLoading = false;
       });
-      debugPrint('🔍 [InventoryManagementPage] State updated: _isAdminHQ = $_isAdminHQ, _isRoleLoading = $_isRoleLoading');
+      debugPrint('🔍 [InventoryAdminHQPage] State updated: _isAdminHQ = $_isAdminHQ, _isLoading = $_isLoading');
     } catch (e) {
-      debugPrint('❌ [InventoryManagementPage] Error during role check: $e');
+      debugPrint('❌ [InventoryAdminHQPage] Error during role check: $e');
       setState(() {
         _isAdminHQ = false;
-        _isRoleLoading = false;
+        _isLoading = false;
       });
-      debugPrint('🔍 [InventoryManagementPage] Error state set: _isAdminHQ = $_isAdminHQ, _isRoleLoading = $_isRoleLoading');
+      debugPrint('🔍 [InventoryAdminHQPage] Error state set: _isAdminHQ = $_isAdminHQ, _isLoading = $_isLoading');
     }
   }
 
   void _startBannerAutoSwipe() {
     _bannerAutoSwipeTimer?.cancel();
     if (_banners.length > 1) {
-      _bannerAutoSwipeTimer =
-          Timer.periodic(const Duration(seconds: 4), (timer) {
+      _bannerAutoSwipeTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
         if (mounted && _bannerPageController.hasClients) {
-          final nextPage =
-              (_currentBannerPageNotifier.value + 1) % _banners.length;
+          final nextPage = (_currentBannerPageNotifier.value + 1) % _banners.length;
           _bannerPageController.animateToPage(
             nextPage,
             duration: const Duration(milliseconds: 800),
@@ -97,7 +91,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
     }
   }
 
-  // Banner API fetch and cache (same as dashboard.dart)
+  /// Load banners from API with caching
   Future<void> _loadBanners() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -109,10 +103,12 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
         });
         _startBannerAutoSwipe();
       }
+      
       // Fetch fresh banners from API
       final token = prefs.getString('token');
       final baseUrl = dotenv.env['BASE_URL'];
       if (token == null || baseUrl == null) return;
+      
       final response = await http.get(
         Uri.parse('$baseUrl/api/app/promotions/files'),
         headers: {
@@ -120,6 +116,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
           'Content-Type': 'application/json',
         },
       );
+      
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['results'] != null) {
@@ -138,78 +135,21 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
     }
   }
 
-  // Fetch categories from API with caching
-  Future<void> _fetchCategories() async {
-    setState(() {
-      _isLoading = true;
-      _isError = false;
-      _errorMessage = '';
-    });
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'] ?? '';
-      if (token == null || baseUrl.isEmpty) {
-        throw Exception('Authentication or BASE_URL not configured');
-      }
-      // Try loading from cache first
-      final cached = prefs.getString('inventory_categories');
-      if (cached != null) {
-        final List<dynamic> cachedList = jsonDecode(cached);
-        setState(() {
-          _categories = List<Map<String, dynamic>>.from(
-              cachedList.map((e) => Map<String, dynamic>.from(e)));
-          _isLoading = false;
-        });
-      }
-      // Fetch fresh data
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/inventory/categories'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['results'] != null) {
-          final List<dynamic> results = data['results'];
-          setState(() {
-            _categories = List<Map<String, dynamic>>.from(
-                results.map((e) => Map<String, dynamic>.from(e)));
-            _isLoading = false;
-            _isError = false;
-          });
-          // Cache the results
-          await prefs.setString('inventory_categories', jsonEncode(results));
-        } else {
-          throw Exception('No results in API response');
-        }
-      } else {
-        throw Exception('Failed to fetch categories: ${response.statusCode}');
-      }
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _isError = true;
-        _errorMessage = e.toString();
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<ThemeNotifier>(
       builder: (context, themeNotifier, child) {
         final isDarkMode = themeNotifier.isDarkMode;
+        final screenWidth = MediaQuery.of(context).size.width;
+        final screenHeight = MediaQuery.of(context).size.height;
+        final horizontalPadding = screenWidth < 400 ? 12.0 : 20.0;
+        final verticalPadding = screenHeight < 700 ? 10.0 : 18.0;
 
-        debugPrint('🔍 [InventoryManagementPage] Build method called');
-        debugPrint('🔍 [InventoryManagementPage] _isRoleLoading: $_isRoleLoading');
-        debugPrint('🔍 [InventoryManagementPage] _isAdminHQ: $_isAdminHQ');
+        debugPrint('🔍 [InventoryAdminHQPage] Build method called');
+        debugPrint('🔍 [InventoryAdminHQPage] _isLoading: $_isLoading');
+        debugPrint('🔍 [InventoryAdminHQPage] _isAdminHQ: $_isAdminHQ');
 
-        // Check if user is AdminHQ and redirect to AdminHQ page
-        if (_isRoleLoading) {
-          debugPrint('🔍 [InventoryManagementPage] Showing loading state');
+        if (_isLoading) {
           return Scaffold(
             backgroundColor: isDarkMode ? Colors.black : Colors.white,
             appBar: const InventoryAppBar(
@@ -220,20 +160,48 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
           );
         }
 
-        if (_isAdminHQ) {
-          debugPrint('🔍 [InventoryManagementPage] User is AdminHQ, redirecting to AdminHQ page');
-          debugPrint('🔍 [InventoryManagementPage] Creating InventoryAdminHQPage instance...');
-          return const InventoryAdminHQPage();
+        if (!_isAdminHQ) {
+          return Scaffold(
+            backgroundColor: isDarkMode ? Colors.black : Colors.white,
+            appBar: const InventoryAppBar(
+              title: 'INVENTORY MANAGEMENT',
+              showBack: true,
+            ),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.lock,
+                    size: 64,
+                    color: isDarkMode ? Colors.white54 : Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Access Denied',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'You do not have permission to access this page.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
-        debugPrint('🔍 [InventoryManagementPage] User is NOT AdminHQ, showing regular interface');
+        debugPrint('🔍 [InventoryAdminHQPage] User is AdminHQ, showing AdminHQ interface');
 
-        // Regular inventory management page for non-AdminHQ users
-        final screenWidth = MediaQuery.of(context).size.width;
-        final screenHeight = MediaQuery.of(context).size.height;
-        final horizontalPadding = screenWidth < 400 ? 12.0 : 20.0;
-        final verticalPadding = screenHeight < 700 ? 10.0 : 18.0;
-        
         return Scaffold(
           backgroundColor: isDarkMode ? Colors.black : Colors.white,
           appBar: const InventoryAppBar(
@@ -254,7 +222,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                     // Banner Carousel
                     _buildBannerCarousel(isDarkMode),
                     const SizedBox(height: 18),
-                    // Action Menu Header
+                    // Approval Header (changed from Action Menu)
                     Row(
                       children: [
                         Container(
@@ -267,7 +235,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                           margin: const EdgeInsets.only(right: 12),
                         ),
                         Text(
-                          'Action Menu',
+                          'Approval',
                           style: TextStyle(
                             fontSize: screenWidth < 400 ? 17 : 20,
                             fontWeight: FontWeight.bold,
@@ -278,8 +246,8 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                       ],
                     ),
                     const SizedBox(height: 18),
-                    // Action Grid
-                    _buildActionGrid(context, isDarkMode, screenWidth),
+                    // AdminHQ Action Grid
+                    _buildAdminHQActionGrid(context, isDarkMode, screenWidth),
                   ],
                 ),
               ),
@@ -299,6 +267,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
             ? 145.0
             : 170.0;
     final horizontalMargin = screenWidth < 360 ? 4.0 : 8.0;
+
     if (_banners.isEmpty) {
       return Container(
         height: bannerHeight,
@@ -318,8 +287,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                 ),
           boxShadow: [
             BoxShadow(
-              color:
-                  isDarkMode ? Colors.black26 : Colors.black.withOpacity(0.08),
+              color: isDarkMode ? Colors.black26 : Colors.black.withOpacity(0.08),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -348,6 +316,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
         ),
       );
     }
+
     return SizedBox(
       height: bannerHeight + 16,
       child: Column(
@@ -421,8 +390,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                         boxShadow: index == currentPage
                             ? [
                                 BoxShadow(
-                                  color:
-                                      const Color(0xFFDBB342).withOpacity(0.4),
+                                  color: const Color(0xFFDBB342).withOpacity(0.4),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
@@ -440,25 +408,60 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
     );
   }
 
-  Widget _buildActionGrid(
-      BuildContext context, bool isDarkMode, double screenWidth) {
-    // API categories first, then Approval button last
-    final List<Widget> buttons = [];
-    // API categories
-    for (int i = 0; i < _categories.length; i++) {
-      final cat = _categories[i];
-      buttons.add(_buildCategoryCard(context, cat, isDarkMode, i, screenWidth));
-    }
-    // Approval button LAST
-    buttons.add(_buildActionCard(
-      context,
-      'assets/inventory/Approval.png',
-      'Approval',
-      'approval',
-      isDarkMode,
-      _categories.length,
-      screenWidth,
-    ));
+  Widget _buildAdminHQActionGrid(BuildContext context, bool isDarkMode, double screenWidth) {
+    final List<Map<String, dynamic>> adminActions = [
+      {
+        'icon': Icons.list_alt,
+        'label': 'My Request',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MyRequestPage(),
+          ),
+        ),
+      },
+      {
+        'icon': Icons.pending_actions,
+        'label': 'Approval Waiting',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ApprovalWaitingPage(),
+          ),
+        ),
+      },
+      {
+        'icon': Icons.swap_horiz,
+        'label': 'Approval in Branch',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ApprovalInBranchPage(),
+          ),
+        ),
+      },
+      {
+        'icon': Icons.swap_horiz,
+        'label': 'Approval from Branch',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ApprovalFromBranchPage(),
+          ),
+        ),
+      },
+      {
+        'icon': Icons.shopping_bag,
+        'label': 'My Receive',
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const MyReceivePage(),
+          ),
+        ),
+      },
+    ];
+
     // Responsive grid config
     final crossAxisCount = screenWidth < 360 ? 2 : 3;
     final childAspectRatio = screenWidth < 360
@@ -467,126 +470,38 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
             ? 0.9
             : 1.0;
     final spacing = screenWidth < 400 ? 10.0 : 16.0;
-    return _isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : _isError
-            ? Center(
-                child: Column(
-                  children: [
-                    const Icon(Icons.error, color: Colors.red),
-                    const SizedBox(height: 8),
-                    Text(_errorMessage,
-                        style: const TextStyle(color: Colors.red)),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: _fetchCategories,
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              )
-            : GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: childAspectRatio,
-                crossAxisSpacing: spacing,
-                mainAxisSpacing: spacing,
-                children: buttons,
-              );
-  }
 
-  Widget _buildActionCard(BuildContext context, String iconPath, String label,
-      String type, bool isDarkMode, int index, double screenWidth) {
-    final iconSize = screenWidth < 360 ? 28.0 : 36.0;
-    final fontSize = screenWidth < 360 ? 11.0 : 13.0;
-    return GestureDetector(
-      onTap: () {
-        if (type == 'approval') {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const InventoryApprovalPage(),
-            ),
-          );
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDarkMode ? Colors.grey[850] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFFDBB342).withOpacity(0.3),
-            width: 1.2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isDarkMode
-                  ? Colors.black.withOpacity(0.18)
-                  : Colors.grey.withOpacity(0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 2),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFDBB342).withOpacity(0.13),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Image.asset(
-                iconPath,
-                height: iconSize,
-                width: iconSize,
-                fit: BoxFit.contain,
-                color: isDarkMode ? Colors.white : null,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                  letterSpacing: 0.1,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: crossAxisCount,
+      childAspectRatio: childAspectRatio,
+      crossAxisSpacing: spacing,
+      mainAxisSpacing: spacing,
+      children: adminActions.map((action) => _buildActionCard(
+        context,
+        action['icon'] as IconData,
+        action['label'] as String,
+        action['onTap'] as VoidCallback,
+        isDarkMode,
+        screenWidth,
+      )).toList(),
     );
   }
 
-  Widget _buildCategoryCard(BuildContext context, Map<String, dynamic> cat,
-      bool isDarkMode, int index, double screenWidth) {
-    final String imgUrl = cat['img_name'] ?? '';
-    final String label = cat['name'] ?? '';
-    final String uid = cat['uid'] ?? '';
+  Widget _buildActionCard(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+    bool isDarkMode,
+    double screenWidth,
+  ) {
     final iconSize = screenWidth < 360 ? 28.0 : 36.0;
     final fontSize = screenWidth < 360 ? 11.0 : 13.0;
+
     return GestureDetector(
-      onTap: () {
-        // Navigate to request form with category UID
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => InventoryRequestForm(categoryUid: uid, categoryName: label),
-          ),
-        );
-      },
+      onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.grey[850] : Colors.white,
@@ -616,16 +531,11 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                 color: const Color(0xFFDBB342).withOpacity(0.13),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: imgUrl.isNotEmpty
-                  ? Image.network(
-                      imgUrl,
-                      height: iconSize,
-                      width: iconSize,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.broken_image, color: Colors.grey),
-                    )
-                  : const Icon(Icons.image, size: 32, color: Colors.grey),
+              child: Icon(
+                icon,
+                size: iconSize,
+                color: Colors.green, // Green color as specified
+              ),
             ),
             const SizedBox(height: 10),
             Padding(
