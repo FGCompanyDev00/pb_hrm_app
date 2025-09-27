@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:pb_hrsystem/services/inventory_approval_service.dart';
 import '../inventory_app_bar.dart';
 import 'requestor_detail_page.dart';
 
@@ -40,38 +37,12 @@ class _ApprovalWaitingPageState extends State<ApprovalWaitingPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'] ?? '';
-      
-      if (token == null || baseUrl.isEmpty) {
-        throw Exception('Authentication or BASE_URL not configured');
-      }
-
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/inventory/waitings'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['results'] != null) {
-          final List<dynamic> results = data['results'];
-          setState(() {
-            _approvalRequests = List<Map<String, dynamic>>.from(
-                results.map((e) => Map<String, dynamic>.from(e)));
-            _isLoading = false;
-            _isError = false;
-          });
-        } else {
-          throw Exception('No results in API response');
-        }
-      } else {
-        throw Exception('Failed to fetch approval requests: ${response.statusCode}');
-      }
+      final results = await InventoryApprovalService.fetchSupervisorWaitings();
+      setState(() {
+        _approvalRequests = results;
+        _isLoading = false;
+        _isError = false;
+      });
     } catch (e) {
       setState(() {
         _isLoading = false;

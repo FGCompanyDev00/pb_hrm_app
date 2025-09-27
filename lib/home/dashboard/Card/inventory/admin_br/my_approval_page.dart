@@ -5,16 +5,16 @@ import 'package:pb_hrsystem/services/inventory_approval_service.dart';
 import '../inventory_app_bar.dart';
 import 'requestor_detail_page.dart';
 
-/// Approval from Branch page for AdminHQ users
-/// Currently uses the same API endpoint but will be changed in the future
-class ApprovalFromBranchPage extends StatefulWidget {
-  const ApprovalFromBranchPage({super.key});
+/// My Approval page for AdminBR users
+/// Displays approval requests that are waiting for AdminBR approval
+class MyApprovalPage extends StatefulWidget {
+  const MyApprovalPage({super.key});
 
   @override
-  State<ApprovalFromBranchPage> createState() => _ApprovalFromBranchPageState();
+  State<MyApprovalPage> createState() => _MyApprovalPageState();
 }
 
-class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
+class _MyApprovalPageState extends State<MyApprovalPage> {
   List<Map<String, dynamic>> _approvalRequests = [];
   bool _isLoading = true;
   bool _isError = false;
@@ -37,9 +37,50 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
     });
 
     try {
-      final results = await InventoryApprovalService.fetchWaitings();
+      // Mock data for testing AdminBR approval requests
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      
+      final mockData = [
+        {
+          'id': '1',
+          'title': 'Request to HQ One',
+          'requestor_name': 'Ms. Sarah Johnson',
+          'status': 'AdminBR Pending',
+          'created_at': '2024-01-15T10:30:00Z',
+          'img_path': 'sarah_johnson.jpg',
+          'type': 'Office Equipment',
+        },
+        {
+          'id': '2',
+          'title': 'Request to HQ Two',
+          'requestor_name': 'Mr. David Chen',
+          'status': 'AdminBR Pending',
+          'created_at': '2024-01-14T14:20:00Z',
+          'img_path': 'david_chen.jpg',
+          'type': 'IT Hardware',
+        },
+        {
+          'id': '3',
+          'title': 'Request to HQ Three',
+          'requestor_name': 'Ms. Lisa Wang',
+          'status': 'AdminBR Pending',
+          'created_at': '2024-01-13T09:15:00Z',
+          'img_path': 'lisa_wang.jpg',
+          'type': 'Office Supplies',
+        },
+        {
+          'id': '4',
+          'title': 'Request to HQ Four',
+          'requestor_name': 'Mr. Michael Brown',
+          'status': 'AdminBR Pending',
+          'created_at': '2024-01-12T16:45:00Z',
+          'img_path': 'michael_brown.jpg',
+          'type': 'Furniture',
+        },
+      ];
+
       setState(() {
-        _approvalRequests = results;
+        _approvalRequests = mockData;
         _isLoading = false;
         _isError = false;
       });
@@ -76,7 +117,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
         return Scaffold(
           backgroundColor: isDarkMode ? Colors.black : Colors.white,
           appBar: const InventoryAppBar(
-            title: 'Approval from Branch',
+            title: 'My Approval',
             showBack: true,
           ),
           body: _isLoading
@@ -122,13 +163,13 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.swap_horiz,
+                                Icons.pending_actions,
                                 size: 64,
                                 color: isDarkMode ? Colors.white54 : Colors.grey[400],
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No branch approval requests',
+                                'No approval requests',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -137,7 +178,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'All branch requests have been processed',
+                                'All requests have been processed',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: isDarkMode ? Colors.white70 : Colors.grey[600],
@@ -209,7 +250,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  Icons.swap_horiz,
+                  Icons.approval,
                   color: Colors.pink,
                   size: 24,
                 ),
@@ -264,7 +305,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Supervisor Pending ...',
+                            'AdminBR Pending ...',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.white,

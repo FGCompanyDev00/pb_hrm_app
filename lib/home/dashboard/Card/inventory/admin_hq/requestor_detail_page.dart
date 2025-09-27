@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../inventory_app_bar.dart';
+import '../widgets/comment_modal.dart';
+import '../widgets/success_modal.dart';
 
 /// Requestor Detail page for AdminHQ users
 /// Displays detailed information about a request and allows receive/cancel actions
@@ -222,28 +224,15 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Approve Request'),
-          content: const Text('Are you sure you want to approve this request?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Request approved successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-                // Don't navigate back, just show confirmation
-              },
-              child: const Text('Yes'),
-            ),
-          ],
+        return CommentModal(
+          action: 'Approve',
+          onConfirm: (comment) {
+            Navigator.of(context).pop(); // Close comment modal
+            _processApproval(comment);
+          },
+          onCancel: () {
+            Navigator.of(context).pop(); // Close comment modal
+          },
         );
       },
     );
@@ -253,31 +242,160 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Decline Request'),
-          content: const Text('Are you sure you want to decline this request?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('No'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Request declined successfully'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-                // Don't navigate back, just show confirmation
-              },
-              child: const Text('Yes'),
-            ),
-          ],
+        return CommentModal(
+          action: 'Decline',
+          onConfirm: (comment) {
+            Navigator.of(context).pop(); // Close comment modal
+            _processDecline(comment);
+          },
+          onCancel: () {
+            Navigator.of(context).pop(); // Close comment modal
+          },
         );
       },
     );
+  }
+
+  Future<void> _processApproval(String comment) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Make API call to approve with comment
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/approve/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'comment': comment,
+          'action': 'approve',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Show success modal
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Approved',
+                onClose: () {
+                  Navigator.of(context).pop(); // Close success modal
+                  Navigator.of(context).pop(); // Go back to previous page
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to approve request: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error approving request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _processDecline(String comment) async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Make API call to decline with comment
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/decline/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'comment': comment,
+          'action': 'decline',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        // Show success modal
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Declined',
+                onClose: () {
+                  Navigator.of(context).pop(); // Close success modal
+                  Navigator.of(context).pop(); // Go back to previous page
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to decline request: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error declining request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
   }
 
   // Helper methods for button logic

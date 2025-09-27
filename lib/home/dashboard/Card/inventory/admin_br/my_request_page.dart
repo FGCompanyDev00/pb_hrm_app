@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:pb_hrsystem/services/inventory_approval_service.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../inventory_app_bar.dart';
-import 'requestor_detail_page.dart';
+import 'my_request_detail_page.dart';
 
-/// Approval from Branch page for AdminHQ users
-/// Currently uses the same API endpoint but will be changed in the future
-class ApprovalFromBranchPage extends StatefulWidget {
-  const ApprovalFromBranchPage({super.key});
+/// My Request page for AdminBR users
+/// Displays a list of inventory requests made by the current user
+class MyRequestPage extends StatefulWidget {
+  const MyRequestPage({super.key});
 
   @override
-  State<ApprovalFromBranchPage> createState() => _ApprovalFromBranchPageState();
+  State<MyRequestPage> createState() => _MyRequestPageState();
 }
 
-class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
-  List<Map<String, dynamic>> _approvalRequests = [];
+class _MyRequestPageState extends State<MyRequestPage> {
+  List<Map<String, dynamic>> _requests = [];
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
@@ -26,42 +29,98 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
   @override
   void initState() {
     super.initState();
-    _fetchApprovalRequests();
+    _fetchMyRequests();
   }
 
-  Future<void> _fetchApprovalRequests() async {
-    setState(() {
-      _isLoading = true;
-      _isError = false;
-      _errorMessage = '';
-    });
-
+  /// Fetch inventory requests for the current user
+  Future<void> _fetchMyRequests() async {
     try {
-      final results = await InventoryApprovalService.fetchWaitings();
       setState(() {
-        _approvalRequests = results;
-        _isLoading = false;
+        _isLoading = true;
         _isError = false;
       });
+
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+
+      if (token == null || baseUrl == null) {
+        throw Exception('Token or base URL not found');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          setState(() {
+            _requests = List<Map<String, dynamic>>.from(data['results']);
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _requests = [];
+            _isLoading = false;
+          });
+        }
+      } else {
+        throw Exception('Failed to fetch requests: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
-        _isLoading = false;
         _isError = true;
         _errorMessage = e.toString();
+        _isLoading = false;
       });
     }
   }
 
-  void _openRequestorDetail(Map<String, dynamic> request) {
-    // Add source field to identify this is from approval page
-    final requestWithSource = Map<String, dynamic>.from(request);
-    requestWithSource['source'] = 'approval';
+  /// Get status color based on status text
+  Color _getStatusColor(String status) {
+    debugPrint('🔍 [MyRequestPage] Status: "$status"');
     
+    switch (status.toLowerCase()) {
+      // Pending/Processing statuses - Yellow/Orange
+      case 'supervisor pending...':
+      case 'supervisor pending':
+      case 'manager pending':
+      case 'manager pending...':
+      case 'pending':
+      case 'waiting':
+        return Colors.orange;
+      
+      // Approved/Received statuses - Green
+      case 'approved':
+      case 'received':
+      case 'completed':
+      case 'checked':
+        return Colors.green;
+      
+      // Declined/Rejected statuses - Red
+      case 'decline':
+      case 'declined':
+      case 'rejected':
+      case 'cancelled':
+        return Colors.red;
+      
+      // Default - Orange for unknown statuses
+      default:
+        return Colors.orange;
+    }
+  }
+
+  void _openRequestDetail(Map<String, dynamic> request) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RequestorDetailPage(
-          requestData: requestWithSource,
+        builder: (context) => MyRequestDetailPage(
+          requestData: request,
         ),
       ),
     );
@@ -76,7 +135,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
         return Scaffold(
           backgroundColor: isDarkMode ? Colors.black : Colors.white,
           appBar: const InventoryAppBar(
-            title: 'Approval from Branch',
+            title: 'My Request',
             showBack: true,
           ),
           body: _isLoading
@@ -89,7 +148,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                           const Icon(Icons.error, color: Colors.red, size: 48),
                           const SizedBox(height: 16),
                           Text(
-                            'Error loading approval requests',
+                            'Error loading requests',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -107,7 +166,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: _fetchApprovalRequests,
+                            onPressed: _fetchMyRequests,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFDBB342),
                             ),
@@ -116,19 +175,19 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                         ],
                       ),
                     )
-                  : _approvalRequests.isEmpty
+                  : _requests.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.swap_horiz,
+                                Icons.inventory_2,
                                 size: 64,
                                 color: isDarkMode ? Colors.white54 : Colors.grey[400],
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No branch approval requests',
+                                'No requests found',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -137,7 +196,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'All branch requests have been processed',
+                                'You haven\'t made any inventory requests yet',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: isDarkMode ? Colors.white70 : Colors.grey[600],
@@ -147,14 +206,14 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                           ),
                         )
                       : RefreshIndicator(
-                          onRefresh: _fetchApprovalRequests,
+                          onRefresh: _fetchMyRequests,
                           color: const Color(0xFFDBB342),
                           child: ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            itemCount: _approvalRequests.length,
+                            itemCount: _requests.length,
                             itemBuilder: (context, index) {
-                              final request = _approvalRequests[index];
-                              return _buildApprovalCard(request, isDarkMode);
+                              final request = _requests[index];
+                              return _buildRequestCard(request, isDarkMode);
                             },
                           ),
                         ),
@@ -163,9 +222,8 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
     );
   }
 
-  Widget _buildApprovalCard(Map<String, dynamic> request, bool isDarkMode) {
+  Widget _buildRequestCard(Map<String, dynamic> request, bool isDarkMode) {
     final String title = request['title'] ?? 'No Title';
-    final String requestorName = request['requestor_name'] ?? 'Unknown';
     final String status = request['status'] ?? 'Unknown';
     final String createdAt = request['created_at'] ?? '';
     final String type = 'for Office'; // Fixed as specified
@@ -180,7 +238,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
         color: isDarkMode ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.pink.withOpacity(0.3),
+          color: Colors.purple.withOpacity(0.3),
           width: 1,
         ),
         boxShadow: [
@@ -194,7 +252,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
         ],
       ),
       child: InkWell(
-        onTap: () => _openRequestorDetail(request),
+        onTap: () => _openRequestDetail(request),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -205,12 +263,12 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.pink.withOpacity(0.1),
+                  color: Colors.purple.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  Icons.swap_horiz,
-                  color: Colors.pink,
+                  Icons.inventory_2,
+                  color: Colors.purple,
                   size: 24,
                 ),
               ),
@@ -225,7 +283,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.pink,
+                        color: Colors.purple,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -260,11 +318,11 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: _getStatusColor(status),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Supervisor Pending ...',
+                            status,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.white,
@@ -277,14 +335,14 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                   ],
                 ),
               ),
-              // Requestor Profile Picture
+              // User Profile Picture
               Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.pink.withOpacity(0.3),
+                    color: Colors.purple.withOpacity(0.3),
                     width: 1,
                   ),
                 ),

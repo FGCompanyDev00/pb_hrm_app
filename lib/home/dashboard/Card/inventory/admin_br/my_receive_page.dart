@@ -3,19 +3,19 @@ import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
 import 'package:pb_hrsystem/services/inventory_approval_service.dart';
 import '../inventory_app_bar.dart';
-import 'requestor_detail_page.dart';
+import 'my_receive_detail_page.dart';
 
-/// Approval from Branch page for AdminHQ users
-/// Currently uses the same API endpoint but will be changed in the future
-class ApprovalFromBranchPage extends StatefulWidget {
-  const ApprovalFromBranchPage({super.key});
+/// My Receive page for AdminBR users
+/// Displays inventory requests that have been received/exported
+class MyReceivePage extends StatefulWidget {
+  const MyReceivePage({super.key});
 
   @override
-  State<ApprovalFromBranchPage> createState() => _ApprovalFromBranchPageState();
+  State<MyReceivePage> createState() => _MyReceivePageState();
 }
 
-class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
-  List<Map<String, dynamic>> _approvalRequests = [];
+class _MyReceivePageState extends State<MyReceivePage> {
+  List<Map<String, dynamic>> _receiveRequests = [];
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
@@ -26,10 +26,10 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
   @override
   void initState() {
     super.initState();
-    _fetchApprovalRequests();
+    _fetchReceiveRequests();
   }
 
-  Future<void> _fetchApprovalRequests() async {
+  Future<void> _fetchReceiveRequests() async {
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -37,9 +37,41 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
     });
 
     try {
-      final results = await InventoryApprovalService.fetchWaitings();
+      // Mock data for testing AdminBR receive requests
+      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      
+      final mockData = [
+        {
+          'id': '1',
+          'title': 'Request One',
+          'requestor_name': 'Ms. Emily Davis',
+          'status': 'EXPORTED',
+          'created_at': '2024-01-15T08:30:00Z',
+          'img_path': 'emily_davis.jpg',
+          'type': 'Office Equipment',
+        },
+        {
+          'id': '2',
+          'title': 'Request Two',
+          'requestor_name': 'Mr. James Wilson',
+          'status': 'EXPORTED',
+          'created_at': '2024-01-14T11:20:00Z',
+          'img_path': 'james_wilson.jpg',
+          'type': 'IT Hardware',
+        },
+        {
+          'id': '3',
+          'title': 'Request Three',
+          'requestor_name': 'Ms. Anna Martinez',
+          'status': 'EXPORTED',
+          'created_at': '2024-01-13T15:45:00Z',
+          'img_path': 'anna_martinez.jpg',
+          'type': 'Office Supplies',
+        },
+      ];
+
       setState(() {
-        _approvalRequests = results;
+        _receiveRequests = mockData;
         _isLoading = false;
         _isError = false;
       });
@@ -53,14 +85,14 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
   }
 
   void _openRequestorDetail(Map<String, dynamic> request) {
-    // Add source field to identify this is from approval page
+    // Add source field to identify this is from receive page
     final requestWithSource = Map<String, dynamic>.from(request);
-    requestWithSource['source'] = 'approval';
+    requestWithSource['source'] = 'receive';
     
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => RequestorDetailPage(
+        builder: (context) => MyReceiveDetailPage(
           requestData: requestWithSource,
         ),
       ),
@@ -76,7 +108,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
         return Scaffold(
           backgroundColor: isDarkMode ? Colors.black : Colors.white,
           appBar: const InventoryAppBar(
-            title: 'Approval from Branch',
+            title: 'My Receive',
             showBack: true,
           ),
           body: _isLoading
@@ -89,7 +121,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                           const Icon(Icons.error, color: Colors.red, size: 48),
                           const SizedBox(height: 16),
                           Text(
-                            'Error loading approval requests',
+                            'Error loading receive requests',
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -107,7 +139,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                           ),
                           const SizedBox(height: 16),
                           ElevatedButton(
-                            onPressed: _fetchApprovalRequests,
+                            onPressed: _fetchReceiveRequests,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFDBB342),
                             ),
@@ -116,19 +148,19 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                         ],
                       ),
                     )
-                  : _approvalRequests.isEmpty
+                  : _receiveRequests.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.swap_horiz,
+                                Icons.shopping_bag,
                                 size: 64,
                                 color: isDarkMode ? Colors.white54 : Colors.grey[400],
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No branch approval requests',
+                                'No receive requests',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -137,7 +169,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'All branch requests have been processed',
+                                'No items have been received yet',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: isDarkMode ? Colors.white70 : Colors.grey[600],
@@ -147,14 +179,14 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                           ),
                         )
                       : RefreshIndicator(
-                          onRefresh: _fetchApprovalRequests,
+                          onRefresh: _fetchReceiveRequests,
                           color: const Color(0xFFDBB342),
                           child: ListView.builder(
                             padding: const EdgeInsets.all(16),
-                            itemCount: _approvalRequests.length,
+                            itemCount: _receiveRequests.length,
                             itemBuilder: (context, index) {
-                              final request = _approvalRequests[index];
-                              return _buildApprovalCard(request, isDarkMode);
+                              final request = _receiveRequests[index];
+                              return _buildReceiveCard(request, isDarkMode);
                             },
                           ),
                         ),
@@ -163,7 +195,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
     );
   }
 
-  Widget _buildApprovalCard(Map<String, dynamic> request, bool isDarkMode) {
+  Widget _buildReceiveCard(Map<String, dynamic> request, bool isDarkMode) {
     final String title = request['title'] ?? 'No Title';
     final String requestorName = request['requestor_name'] ?? 'Unknown';
     final String status = request['status'] ?? 'Unknown';
@@ -209,7 +241,7 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  Icons.swap_horiz,
+                  Icons.shopping_bag,
                   color: Colors.pink,
                   size: 24,
                 ),
@@ -260,14 +292,14 @@ class _ApprovalFromBranchPageState extends State<ApprovalFromBranchPage> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.green,
+                            color: Colors.yellow,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Supervisor Pending ...',
+                            'EXPORTED',
                             style: const TextStyle(
                               fontSize: 12,
-                              color: Colors.white,
+                              color: Colors.black,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
