@@ -93,6 +93,10 @@ class _InventoryUserPageState extends State<InventoryUserPage> {
                 
                 // Action Grid Section
                 _buildActionGridSection(isDarkMode, screenWidth),
+                
+                // Back to Action Menu button
+                const SizedBox(height: 24),
+                _buildBackToActionMenuButton(isDarkMode),
               ],
             ),
           ),
@@ -181,6 +185,52 @@ class _InventoryUserPageState extends State<InventoryUserPage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildBackToActionMenuButton(bool isDarkMode) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.pop(context);
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFDBB342).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.swipe_up,
+              color: const Color(0xFFDBB342),
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Click this button to switch to Action Menu',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Back to requesting functionality',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

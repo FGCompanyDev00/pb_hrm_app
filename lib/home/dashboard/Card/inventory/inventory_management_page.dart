@@ -223,7 +223,7 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
         debugPrint('🔍 [InventoryManagementPage] _isAdminHQ: $_isAdminHQ');
         debugPrint('🔍 [InventoryManagementPage] _isAdminBR: $_isAdminBR');
 
-        // Check if user has special role and redirect to appropriate page
+        // Always show loading state while checking roles
         if (_isRoleLoading) {
           debugPrint('🔍 [InventoryManagementPage] Showing loading state');
           return Scaffold(
@@ -236,33 +236,10 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
           );
         }
 
-        if (_isAdminHQ) {
-          debugPrint('🔍 [InventoryManagementPage] User is AdminHQ, redirecting to AdminHQ page');
-          debugPrint('🔍 [InventoryManagementPage] Creating InventoryAdminHQPage instance...');
-          return const InventoryAdminHQPage();
-        }
+        debugPrint('🔍 [InventoryManagementPage] Showing default requesting interface for all users');
+        debugPrint('🔍 [InventoryManagementPage] Role info - AdminHQ: $_isAdminHQ, AdminBR: $_isAdminBR, BranchManager: $_isBranchManager, User: $_isUser');
 
-        if (_isAdminBR) {
-          debugPrint('🔍 [InventoryManagementPage] User is AdminBR, redirecting to AdminBR page');
-          debugPrint('🔍 [InventoryManagementPage] Creating InventoryAdminBRPage instance...');
-          return const InventoryAdminBRPage();
-        }
-
-        if (_isBranchManager) {
-          debugPrint('🔍 [InventoryManagementPage] User is Branch_manager, redirecting to Branch_manager page');
-          debugPrint('🔍 [InventoryManagementPage] Creating InventoryBranchManagerPage instance...');
-          return const InventoryBranchManagerPage();
-        }
-
-        if (_isUser) {
-          debugPrint('🔍 [InventoryManagementPage] User is User role, redirecting to User page');
-          debugPrint('🔍 [InventoryManagementPage] Creating InventoryUserPage instance...');
-          return const InventoryUserPage();
-        }
-
-        debugPrint('🔍 [InventoryManagementPage] User is NOT AdminHQ, AdminBR, Branch_manager, or User, showing regular interface');
-
-        // Regular inventory management page for non-AdminHQ users
+        // Default inventory management page for ALL users (requesting functionality)
         final screenWidth = MediaQuery.of(context).size.width;
         final screenHeight = MediaQuery.of(context).size.height;
         final horizontalPadding = screenWidth < 400 ? 12.0 : 20.0;
@@ -314,6 +291,12 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
                     const SizedBox(height: 18),
                     // Action Grid
                     _buildActionGrid(context, isDarkMode, screenWidth),
+                    
+                    // Swipe down indicator for role-specific approval pages
+                    if (_isAdminHQ || _isAdminBR || _isBranchManager || _isUser) ...[
+                      const SizedBox(height: 24),
+                      _buildSwipeDownIndicator(isDarkMode),
+                    ],
                   ],
                 ),
               ),
@@ -472,6 +455,82 @@ class _InventoryManagementPageState extends State<InventoryManagementPage> {
         ],
       ),
     );
+  }
+
+  Widget _buildSwipeDownIndicator(bool isDarkMode) {
+    return GestureDetector(
+      onTap: _navigateToRoleSpecificPage,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.grey[100],
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFFDBB342).withOpacity(0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.swipe_down,
+              color: const Color(0xFFDBB342),
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Click this button to switch to ${_getRoleSpecificTitle()}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Access your approval management',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getRoleSpecificTitle() {
+    if (_isAdminHQ) return 'AdminHQ Approvals';
+    if (_isAdminBR) return 'AdminBR Approvals';
+    if (_isBranchManager) return 'Branch Manager Approvals';
+    if (_isUser) return 'User Approvals';
+    return 'Approvals';
+  }
+
+  void _navigateToRoleSpecificPage() {
+    if (_isAdminHQ) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const InventoryAdminHQPage()),
+      );
+    } else if (_isAdminBR) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const InventoryAdminBRPage()),
+      );
+    } else if (_isBranchManager) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const InventoryBranchManagerPage()),
+      );
+    } else if (_isUser) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const InventoryUserPage()),
+      );
+    }
   }
 
   Widget _buildActionGrid(
