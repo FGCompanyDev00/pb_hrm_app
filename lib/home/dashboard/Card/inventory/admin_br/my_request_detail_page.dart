@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import '../widgets/comment_modal.dart';
 import '../inventory_app_bar.dart';
 
 /// My Request Detail page for AdminBR users
@@ -23,6 +28,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
+  bool _isSubmitting = false;
 
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
@@ -34,7 +40,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     _loadRequestDetails();
   }
 
-  void _loadRequestDetails() {
+  Future<void> _loadRequestDetails() async {
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -42,63 +48,80 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     });
 
     try {
-      // Mock data for testing - this will be replaced with actual API data
-      final mockRequestDetails = {
-        'id': widget.requestData['id'] ?? '1',
-        'title': widget.requestData['title'] ?? 'My Request',
-        'status': widget.requestData['status'] ?? 'Approved',
-        'created_at': widget.requestData['created_at'] ?? '2024-02-26T11:30:00Z',
-        'requestor_name': widget.requestData['requestor_name'] ?? 'Ms. Lusi',
-        'img_path': widget.requestData['img_path'] ?? 'lusi.jpg',
-        'type': widget.requestData['type'] ?? 'Office Equipment',
-        'approved_at': '2024-05-14T09:00:11Z',
-        'approved_by': 'Marketing Team',
-        'approval_comment': 'Marketing create new product',
-      };
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
 
-      final mockRequestItems = [
-        {
-          'name': 'Desktop Computer',
-          'description': 'High-performance desktop computer for office use',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Desktop',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Office Chair',
-          'description': 'Ergonomic office chair with lumbar support',
-          'quantity': 1,
-          'image': 'https://via.placeholder.com/100x100?text=Chair',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Monitor 24"',
-          'description': '24-inch LED monitor for better productivity',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Monitor',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Wireless Mouse',
-          'description': 'Ergonomic wireless mouse with USB receiver',
-          'quantity': 3,
-          'image': 'https://via.placeholder.com/100x100?text=Mouse',
-          'category': 'for Office',
-        },
-      ];
+      if (token == null || baseUrl == null) {
+        throw Exception('Authentication token or base URL not found');
+      }
 
-      setState(() {
-        _requestDetails = mockRequestDetails;
-        _requestItems = mockRequestItems;
-        _isLoading = false;
-        _isError = false;
-      });
+      // Get the topic ID from the request data - check both possible field names
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      debugPrint('🔍 [MyRequestDetailPage] Fetching details for topic: $topicUid');
+      debugPrint('🔍 [MyRequestDetailPage] API URL: $baseUrl/api/inventory/my-request-topic-detail/$topicUid');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/my-request-topic-detail/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('🔍 [MyRequestDetailPage] Response status: ${response.statusCode}');
+      debugPrint('🔍 [MyRequestDetailPage] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          final result = data['results'];
+          
+          // Extract request details and items
+          final requestDetails = {
+            'id': result['id'],
+            'topic_uniq_id': result['topic_uniq_id'],
+            'title': result['title'],
+            'product_priority': result['product_priority'],
+            'employee_name': result['employee_name'],
+            'img_path': result['img_path'],
+            'branch_name': result['branch_name'],
+            'status': result['status'],
+            'request_stock': result['request_stock'],
+            'department_name': result['department_name'],
+            'created_at': result['created_at'],
+          };
+          
+          final List<dynamic> details = result['details'] ?? [];
+          
+          debugPrint('🔍 [MyRequestDetailPage] Raw details: $details');
+          
+          setState(() {
+            _requestDetails = requestDetails;
+            _requestItems = List<Map<String, dynamic>>.from(
+                details.map((e) => Map<String, dynamic>.from(e)));
+            _isLoading = false;
+            _isError = false;
+          });
+          debugPrint('✅ [MyRequestDetailPage] Request details loaded successfully');
+        } else {
+          throw Exception('No results in API response');
+        }
+      } else {
+        throw Exception('Failed to fetch request details: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _isError = true;
         _errorMessage = e.toString();
       });
+      debugPrint('❌ [MyRequestDetailPage] Error loading request details: $e');
     }
   }
 
@@ -165,7 +188,20 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                           const SizedBox(height: 16),
                           _buildRequestedItemsSection(isDarkMode),
                           const SizedBox(height: 16),
-                          _buildApprovalHistorySection(isDarkMode),
+                          if (_isFinalStatus)
+                            FutureBuilder<Widget>(
+                              future: _buildFeedbackSection(isDarkMode),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                return snapshot.data ?? const SizedBox.shrink();
+                              },
+                            )
+                          else
+                            _buildUpdateCancelRow(isDarkMode),
+                          const SizedBox(height: 16),
+                          if (_isFinalStatus) _buildApprovalHistorySection(isDarkMode),
                         ],
                       ),
                     ),
@@ -175,7 +211,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   }
 
   Widget _buildRequestorInfoCard(bool isDarkMode) {
-    final String requestorName = _requestDetails['requestor_name'] ?? 'Unknown';
+    final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
     final String submittedAt = _formatDate(_requestDetails['created_at']);
     final String status = _requestDetails['status'] ?? 'Unknown';
     final String imageUrl = _getImageUrl(_requestDetails['img_path']);
@@ -296,17 +332,18 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...(_requestItems.map((item) => _buildRequestedItemCard(item, isDarkMode))),
+        ...List.generate(_requestItems.length, (index) => _buildRequestedItemCard(_requestItems[index], isDarkMode, index)),
       ],
     );
   }
 
-  Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode) {
+  Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode, int index) {
     final String name = item['name'] ?? 'Unknown Item';
-    final String description = item['description'] ?? '';
-    final int quantity = item['quantity'] ?? 0;
+    final int quantity = (item['quantity'] is String)
+        ? int.tryParse(item['quantity']) ?? 0
+        : (item['quantity'] ?? 0);
     final String category = item['category'] ?? 'for Office';
-    final String imageUrl = item['image'] ?? '';
+    final String imageUrl = _getItemImageUrl(item['img_ref']);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -394,25 +431,295 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
               ],
             ),
           ),
-          // Quantity
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDBB342).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              quantity.toString().padLeft(2, '0'),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFDBB342),
-              ),
-            ),
-          ),
+          // Quantity or controls
+          _isFinalStatus
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBB342).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    quantity.toString().padLeft(2, '0'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFDBB342),
+                    ),
+                  ),
+                )
+              : Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _decrementQuantity(index),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDBB342).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        quantity.toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFDBB342),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _incrementQuantity(index),
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () => _removeItem(index),
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red[400],
+                    ),
+                  ],
+                ),
         ],
       ),
     );
+  }
+
+  // Final vs editable status
+  bool get _isFinalStatus {
+    final s = (_requestDetails['status'] ?? '').toString().toLowerCase();
+    return s.contains('approved') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
+  }
+
+  // Quantity controls for editable mode
+  void _incrementQuantity(int index) {
+    setState(() {
+      final current = (_requestItems[index]['quantity'] is String)
+          ? int.tryParse(_requestItems[index]['quantity']) ?? 0
+          : (_requestItems[index]['quantity'] ?? 0);
+      _requestItems[index]['quantity'] = current + 1;
+    });
+  }
+
+  void _decrementQuantity(int index) {
+    setState(() {
+      final current = (_requestItems[index]['quantity'] is String)
+          ? int.tryParse(_requestItems[index]['quantity']) ?? 0
+          : (_requestItems[index]['quantity'] ?? 0);
+      if (current > 1) {
+        _requestItems[index]['quantity'] = current - 1;
+      }
+    });
+  }
+
+  void _removeItem(int index) {
+    setState(() {
+      _requestItems.removeAt(index);
+    });
+  }
+
+  Widget _buildUpdateCancelRow(bool isDarkMode) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: _isSubmitting ? null : _submitUpdate,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDBB342),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: Text(_isSubmitting ? 'Updating...' : 'Update'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    String? comment;
+                    await showDialog(
+                      context: context,
+                      builder: (context) => CommentModal(
+                        action: 'Submit',
+                        onConfirm: (c) {
+                          comment = c;
+                          Navigator.of(context).pop();
+                        },
+                        onCancel: () {
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    );
+                    final hasComment = (comment ?? '').trim().isNotEmpty;
+                    if (hasComment) {
+                      await _submitCancel((comment ?? '').trim());
+                    }
+                  },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFDBB342), width: 2),
+              foregroundColor: const Color(0xFFDBB342),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: Text(_isSubmitting ? 'Cancelling...' : 'Cancel'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _submitUpdate() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (token == null || baseUrl == null || topicUid == null) {
+        throw Exception('Missing auth or topic id');
+      }
+
+      final body = {
+        'title': _requestDetails['title'] ?? '',
+        'details': _requestItems.map((e) => {
+              'barcode': e['barcode'] ?? e['bar_code'] ?? '',
+              'quantity': (e['quantity'] is String)
+                  ? int.tryParse(e['quantity']) ?? 0
+                  : (e['quantity'] ?? 0),
+            }).toList(),
+        'confirmed': 0,
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request updated successfully')),
+        );
+        await _loadRequestDetails();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        }
+      } else {
+        throw Exception('Failed to update (${response.statusCode})');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Update failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _submitCancel(String comment) async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      if (token == null || baseUrl == null) {
+        throw Exception('Missing auth');
+      }
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/request-cancel/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'comment': comment}),
+      );
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request cancelled')),
+        );
+        Navigator.pop(context, true);
+      } else {
+        throw Exception('Failed to cancel (${response.statusCode})');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cancel failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<Widget> _buildFeedbackSection(bool isDarkMode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (token == null || baseUrl == null || topicUid == null) {
+        return const SizedBox.shrink();
+      }
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_reply/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode != 200) return const SizedBox.shrink();
+      final decoded = jsonDecode(response.body);
+      final results = (decoded is Map && decoded['results'] != null) ? decoded['results'] : decoded;
+      if (results == null) return const SizedBox.shrink();
+
+      final String status = (_requestDetails['status'] ?? '').toString();
+      final String when = (results['created_at'] ?? '').toString();
+      final String comment = (results['comment'] ?? '').toString();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Text(
+            status,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            when,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            comment,
+            style: TextStyle(
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black87,
+            ),
+          ),
+        ],
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
   }
 
   Widget _buildApprovalHistorySection(bool isDarkMode) {
@@ -526,6 +833,11 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   String _getImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.isEmpty) return '';
     return imagePath.startsWith('http') ? imagePath : '$_imageBaseUrl$imagePath';
+  }
+
+  String _getItemImageUrl(String? imageRef) {
+    if (imageRef == null || imageRef.isEmpty) return '';
+    return imageRef.startsWith('http') ? imageRef : '$_imageBaseUrl$imageRef';
   }
 
   String _formatDate(String? dateString) {

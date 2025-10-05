@@ -24,11 +24,106 @@ class RequestorDetailPage extends StatefulWidget {
 }
 
 class _RequestorDetailPageState extends State<RequestorDetailPage> {
-  bool _isLoading = false;
+  Map<String, dynamic> _requestDetails = {};
+  List<Map<String, dynamic>> _requestItems = [];
+  bool _isLoading = true;
+  bool _isError = false;
+  String _errorMessage = '';
   bool _isProcessing = false;
 
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+
+  @override
+  void initState() {
+    super.initState();
+    debugPrint('🔍 [RequestorDetailPage] initState called with requestData: ${widget.requestData}');
+    _fetchRequestDetails();
+  }
+
+  Future<void> _fetchRequestDetails() async {
+    setState(() {
+      _isLoading = true;
+      _isError = false;
+      _errorMessage = '';
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      debugPrint('🔍 [RequestorDetailPage] Fetching details for topic: $topicUid');
+      debugPrint('🔍 [RequestorDetailPage] API URL: $baseUrl/api/inventory/request_topic/$topicUid');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('🔍 [RequestorDetailPage] Response status: ${response.statusCode}');
+      debugPrint('🔍 [RequestorDetailPage] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          final result = data['results'];
+          
+          // Extract request details
+          final requestDetails = {
+            'id': result['id'],
+            'topic_uniq_id': result['topic_uniq_id'],
+            'title': result['title'],
+            'product_priority': result['product_priority'],
+            'employee_name': result['employee_name'], // API uses employee_name
+            'img_path': result['img_path'], // Full URL from API
+            'branch_name': result['branch_name'],
+            'status': result['status'],
+            'created_at': result['created_at'],
+          };
+          
+          final List<dynamic> details = result['details'] ?? [];
+          
+          debugPrint('🔍 [RequestorDetailPage] Raw details: $details');
+          
+          setState(() {
+            _requestDetails = requestDetails;
+            _requestItems = List<Map<String, dynamic>>.from(
+                details.map((e) => Map<String, dynamic>.from(e)));
+            _isLoading = false;
+            _isError = false;
+          });
+          
+          debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
+        } else {
+          throw Exception('No results in API response');
+        }
+      } else {
+        throw Exception('Failed to fetch request details: ${response.statusCode}');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _isError = true;
+        _errorMessage = e.toString();
+      });
+      debugPrint('🔍 [RequestorDetailPage] Error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +139,42 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
           ),
           body: _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
+              : _isError
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.error, color: Colors.red, size: 48),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading request details',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _errorMessage,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _fetchRequestDetails,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDBB342),
+                            ),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    )
+                  : SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,10 +196,10 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   Widget _buildRequestorInfoCard(bool isDarkMode) {
-    final String requestorName = widget.requestData['requestor_name'] ?? 'Unknown';
-    final String createdAt = widget.requestData['created_at'] ?? '';
-    final String status = widget.requestData['status'] ?? 'Unknown';
-    final String rawImageUrl = widget.requestData['img_path'] ?? widget.requestData['img_name'] ?? '';
+    final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
+    final String createdAt = _requestDetails['created_at'] ?? '';
+    final String status = _requestDetails['status'] ?? 'Unknown';
+    final String rawImageUrl = _requestDetails['img_path'] ?? '';
     final String imageUrl = rawImageUrl.isNotEmpty
         ? (rawImageUrl.startsWith('http') ? rawImageUrl : '$_imageBaseUrl$rawImageUrl')
         : '';
@@ -184,38 +314,6 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   Widget _buildRequestedItemsSection(bool isDarkMode) {
-    // Mock data for requested items - this will be replaced with actual API data
-    final List<Map<String, dynamic>> requestedItems = [
-      {
-        'name': 'Desktop Computer',
-        'description': 'High-performance desktop computer for office use',
-        'quantity': 2,
-        'image': 'https://via.placeholder.com/100x100?text=Desktop',
-        'category': 'for Office',
-      },
-      {
-        'name': 'Office Chair',
-        'description': 'Ergonomic office chair with lumbar support',
-        'quantity': 1,
-        'image': 'https://via.placeholder.com/100x100?text=Chair',
-        'category': 'for Office',
-      },
-      {
-        'name': 'Monitor 24"',
-        'description': '24-inch LED monitor for better productivity',
-        'quantity': 2,
-        'image': 'https://via.placeholder.com/100x100?text=Monitor',
-        'category': 'for Office',
-      },
-      {
-        'name': 'Wireless Mouse',
-        'description': 'Ergonomic wireless mouse with USB receiver',
-        'quantity': 3,
-        'image': 'https://via.placeholder.com/100x100?text=Mouse',
-        'category': 'for Office',
-      },
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -228,12 +326,19 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...requestedItems.map((item) => _buildItemCard(item, isDarkMode)).toList(),
+        ..._requestItems.map((item) => _buildItemCard(item, isDarkMode)).toList(),
       ],
     );
   }
 
   Widget _buildItemCard(Map<String, dynamic> item, bool isDarkMode) {
+    final String name = item['name'] ?? 'Unknown Item';
+    final dynamic quantityValue = item['quantity'];
+    final int quantity = (quantityValue is String) ? int.tryParse(quantityValue) ?? 0 : (quantityValue ?? 0);
+    final String imageUrl = item['img_ref'] ?? ''; // API uses img_ref for item images
+
+    debugPrint('🔍 [RequestorDetailPage] Building item card: name="$name", img_ref="$imageUrl"');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -257,15 +362,33 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                item['image'],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.inventory_2,
-                  color: Colors.grey[600],
-                  size: 30,
-                ),
-              ),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                            strokeWidth: 2,
+                            color: const Color(0xFFDBB342),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.inventory_2,
+                        color: Colors.grey[600],
+                        size: 30,
+                      ),
+                    )
+                  : Icon(
+                      Icons.inventory_2,
+                      color: Colors.grey[600],
+                      size: 30,
+                    ),
             ),
           ),
           const SizedBox(width: 16),
@@ -275,7 +398,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item['name'],
+                  name,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -284,17 +407,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  item['description'],
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDarkMode ? Colors.white70 : Colors.grey[600],
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  item['category'],
+                  'for Office',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.orange,
@@ -312,7 +425,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              'Qty: ${item['quantity']}',
+              quantity.toString().padLeft(2, '0'),
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -462,26 +575,55 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     });
 
     try {
-      // Mock API call for AdminBR (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
       
-      // Log the comment for testing purposes
-      debugPrint('🔍 [AdminBR] Approval comment: $comment');
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Make API call to approve with comment
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/approve/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'comment': comment,
+          'action': 'approve',
+        }),
+      );
+
+      debugPrint('🔍 [AdminBR] Approval response status: ${response.statusCode}');
+      debugPrint('🔍 [AdminBR] Approval response body: ${response.body}');
       
-      if (mounted) {
-        // Show success modal
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SuccessModal(
-              action: 'Approved',
-              onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
-              },
-            );
-          },
-        );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Approved',
+                onClose: () {
+                  Navigator.of(context).pop(); // Close success modal
+                  Navigator.of(context).pop(true); // Go back to previous page
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to approve request: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -507,26 +649,55 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     });
 
     try {
-      // Mock API call for AdminBR (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
       
-      // Log the comment for testing purposes
-      debugPrint('🔍 [AdminBR] Decline comment: $comment');
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Make API call to decline with comment
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/decline/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'comment': comment,
+          'action': 'decline',
+        }),
+      );
+
+      debugPrint('🔍 [AdminBR] Decline response status: ${response.statusCode}');
+      debugPrint('🔍 [AdminBR] Decline response body: ${response.body}');
       
-      if (mounted) {
-        // Show success modal
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SuccessModal(
-              action: 'Declined',
-              onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
-              },
-            );
-          },
-        );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Declined',
+                onClose: () {
+                  Navigator.of(context).pop(); // Close success modal
+                  Navigator.of(context).pop(true); // Go back to previous page
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to decline request: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {

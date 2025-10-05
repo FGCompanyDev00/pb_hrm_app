@@ -116,14 +116,18 @@ class _MyRequestPageState extends State<MyRequestPage> {
   }
 
   void _openRequestDetail(Map<String, dynamic> request) {
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => MyRequestDetailPage(
           requestData: request,
         ),
       ),
-    );
+    ).then((changed) {
+      if (changed == true) {
+        _fetchMyRequests();
+      }
+    });
   }
 
   @override

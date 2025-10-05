@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../inventory_app_bar.dart';
 import 'my_request_detail_page.dart';
 
@@ -36,41 +40,38 @@ class _MyRequestPageState extends State<MyRequestPage> {
         _isError = false;
       });
 
-      // Mock data for testing Branch_manager requests
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
-      
-      final mockData = [
-        {
-          'id': '1',
-          'title': 'Request one',
-          'status': 'Supervisor Pending',
-          'created_at': '2024-01-15T12:00:00Z',
-          'img_path': 'branch_manager1.jpg',
-          'type': 'for Office',
-        },
-        {
-          'id': '2',
-          'title': 'Request Two',
-          'status': 'APPROVED',
-          'created_at': '2024-01-14T12:00:00Z',
-          'img_path': 'branch_manager2.jpg',
-          'type': 'for Office',
-        },
-        {
-          'id': '3',
-          'title': 'Request Three',
-          'status': 'DECLINE',
-          'created_at': '2024-01-13T12:00:00Z',
-          'img_path': 'branch_manager3.jpg',
-          'type': 'for Office',
-        },
-      ];
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
 
-      setState(() {
-        _requests = mockData;
-        _isLoading = false;
-        _isError = false;
-      });
+      if (token == null || baseUrl == null) {
+        throw Exception('Token or base URL not found');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          setState(() {
+            _requests = List<Map<String, dynamic>>.from(data['results']);
+            _isLoading = false;
+          });
+        } else {
+          setState(() {
+            _requests = [];
+            _isLoading = false;
+          });
+        }
+      } else {
+        throw Exception('Failed to fetch requests: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -333,14 +334,18 @@ class _MyRequestPageState extends State<MyRequestPage> {
   }
 
   void _openRequestDetail(Map<String, dynamic> request) {
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => MyRequestDetailPage(
           requestData: request,
         ),
       ),
-    );
+    ).then((changed) {
+      if (changed == true) {
+        _fetchMyRequests();
+      }
+    });
   }
 
   String _formatDate(String? dateString) {

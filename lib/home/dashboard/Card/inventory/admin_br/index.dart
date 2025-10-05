@@ -8,4 +8,5 @@ export 'my_approval_page.dart';
 export 'my_receive_page.dart';
 export 'my_receive_detail_page.dart';
 export 'request_from_hq_page.dart';
+export 'hq_item_detail_page.dart';
 export 'requestor_detail_page.dart';

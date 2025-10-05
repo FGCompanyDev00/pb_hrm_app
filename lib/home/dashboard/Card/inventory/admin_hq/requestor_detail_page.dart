@@ -299,8 +299,10 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
               return SuccessModal(
                 action: 'Approved',
                 onClose: () {
-                  Navigator.of(context).pop(); // Close success modal
-                  Navigator.of(context).pop(); // Go back to previous page
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) nav.pop();
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+                  if (rootNav.canPop()) rootNav.pop(true);
                 },
               );
             },
@@ -370,8 +372,10 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
               return SuccessModal(
                 action: 'Declined',
                 onClose: () {
-                  Navigator.of(context).pop(); // Close success modal
-                  Navigator.of(context).pop(); // Go back to previous page
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) nav.pop();
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+                  if (rootNav.canPop()) rootNav.pop(true);
                 },
               );
             },

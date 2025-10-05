@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../inventory_app_bar.dart';
 import 'request_detail_page.dart';
 
@@ -36,44 +40,42 @@ class _MyReceivePageState extends State<MyReceivePage> {
     });
 
     try {
-      // Mock data for testing User receive requests
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
       
-      final mockData = [
-        {
-          'id': '1',
-          'title': 'Request one',
-          'requestor_name': 'Ms. Emily Davis',
-          'status': 'EXPORTED',
-          'created_at': '2024-01-15T08:30:00Z',
-          'img_path': 'emily_davis.jpg',
-          'type': 'Office Equipment',
-        },
-        {
-          'id': '2',
-          'title': 'Request Two',
-          'requestor_name': 'Mr. James Wilson',
-          'status': 'EXPORTED',
-          'created_at': '2024-01-14T11:20:00Z',
-          'img_path': 'james_wilson.jpg',
-          'type': 'IT Hardware',
-        },
-        {
-          'id': '3',
-          'title': 'Request Three',
-          'requestor_name': 'Ms. Anna Martinez',
-          'status': 'EXPORTED',
-          'created_at': '2024-01-13T15:45:00Z',
-          'img_path': 'anna_martinez.jpg',
-          'type': 'Office Supplies',
-        },
-      ];
+      if (token == null || baseUrl == null) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
 
-      setState(() {
-        _receiveRequests = mockData;
-        _isLoading = false;
-        _isError = false;
-      });
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/exports'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          final List<dynamic> results = data['results'];
+          setState(() {
+            _receiveRequests = List<Map<String, dynamic>>.from(
+                results.map((e) => Map<String, dynamic>.from(e)));
+            _isLoading = false;
+            _isError = false;
+          });
+        } else {
+          setState(() {
+            _receiveRequests = [];
+            _isLoading = false;
+            _isError = false;
+          });
+        }
+      } else {
+        throw Exception('Failed to fetch receive requests: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;

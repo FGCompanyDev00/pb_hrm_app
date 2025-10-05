@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:pb_hrsystem/services/inventory_approval_service.dart';
 import '../inventory_app_bar.dart';
 import 'request_detail_page.dart';
 
@@ -36,32 +37,9 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
     });
 
     try {
-      // Mock data for testing Branch_manager approval requests
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
-      
-      final mockData = [
-        {
-          'id': '1',
-          'title': 'Request to HQ One',
-          'requestor_name': 'Ms. Sarah Johnson',
-          'status': 'Manager Pending',
-          'created_at': '2024-01-15T10:30:00Z',
-          'img_path': 'sarah_johnson.jpg',
-          'type': 'Office Equipment',
-        },
-        {
-          'id': '2',
-          'title': 'Request to HQ Two',
-          'requestor_name': 'Mr. David Chen',
-          'status': 'Manager Pending',
-          'created_at': '2024-01-14T14:20:00Z',
-          'img_path': 'david_chen.jpg',
-          'type': 'IT Hardware',
-        },
-      ];
-
+      final results = await InventoryApprovalService.fetchWaitings();
       setState(() {
-        _approvalRequests = mockData;
+        _approvalRequests = results;
         _isLoading = false;
         _isError = false;
       });

@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../inventory_app_bar.dart';
 import '../widgets/comment_modal.dart';
 import '../widgets/success_modal.dart';
@@ -37,7 +41,7 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
     _loadRequestDetails();
   }
 
-  void _loadRequestDetails() {
+  Future<void> _loadRequestDetails() async {
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -45,60 +49,79 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
     });
 
     try {
-      // Mock data for testing - this will be replaced with actual API data
-      final mockRequestDetails = {
-        'id': widget.requestData['id'] ?? '1',
-        'title': widget.requestData['title'] ?? 'My Receive Request',
-        'status': widget.requestData['status'] ?? 'EXPORTED',
-        'created_at': widget.requestData['created_at'] ?? '2024-01-15T08:30:00Z',
-        'requestor_name': widget.requestData['requestor_name'] ?? 'Ms. Emily Davis',
-        'img_path': widget.requestData['img_path'] ?? 'emily_davis.jpg',
-        'type': widget.requestData['type'] ?? 'Office Equipment',
-      };
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
 
-      final mockRequestItems = [
-        {
-          'name': 'Desktop Computer',
-          'description': 'High-performance desktop computer for office use',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Desktop',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Office Chair',
-          'description': 'Ergonomic office chair with lumbar support',
-          'quantity': 1,
-          'image': 'https://via.placeholder.com/100x100?text=Chair',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Monitor 24"',
-          'description': '24-inch LED monitor for better productivity',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Monitor',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Wireless Mouse',
-          'description': 'Ergonomic wireless mouse with USB receiver',
-          'quantity': 3,
-          'image': 'https://via.placeholder.com/100x100?text=Mouse',
-          'category': 'for Office',
-        },
-      ];
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
 
-      setState(() {
-        _requestDetails = mockRequestDetails;
-        _requestItems = mockRequestItems;
-        _isLoading = false;
-        _isError = false;
-      });
+      debugPrint('🔍 [MyReceiveDetailPage] Fetching details for topic: $topicUid');
+      debugPrint('🔍 [MyReceiveDetailPage] API URL: $baseUrl/api/inventory/request_topic/$topicUid');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('🔍 [MyReceiveDetailPage] Response status: ${response.statusCode}');
+      debugPrint('🔍 [MyReceiveDetailPage] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          final result = data['results'];
+          
+          // Extract request details
+          final requestDetails = {
+            'id': result['id'],
+            'topic_uniq_id': result['topic_uniq_id'],
+            'title': result['title'],
+            'product_priority': result['product_priority'],
+            'employee_name': result['employee_name'], // API uses employee_name
+            'img_path': result['img_path'], // Full URL from API
+            'branch_name': result['branch_name'],
+            'status': result['status'],
+            'created_at': result['created_at'],
+          };
+          
+          final List<dynamic> details = result['details'] ?? [];
+          
+          debugPrint('🔍 [MyReceiveDetailPage] Raw details: $details');
+          
+          setState(() {
+            _requestDetails = requestDetails;
+            _requestItems = List<Map<String, dynamic>>.from(
+                details.map((e) => Map<String, dynamic>.from(e)));
+            _isLoading = false;
+            _isError = false;
+          });
+          
+          debugPrint('🔍 [MyReceiveDetailPage] Loaded ${_requestItems.length} items');
+        } else {
+          throw Exception('No results in API response');
+        }
+      } else {
+        throw Exception('Failed to fetch request details: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _isError = true;
         _errorMessage = e.toString();
       });
+      debugPrint('🔍 [MyReceiveDetailPage] Error: $e');
     }
   }
 
@@ -175,7 +198,7 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
   }
 
   Widget _buildRequestorInfoCard(bool isDarkMode) {
-    final String requestorName = _requestDetails['requestor_name'] ?? 'Unknown';
+    final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
     final String submittedAt = _formatDate(_requestDetails['created_at']);
     final String status = _requestDetails['status'] ?? 'Unknown';
     final String imageUrl = _getImageUrl(_requestDetails['img_path']);
@@ -303,10 +326,9 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
 
   Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode) {
     final String name = item['name'] ?? 'Unknown Item';
-    final String description = item['description'] ?? '';
-    final int quantity = item['quantity'] ?? 0;
-    final String category = item['category'] ?? 'for Office';
-    final String imageUrl = item['image'] ?? '';
+    final dynamic quantityValue = item['quantity'];
+    final int quantity = (quantityValue is String) ? int.tryParse(quantityValue) ?? 0 : (quantityValue ?? 0);
+    final String imageUrl = item['img_ref'] ?? ''; // API uses img_ref for item images
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -384,7 +406,7 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  category,
+                  'for Office',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.orange,
@@ -519,26 +541,52 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
     });
 
     try {
-      // Mock API call for AdminBR (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
       
-      // Log the comment for testing purposes
-      debugPrint('🔍 [AdminBR] Receive comment: $comment');
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/received/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('🔍 [AdminBR] Receive response status: ${response.statusCode}');
+      debugPrint('🔍 [AdminBR] Receive response body: ${response.body}');
       
-      if (mounted) {
-        // Show success modal
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SuccessModal(
-              action: 'Received',
-              onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
-              },
-            );
-          },
-        );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Received',
+                onClose: () {
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) nav.pop();
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+                  if (rootNav.canPop()) rootNav.pop(true);
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to receive item: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -578,8 +626,10 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
             return SuccessModal(
               action: 'Cancelled',
               onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
+                final nav = Navigator.of(context);
+                if (nav.canPop()) nav.pop();
+                final rootNav = Navigator.of(context, rootNavigator: true);
+                if (rootNav.canPop()) rootNav.pop(true);
               },
             );
           },

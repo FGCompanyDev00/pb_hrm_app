@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../inventory_app_bar.dart';
 import '../widgets/comment_modal.dart';
 import '../widgets/success_modal.dart';
@@ -37,7 +41,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     _loadRequestDetails();
   }
 
-  void _loadRequestDetails() {
+  Future<void> _loadRequestDetails() async {
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -45,60 +49,79 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     });
 
     try {
-      // Mock data for testing - this will be replaced with actual API data
-      final mockRequestDetails = {
-        'id': widget.requestData['id'] ?? '1',
-        'title': widget.requestData['title'] ?? 'Request Detail',
-        'status': widget.requestData['status'] ?? 'Pending',
-        'created_at': widget.requestData['created_at'] ?? '2024-01-15T08:30:00Z',
-        'requestor_name': widget.requestData['requestor_name'] ?? 'Ms. Lusi',
-        'img_path': widget.requestData['img_path'] ?? 'lusi.jpg',
-        'type': widget.requestData['type'] ?? 'Office Equipment',
-      };
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
 
-      final mockRequestItems = [
-        {
-          'name': 'Desktop Computer',
-          'description': 'High-performance desktop computer for office use',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Desktop',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Office Chair',
-          'description': 'Ergonomic office chair with lumbar support',
-          'quantity': 1,
-          'image': 'https://via.placeholder.com/100x100?text=Chair',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Monitor 24"',
-          'description': '24-inch LED monitor for better productivity',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Monitor',
-          'category': 'for Office',
-        },
-        {
-          'name': 'Wireless Mouse',
-          'description': 'Ergonomic wireless mouse with USB receiver',
-          'quantity': 3,
-          'image': 'https://via.placeholder.com/100x100?text=Mouse',
-          'category': 'for Office',
-        },
-      ];
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
 
-      setState(() {
-        _requestDetails = mockRequestDetails;
-        _requestItems = mockRequestItems;
-        _isLoading = false;
-        _isError = false;
-      });
+      debugPrint('🔍 [RequestDetailPage] Fetching details for topic: $topicUid');
+      debugPrint('🔍 [RequestDetailPage] API URL: $baseUrl/api/inventory/request_topic/$topicUid');
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('🔍 [RequestDetailPage] Response status: ${response.statusCode}');
+      debugPrint('🔍 [RequestDetailPage] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          final result = data['results'];
+          
+          // Extract request details
+          final requestDetails = {
+            'id': result['id'],
+            'topic_uniq_id': result['topic_uniq_id'],
+            'title': result['title'],
+            'product_priority': result['product_priority'],
+            'employee_name': result['employee_name'], // API uses employee_name
+            'img_path': result['img_path'], // Full URL from API
+            'branch_name': result['branch_name'],
+            'status': result['status'],
+            'created_at': result['created_at'],
+          };
+          
+          final List<dynamic> details = result['details'] ?? [];
+          
+          debugPrint('🔍 [RequestDetailPage] Raw details: $details');
+          
+          setState(() {
+            _requestDetails = requestDetails;
+            _requestItems = List<Map<String, dynamic>>.from(
+                details.map((e) => Map<String, dynamic>.from(e)));
+            _isLoading = false;
+            _isError = false;
+          });
+          
+          debugPrint('🔍 [RequestDetailPage] Loaded ${_requestItems.length} items');
+        } else {
+          throw Exception('No results in API response');
+        }
+      } else {
+        throw Exception('Failed to fetch request details: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _isError = true;
         _errorMessage = e.toString();
       });
+      debugPrint('🔍 [RequestDetailPage] Error: $e');
     }
   }
 
@@ -121,18 +144,14 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: Colors.red[300],
-                          ),
+                          const Icon(Icons.error, color: Colors.red, size: 48),
                           const SizedBox(height: 16),
                           Text(
                             'Error loading request details',
                             style: TextStyle(
                               fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -140,16 +159,15 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                             _errorMessage,
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey[600],
+                              color: isDarkMode ? Colors.white70 : Colors.grey[600],
                             ),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 16),
                           ElevatedButton(
                             onPressed: _loadRequestDetails,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFDBB342),
-                              foregroundColor: Colors.white,
                             ),
                             child: const Text('Retry'),
                           ),
@@ -175,7 +193,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   }
 
   Widget _buildRequestorInfoCard(bool isDarkMode) {
-    final String requestorName = _requestDetails['requestor_name'] ?? 'Unknown';
+    final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
     final String submittedAt = _formatDate(_requestDetails['created_at']);
     final String status = _requestDetails['status'] ?? 'Unknown';
     final String imageUrl = _getImageUrl(_requestDetails['img_path']);
@@ -303,10 +321,9 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
 
   Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode) {
     final String name = item['name'] ?? 'Unknown Item';
-    final String description = item['description'] ?? '';
-    final int quantity = item['quantity'] ?? 0;
-    final String category = item['category'] ?? 'for Office';
-    final String imageUrl = item['image'] ?? '';
+    final dynamic quantityValue = item['quantity'];
+    final int quantity = (quantityValue is String) ? int.tryParse(quantityValue) ?? 0 : (quantityValue ?? 0);
+    final String imageUrl = item['img_ref'] ?? ''; // API uses img_ref for item images
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -384,7 +401,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  category,
+                  'for Office',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.orange,
@@ -622,26 +639,58 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     });
 
     try {
-      // Mock API call for User (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
       
-      // Log the comment for testing purposes
-      debugPrint('🔍 [User] Approval comment: $comment');
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Make API call to approve with comment
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/approve/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'comment': comment,
+          'action': 'approve',
+        }),
+      );
+
+      debugPrint('🔍 [User] Approval response status: ${response.statusCode}');
+      debugPrint('🔍 [User] Approval response body: ${response.body}');
       
-      if (mounted) {
-        // Show success modal
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SuccessModal(
-              action: 'Approved',
-              onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
-              },
-            );
-          },
-        );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Approved',
+                onClose: () {
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) nav.pop(); // close success modal
+                  // pop page if still can pop
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+                  if (rootNav.canPop()) rootNav.pop(true);
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to approve request: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -667,26 +716,57 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     });
 
     try {
-      // Mock API call for User (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
       
-      // Log the comment for testing purposes
-      debugPrint('🔍 [User] Decline comment: $comment');
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Make API call to decline with comment
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/decline/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'comment': comment,
+          'action': 'decline',
+        }),
+      );
+
+      debugPrint('🔍 [User] Decline response status: ${response.statusCode}');
+      debugPrint('🔍 [User] Decline response body: ${response.body}');
       
-      if (mounted) {
-        // Show success modal
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SuccessModal(
-              action: 'Declined',
-              onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
-              },
-            );
-          },
-        );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Declined',
+                onClose: () {
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) nav.pop();
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+                  if (rootNav.canPop()) rootNav.pop(true);
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to decline request: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {
@@ -712,26 +792,52 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     });
 
     try {
-      // Mock API call for User (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
       
-      // Log the comment for testing purposes
-      debugPrint('🔍 [User] Receive comment: $comment');
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/received/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      debugPrint('🔍 [User] Receive response status: ${response.statusCode}');
+      debugPrint('🔍 [User] Receive response body: ${response.body}');
       
-      if (mounted) {
-        // Show success modal
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return SuccessModal(
-              action: 'Received',
-              onClose: () {
-                Navigator.of(context).pop(); // Close success modal
-                Navigator.of(context).pop(); // Go back to previous page
-              },
-            );
-          },
-        );
+      if (response.statusCode == 200) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Received',
+                onClose: () {
+                  final nav = Navigator.of(context);
+                  if (nav.canPop()) nav.pop();
+                  final rootNav = Navigator.of(context, rootNavigator: true);
+                  if (rootNav.canPop()) rootNav.pop(true);
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to receive item: ${response.statusCode}');
       }
     } catch (e) {
       if (mounted) {

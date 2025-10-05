@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../inventory_app_bar.dart';
+import '../widgets/comment_modal.dart';
 
 /// My Request Detail page for User role
 /// Allows users to edit and manage their request items
@@ -18,20 +23,24 @@ class MyRequestDetailPage extends StatefulWidget {
 }
 
 class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
+  Map<String, dynamic> _requestDetails = {};
   List<Map<String, dynamic>> _requestItems = [];
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
-  bool _isProcessing = false;
+  bool _isSubmitting = false;
+
+  // Base URL for images
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
   @override
   void initState() {
     super.initState();
     debugPrint('🔍 [MyRequestDetailPage] initState called with requestData: ${widget.requestData}');
-    _loadRequestItems();
+    _loadRequestDetails();
   }
 
-  void _loadRequestItems() {
+  Future<void> _loadRequestDetails() async {
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -39,47 +48,59 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     });
 
     try {
-      // Mock data for testing - this will be replaced with actual API data
-      final mockRequestItems = [
-        {
-          'id': '1',
-          'name': 'Desktop Computer',
-          'description': 'High-performance desktop computer for office use',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Desktop',
-          'category': 'for Office',
-        },
-        {
-          'id': '2',
-          'name': 'Office Chair',
-          'description': 'Ergonomic office chair with lumbar support',
-          'quantity': 1,
-          'image': 'https://via.placeholder.com/100x100?text=Chair',
-          'category': 'for Office',
-        },
-        {
-          'id': '3',
-          'name': 'Monitor 24"',
-          'description': '24-inch LED monitor for better productivity',
-          'quantity': 2,
-          'image': 'https://via.placeholder.com/100x100?text=Monitor',
-          'category': 'for Office',
-        },
-        {
-          'id': '4',
-          'name': 'Wireless Mouse',
-          'description': 'Ergonomic wireless mouse with USB receiver',
-          'quantity': 3,
-          'image': 'https://via.placeholder.com/100x100?text=Mouse',
-          'category': 'for Office',
-        },
-      ];
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
 
-      setState(() {
-        _requestItems = mockRequestItems;
-        _isLoading = false;
-        _isError = false;
-      });
+      if (token == null || baseUrl == null) {
+        throw Exception('Authentication token or base URL not found');
+      }
+
+      String topicUid = widget.requestData['topic_uniq_id'] ?? widget.requestData['topicid'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/my-request-topic-detail/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['results'] != null) {
+          final result = data['results'];
+          final requestDetails = {
+            'id': result['id'],
+            'topic_uniq_id': result['topic_uniq_id'],
+            'title': result['title'],
+            'product_priority': result['product_priority'],
+            'employee_name': result['employee_name'],
+            'img_path': result['img_path'],
+            'branch_name': result['branch_name'],
+            'status': result['status'],
+            'request_stock': result['request_stock'],
+            'department_name': result['department_name'],
+            'created_at': result['created_at'],
+          };
+
+          final List<dynamic> details = result['details'] ?? [];
+
+          setState(() {
+            _requestDetails = requestDetails;
+            _requestItems = List<Map<String, dynamic>>.from(details.map((e) => Map<String, dynamic>.from(e)));
+            _isLoading = false;
+            _isError = false;
+          });
+        } else {
+          throw Exception('No results in API response');
+        }
+      } else {
+        throw Exception('Failed to fetch request details: ${response.statusCode}');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -133,7 +154,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                           ),
                           const SizedBox(height: 24),
                           ElevatedButton(
-                            onPressed: _loadRequestItems,
+                            onPressed: _loadRequestDetails,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFDBB342),
                               foregroundColor: Colors.white,
@@ -152,7 +173,18 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                           const SizedBox(height: 16),
                           _buildRequestedItemsSection(isDarkMode),
                           const SizedBox(height: 16),
-                          _buildActionButtons(isDarkMode),
+                          if (_isFinalStatus)
+                            FutureBuilder<Widget>(
+                              future: _buildFeedbackSection(isDarkMode),
+                              builder: (context, snapshot) {
+                                if (snapshot.connectionState == ConnectionState.waiting) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
+                                return snapshot.data ?? const SizedBox.shrink();
+                              },
+                            )
+                          else
+                            _buildUpdateCancelRow(isDarkMode),
                         ],
                       ),
                     ),
@@ -162,9 +194,10 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   }
 
   Widget _buildRequestorInfoCard(bool isDarkMode) {
-    final String requestorName = 'Ms. Lusi'; // Mock data
-    final String submittedAt = '26 Feb 2024 - 11:30:00'; // Mock data
-    final String status = widget.requestData['status'] ?? 'Pending';
+    final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
+    final String submittedAt = _formatDate(_requestDetails['created_at']);
+    final String status = _requestDetails['status'] ?? 'Unknown';
+    final String imageUrl = _getImageUrl(_requestDetails['img_path']);
 
     return Container(
       width: double.infinity,
@@ -193,10 +226,14 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                 width: 2,
               ),
             ),
-            child: const Icon(
-              Icons.person,
-              color: Color(0xFF9C27B0),
-              size: 30,
+            child: ClipOval(
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.person, color: Color(0xFF9C27B0), size: 30),
+                    )
+                  : const Icon(Icons.person, color: Color(0xFF9C27B0), size: 30),
             ),
           ),
           const SizedBox(width: 16),
@@ -258,17 +295,16 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...(_requestItems.map((item) => _buildRequestedItemCard(item, isDarkMode))),
+        ...List.generate(_requestItems.length, (i) => _buildRequestedItemCard(_requestItems[i], isDarkMode, i)),
       ],
     );
   }
 
-  Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode) {
+  Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode, int index) {
     final String name = item['name'] ?? 'Unknown Item';
-    final String description = item['description'] ?? '';
-    final int quantity = item['quantity'] ?? 0;
+    final int quantity = (item['quantity'] is String) ? int.tryParse(item['quantity']) ?? 0 : (item['quantity'] ?? 0);
     final String category = item['category'] ?? 'for Office';
-    final String imageUrl = item['image'] ?? '';
+    final String imageUrl = _getItemImageUrl(item['img_ref']);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -356,230 +392,282 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
               ],
             ),
           ),
-          // Quantity Controls
-          Row(
-            children: [
-              // Decrease Button
-              GestureDetector(
-                onTap: () => _updateQuantity(item['id'], quantity - 1),
-                child: Container(
-                  width: 32,
-                  height: 32,
+          _isFinalStatus
+              ? Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.remove,
-                    size: 16,
-                    color: Colors.black87,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Quantity Display
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF9C27B0).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  quantity.toString().padLeft(2, '0'),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF9C27B0),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Increase Button
-              GestureDetector(
-                onTap: () => _updateQuantity(item['id'], quantity + 1),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF9C27B0),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    size: 16,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Delete Button
-              GestureDetector(
-                onTap: () => _deleteItem(item['id']),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Colors.red[100],
+                    color: const Color(0xFF9C27B0).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                    Icons.delete_outline,
-                    size: 16,
-                    color: Colors.red[600],
+                  child: Text(
+                    quantity.toString().padLeft(2, '0'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF9C27B0),
+                    ),
                   ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButtons(bool isDarkMode) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          // Update Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _handleUpdate,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDBB342), // Yellow
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _isProcessing
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                )
+              : Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _decrementQuantity(index),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF9C27B0).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    )
-                  : const Text(
-                      'Update',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                      child: Text(
+                        quantity.toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF9C27B0),
+                        ),
                       ),
                     ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Cancel Button
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _isProcessing ? null : _handleCancel,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.grey[400], // Gray
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                    IconButton(
+                      onPressed: () => _incrementQuantity(index),
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () => _removeItem(index),
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red[400],
+                    ),
+                  ],
                 ),
-              ),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
   }
-
-  void _updateQuantity(String itemId, int newQuantity) {
-    if (newQuantity < 0) return;
-    
-    setState(() {
-      final itemIndex = _requestItems.indexWhere((item) => item['id'] == itemId);
-      if (itemIndex != -1) {
-        _requestItems[itemIndex]['quantity'] = newQuantity;
-      }
-    });
-  }
-
-  void _deleteItem(String itemId) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Item'),
-          content: const Text('Are you sure you want to delete this item from your request?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('No'),
+  Widget _buildUpdateCancelRow(bool isDarkMode) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton(
+            onPressed: _isSubmitting ? null : _submitUpdate,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFDBB342),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                setState(() {
-                  _requestItems.removeWhere((item) => item['id'] == itemId);
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Item deleted successfully'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              },
-              child: const Text('Yes'),
+            child: Text(_isSubmitting ? 'Updating...' : 'Update'),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: OutlinedButton(
+            onPressed: _isSubmitting
+                ? null
+                : () async {
+                    String? comment;
+                    await showDialog(
+                      context: context,
+                      builder: (context) => CommentModal(
+                        action: 'Submit',
+                        onConfirm: (c) { comment = c; Navigator.of(context).pop(); },
+                        onCancel: () { Navigator.of(context).pop(); },
+                      ),
+                    );
+                    if ((comment ?? '').trim().isNotEmpty) {
+                      await _submitCancel((comment ?? '').trim());
+                    }
+                  },
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Color(0xFFDBB342), width: 2),
+              foregroundColor: const Color(0xFFDBB342),
+              padding: const EdgeInsets.symmetric(vertical: 14),
             ),
-          ],
-        );
-      },
+            child: Text(_isSubmitting ? 'Cancelling...' : 'Cancel'),
+          ),
+        ),
+      ],
     );
   }
 
-  Future<void> _handleUpdate() async {
-    setState(() {
-      _isProcessing = true;
-    });
+  bool get _isFinalStatus {
+    final s = (_requestDetails['status'] ?? '').toString().toLowerCase();
+    return s.contains('approved') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
+  }
 
+  void _incrementQuantity(int index) {
+    setState(() {
+      final current = (_requestItems[index]['quantity'] is String)
+          ? int.tryParse(_requestItems[index]['quantity']) ?? 0
+          : (_requestItems[index]['quantity'] ?? 0);
+      _requestItems[index]['quantity'] = current + 1;
+    });
+  }
+
+  void _decrementQuantity(int index) {
+    setState(() {
+      final current = (_requestItems[index]['quantity'] is String)
+          ? int.tryParse(_requestItems[index]['quantity']) ?? 0
+          : (_requestItems[index]['quantity'] ?? 0);
+      if (current > 1) {
+        _requestItems[index]['quantity'] = current - 1;
+      }
+    });
+  }
+
+  void _removeItem(int index) {
+    setState(() {
+      _requestItems.removeAt(index);
+    });
+  }
+
+  Future<void> _submitUpdate() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
     try {
-      // Mock API call for User (UI/UX only)
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Request updated successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop(); // Go back to previous page
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (token == null || baseUrl == null || topicUid == null) {
+        throw Exception('Missing auth or topic id');
+      }
+
+      final body = {
+        'title': _requestDetails['title'] ?? '',
+        'details': _requestItems.map((e) => {
+              'barcode': e['barcode'] ?? e['bar_code'] ?? '',
+              'quantity': (e['quantity'] is String) ? int.tryParse(e['quantity']) ?? 0 : (e['quantity'] ?? 0),
+            }).toList(),
+        'confirmed': 0,
+      };
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request updated successfully')));
+        await _loadRequestDetails();
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        }
+      } else {
+        throw Exception('Failed to update (${response.statusCode})');
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating request: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
     } finally {
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-        });
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  void _handleCancel() {
-    Navigator.of(context).pop(); // Go back to previous page
+  Future<void> _submitCancel(String comment) async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      if (token == null || baseUrl == null) {
+        throw Exception('Missing auth');
+      }
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/request-cancel/'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'comment': comment}),
+      );
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled')));
+        Navigator.pop(context, true);
+      } else {
+        throw Exception('Failed to cancel (${response.statusCode})');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cancel failed: $e')));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<Widget> _buildFeedbackSection(bool isDarkMode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (token == null || baseUrl == null || topicUid == null) {
+        return const SizedBox.shrink();
+      }
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_reply/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode != 200) return const SizedBox.shrink();
+      final decoded = jsonDecode(response.body);
+      final results = (decoded is Map && decoded['results'] != null) ? decoded['results'] : decoded;
+      if (results == null) return const SizedBox.shrink();
+
+      final String status = (_requestDetails['status'] ?? '').toString();
+      final String when = (results['created_at'] ?? '').toString();
+      final String comment = (results['comment'] ?? '').toString();
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Text(status, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+          const SizedBox(height: 6),
+          Text(when, style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.black54)),
+          const SizedBox(height: 8),
+          Text(comment, style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white : Colors.black87)),
+        ],
+      );
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+  }
+
+  String _getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return '';
+    return imagePath.startsWith('http') ? imagePath : '$_imageBaseUrl$imagePath';
+  }
+
+  String _getItemImageUrl(String? imageRef) {
+    if (imageRef == null || imageRef.isEmpty) return '';
+    return imageRef.startsWith('http') ? imageRef : '$_imageBaseUrl$imageRef';
+  }
+
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'Unknown date';
+    try {
+      final date = DateTime.parse(dateString);
+      return '${date.day.toString().padLeft(2, '0')} ${_getMonthName(date.month)} ${date.year} - ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  String _getMonthName(int month) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[month - 1];
   }
 
   Color _getStatusColor(String status) {

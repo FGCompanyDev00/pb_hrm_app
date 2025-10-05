@@ -37,50 +37,9 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
     });
 
     try {
-      // Mock data for testing AdminBR approval requests
-      await Future.delayed(const Duration(seconds: 1)); // Simulate API delay
-      
-      final mockData = [
-        {
-          'id': '1',
-          'title': 'Request to HQ One',
-          'requestor_name': 'Ms. Sarah Johnson',
-          'status': 'AdminBR Pending',
-          'created_at': '2024-01-15T10:30:00Z',
-          'img_path': 'sarah_johnson.jpg',
-          'type': 'Office Equipment',
-        },
-        {
-          'id': '2',
-          'title': 'Request to HQ Two',
-          'requestor_name': 'Mr. David Chen',
-          'status': 'AdminBR Pending',
-          'created_at': '2024-01-14T14:20:00Z',
-          'img_path': 'david_chen.jpg',
-          'type': 'IT Hardware',
-        },
-        {
-          'id': '3',
-          'title': 'Request to HQ Three',
-          'requestor_name': 'Ms. Lisa Wang',
-          'status': 'AdminBR Pending',
-          'created_at': '2024-01-13T09:15:00Z',
-          'img_path': 'lisa_wang.jpg',
-          'type': 'Office Supplies',
-        },
-        {
-          'id': '4',
-          'title': 'Request to HQ Four',
-          'requestor_name': 'Mr. Michael Brown',
-          'status': 'AdminBR Pending',
-          'created_at': '2024-01-12T16:45:00Z',
-          'img_path': 'michael_brown.jpg',
-          'type': 'Furniture',
-        },
-      ];
-
+      final results = await InventoryApprovalService.fetchWaitings();
       setState(() {
-        _approvalRequests = mockData;
+        _approvalRequests = results;
         _isLoading = false;
         _isError = false;
       });

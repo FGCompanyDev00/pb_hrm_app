@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
 import '../inventory_app_bar.dart';
 import 'my_request_page.dart';
 import 'my_approval_page.dart';
@@ -16,56 +21,86 @@ class InventoryUserPage extends StatefulWidget {
 }
 
 class _InventoryUserPageState extends State<InventoryUserPage> {
-  final PageController _bannerController = PageController();
-  int _currentBannerIndex = 0;
-
-  // Mock banner data
-  final List<Map<String, dynamic>> _banners = [
-    {
-      'title': 'Inventory Management',
-      'subtitle': 'Manage your inventory requests efficiently',
-      'image': 'assets/inventory.png',
-      'color': const Color(0xFF4CAF50),
-    },
-    {
-      'title': 'Request Tracking',
-      'subtitle': 'Track your requests and approvals',
-      'image': 'assets/task.png',
-      'color': const Color(0xFF2196F3),
-    },
-    {
-      'title': 'Item Management',
-      'subtitle': 'Manage your inventory items',
-      'image': 'assets/box-time.png',
-      'color': const Color(0xFFFF9800),
-    },
-  ];
+  // Banner state
+  List<String> _banners = [];
+  late PageController _bannerPageController;
+  late ValueNotifier<int> _currentBannerPageNotifier;
+  Timer? _bannerAutoSwipeTimer;
 
   @override
   void initState() {
     super.initState();
-    // Auto-scroll banners
-    _startBannerAutoScroll();
+    _bannerPageController = PageController();
+    _currentBannerPageNotifier = ValueNotifier<int>(0);
+    _startBannerAutoSwipe();
+    _loadBanners();
   }
 
   @override
   void dispose() {
-    _bannerController.dispose();
+    _bannerAutoSwipeTimer?.cancel();
+    _bannerPageController.dispose();
+    _currentBannerPageNotifier.dispose();
     super.dispose();
   }
 
-  void _startBannerAutoScroll() {
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        _currentBannerIndex = (_currentBannerIndex + 1) % _banners.length;
-        _bannerController.animateToPage(
-          _currentBannerIndex,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeInOut,
-        );
-        _startBannerAutoScroll();
+  void _startBannerAutoSwipe() {
+    _bannerAutoSwipeTimer?.cancel();
+    if (_banners.length > 1) {
+      _bannerAutoSwipeTimer =
+          Timer.periodic(const Duration(seconds: 4), (timer) {
+        if (mounted && _bannerPageController.hasClients) {
+          final nextPage =
+              (_currentBannerPageNotifier.value + 1) % _banners.length;
+          _bannerPageController.animateToPage(
+            nextPage,
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeInOut,
+          );
+        }
+      });
+    }
+  }
+
+  // Banner API fetch and cache (same as dashboard.dart)
+  Future<void> _loadBanners() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // Load cached banners first
+      final cachedBanners = prefs.getStringList('inventory_cached_banners');
+      if (cachedBanners != null) {
+        setState(() {
+          _banners = cachedBanners;
+        });
+        _startBannerAutoSwipe();
       }
-    });
+      // Fetch fresh banners from API
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      if (token == null || baseUrl == null) return;
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/app/promotions/files'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['results'] != null) {
+          final banners = List<String>.from(
+            responseData['results'].map((file) => file['files'] as String),
+          );
+          setState(() {
+            _banners = banners;
+          });
+          await prefs.setStringList('inventory_cached_banners', banners);
+          _startBannerAutoSwipe();
+        }
+      }
+    } catch (e) {
+      // Ignore errors, fallback to cache or empty
+    }
   }
 
   @override
@@ -106,85 +141,118 @@ class _InventoryUserPageState extends State<InventoryUserPage> {
   }
 
   Widget _buildBannerCarousel(double screenWidth, double screenHeight, bool isDarkMode) {
-    return Container(
-      height: screenHeight * 0.25,
-      child: PageView.builder(
-        controller: _bannerController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentBannerIndex = index;
-          });
-        },
-        itemCount: _banners.length,
-        itemBuilder: (context, index) {
-          final banner = _banners[index];
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  banner['color'],
-                  banner['color'].withOpacity(0.8),
-                ],
+    final bannerHeight = screenHeight < 700
+        ? 130.0
+        : screenHeight < 800
+            ? 145.0
+            : 170.0;
+    final horizontalMargin = screenWidth < 360 ? 4.0 : 8.0;
+    if (_banners.isEmpty) {
+      return Container(
+        height: bannerHeight,
+        margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.grey[200],
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.image_outlined,
+                size: 50,
+                color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: banner['color'].withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+              const SizedBox(height: 8),
+              Text(
+                'No banners available',
+                style: TextStyle(
+                  color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+                  fontSize: 14,
                 ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          banner['title'],
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          banner['subtitle'],
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.white70,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.inventory_2,
-                      size: 40,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
               ),
+            ],
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      height: bannerHeight + 16,
+      child: Column(
+        children: [
+          Expanded(
+            child: PageView.builder(
+              controller: _bannerPageController,
+              itemCount: _banners.length,
+              onPageChanged: (index) {
+                _currentBannerPageNotifier.value = index;
+                _startBannerAutoSwipe();
+              },
+              itemBuilder: (context, index) {
+                final bannerUrl = _banners[index];
+                return Container(
+                  margin: EdgeInsets.symmetric(horizontal: horizontalMargin),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: isDarkMode
+                            ? Colors.black54
+                            : Colors.black.withOpacity(0.15),
+                        blurRadius: 15,
+                        spreadRadius: 1,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Hero(
+                    tag: 'banner_$index',
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Image.network(
+                        bannerUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey[300],
+                          child: const Center(
+                            child: Icon(Icons.broken_image_outlined, size: 50),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          );
-        },
+          ),
+          const SizedBox(height: 10),
+          // Banner Indicator
+          Center(
+            child: ValueListenableBuilder<int>(
+              valueListenable: _currentBannerPageNotifier,
+              builder: (context, currentIndex, child) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    _banners.length,
+                    (index) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: currentIndex == index
+                            ? const Color(0xFFDBB342)
+                            : (isDarkMode ? Colors.grey[600] : Colors.grey[300]),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
