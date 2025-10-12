@@ -86,14 +86,18 @@ class _MyReceivePageState extends State<MyReceivePage> {
     final itemWithSource = Map<String, dynamic>.from(item);
     itemWithSource['source'] = 'my_receive';
     
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => RequestorDetailPage(
           requestData: itemWithSource,
         ),
       ),
-    );
+    ).then((changed) {
+      if (changed == true) {
+        _fetchReceivedItems();
+      }
+    });
   }
 
   @override
@@ -289,11 +293,11 @@ class _MyReceivePageState extends State<MyReceivePage> {
                             vertical: 4,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.yellow,
+                            color: _getStatusColor(status),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'EXPORTED',
+                            status,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.black,
@@ -350,6 +354,26 @@ class _MyReceivePageState extends State<MyReceivePage> {
       return '${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return dateString;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return Colors.green;
+      case 'received':
+        return Colors.green;
+      case 'decline':
+      case 'declined':
+        return Colors.red;
+      case 'rejected':
+        return Colors.red;
+      case 'exported':
+        return Colors.blue;
+      case 'pending':
+        return Colors.orange;
+      default:
+        return Colors.orange;
     }
   }
 }

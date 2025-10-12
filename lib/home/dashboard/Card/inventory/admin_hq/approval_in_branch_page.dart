@@ -57,14 +57,18 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
     final requestWithSource = Map<String, dynamic>.from(request);
     requestWithSource['source'] = 'approval';
     
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => RequestorDetailPage(
           requestData: requestWithSource,
         ),
       ),
-    );
+    ).then((changed) {
+      if (changed == true) {
+        _fetchApprovalRequests();
+      }
+    });
   }
 
   @override

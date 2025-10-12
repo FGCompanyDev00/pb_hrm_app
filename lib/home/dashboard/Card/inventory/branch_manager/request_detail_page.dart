@@ -663,7 +663,6 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         },
         body: jsonEncode({
           'comment': comment,
-          'action': 'approve',
         }),
       );
 
@@ -689,7 +688,38 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
           );
         }
       } else {
-        throw Exception('Failed to approve request: ${response.statusCode}');
+        debugPrint('🔍 [Branch_manager] Approval failed with status: ${response.statusCode}');
+        debugPrint('🔍 [Branch_manager] Response body: ${response.body}');
+        
+        // Parse API response message for better error display
+        String errorMessage = 'Cannot approve request. Please contact IT department.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          } else if (responseData['error'] != null) {
+            errorMessage = responseData['error'];
+          } else if (responseData['detail'] != null) {
+            errorMessage = responseData['detail'];
+          }
+        } catch (e) {
+          // If parsing fails, show user-friendly message based on status code
+          switch (response.statusCode) {
+            case 404:
+              errorMessage = 'Cannot approve request. Please contact IT department.';
+              break;
+            case 403:
+              errorMessage = 'You do not have permission to approve this request.';
+              break;
+            case 500:
+              errorMessage = 'Server error. Please contact IT department.';
+              break;
+            default:
+              errorMessage = 'Cannot approve request. Please contact IT department.';
+          }
+        }
+        
+        throw Exception(errorMessage);
       }
     } catch (e) {
       if (mounted) {
@@ -739,7 +769,6 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         },
         body: jsonEncode({
           'comment': comment,
-          'action': 'decline',
         }),
       );
 
@@ -765,7 +794,38 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
           );
         }
       } else {
-        throw Exception('Failed to decline request: ${response.statusCode}');
+        debugPrint('🔍 [Branch_manager] Decline failed with status: ${response.statusCode}');
+        debugPrint('🔍 [Branch_manager] Response body: ${response.body}');
+        
+        // Parse API response message for better error display
+        String errorMessage = 'Cannot decline request. Please contact IT department.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          } else if (responseData['error'] != null) {
+            errorMessage = responseData['error'];
+          } else if (responseData['detail'] != null) {
+            errorMessage = responseData['detail'];
+          }
+        } catch (e) {
+          // If parsing fails, show user-friendly message based on status code
+          switch (response.statusCode) {
+            case 404:
+              errorMessage = 'Cannot decline request. Please contact IT department.';
+              break;
+            case 403:
+              errorMessage = 'You do not have permission to decline this request.';
+              break;
+            case 500:
+              errorMessage = 'Server error. Please contact IT department.';
+              break;
+            default:
+              errorMessage = 'Cannot decline request. Please contact IT department.';
+          }
+        }
+        
+        throw Exception(errorMessage);
       }
     } catch (e) {
       if (mounted) {

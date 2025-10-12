@@ -286,7 +286,6 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         },
         body: jsonEncode({
           'comment': comment,
-          'action': 'approve',
         }),
       );
 
@@ -309,7 +308,38 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
           );
         }
       } else {
-        throw Exception('Failed to approve request: ${response.statusCode}');
+        debugPrint('🔍 [AdminHQ] Approval failed with status: ${response.statusCode}');
+        debugPrint('🔍 [AdminHQ] Response body: ${response.body}');
+        
+        // Parse API response message for better error display
+        String errorMessage = 'Cannot approve request. Please contact IT department.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          } else if (responseData['error'] != null) {
+            errorMessage = responseData['error'];
+          } else if (responseData['detail'] != null) {
+            errorMessage = responseData['detail'];
+          }
+        } catch (e) {
+          // If parsing fails, show user-friendly message based on status code
+          switch (response.statusCode) {
+            case 404:
+              errorMessage = 'Cannot approve request. Please contact IT department.';
+              break;
+            case 403:
+              errorMessage = 'You do not have permission to approve this request.';
+              break;
+            case 500:
+              errorMessage = 'Server error. Please contact IT department.';
+              break;
+            default:
+              errorMessage = 'Cannot approve request. Please contact IT department.';
+          }
+        }
+        
+        throw Exception(errorMessage);
       }
     } catch (e) {
       if (mounted) {
@@ -359,7 +389,6 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         },
         body: jsonEncode({
           'comment': comment,
-          'action': 'decline',
         }),
       );
 
@@ -382,7 +411,38 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
           );
         }
       } else {
-        throw Exception('Failed to decline request: ${response.statusCode}');
+        debugPrint('🔍 [AdminHQ] Decline failed with status: ${response.statusCode}');
+        debugPrint('🔍 [AdminHQ] Response body: ${response.body}');
+        
+        // Parse API response message for better error display
+        String errorMessage = 'Cannot decline request. Please contact IT department.';
+        try {
+          final responseData = jsonDecode(response.body);
+          if (responseData['message'] != null) {
+            errorMessage = responseData['message'];
+          } else if (responseData['error'] != null) {
+            errorMessage = responseData['error'];
+          } else if (responseData['detail'] != null) {
+            errorMessage = responseData['detail'];
+          }
+        } catch (e) {
+          // If parsing fails, show user-friendly message based on status code
+          switch (response.statusCode) {
+            case 404:
+              errorMessage = 'Cannot decline request. Please contact IT department.';
+              break;
+            case 403:
+              errorMessage = 'You do not have permission to decline this request.';
+              break;
+            case 500:
+              errorMessage = 'Server error. Please contact IT department.';
+              break;
+            default:
+              errorMessage = 'Cannot decline request. Please contact IT department.';
+          }
+        }
+        
+        throw Exception(errorMessage);
       }
     } catch (e) {
       if (mounted) {
@@ -533,6 +593,17 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                         Expanded(
                           child: _buildRequestedItemsList(isDarkMode),
                         ),
+                        // Feedback Section (if final status)
+                        if (_isFinalStatus)
+                          FutureBuilder<Widget>(
+                            future: _buildFeedbackSection(isDarkMode),
+                            builder: (context, snapshot) {
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const Center(child: CircularProgressIndicator());
+                              }
+                              return snapshot.data ?? const SizedBox.shrink();
+                            },
+                          ),
                         // Action Buttons
                         _buildActionButtons(isDarkMode),
                       ],
@@ -651,11 +722,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.yellow,
+                        color: _getStatusColor(status),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        'EXPORTED',
+                        status,
                         style: const TextStyle(
                           fontSize: 12,
                           color: Colors.black,
@@ -868,5 +939,256 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
     return months[month - 1];
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return Colors.green;
+      case 'received':
+        return Colors.green;
+      case 'decline':
+      case 'declined':
+        return Colors.red;
+      case 'rejected':
+        return Colors.red;
+      case 'exported':
+        return Colors.blue;
+      case 'pending':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  bool get _isFinalStatus {
+    final s = (_requestDetails['status'] ?? '').toString().toLowerCase();
+    return s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
+  }
+
+  Future<Widget> _buildFeedbackSection(bool isDarkMode) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (token == null || baseUrl == null || topicUid == null) {
+        return const SizedBox.shrink();
+      }
+      
+      debugPrint('🔍 [AdminHQ RequestorDetail] Fetching feedback for topic: $topicUid');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_reply/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      
+      debugPrint('🔍 [AdminHQ RequestorDetail] Feedback response status: ${response.statusCode}');
+      debugPrint('🔍 [AdminHQ RequestorDetail] Feedback response body: ${response.body}');
+      
+      if (response.statusCode != 200) return const SizedBox.shrink();
+      
+      final decoded = jsonDecode(response.body);
+      final List<dynamic> feedbackList = (decoded is List) ? decoded : (decoded['results'] ?? []);
+      
+      if (feedbackList.isEmpty) return const SizedBox.shrink();
+
+      // Get the latest feedback (first item in the list)
+      final feedback = feedbackList.first;
+      final String comment = feedback['comment'] ?? '';
+      final String decide = feedback['decide'] ?? '';
+      final String createdAt = feedback['created_at'] ?? '';
+      final String employeeName = feedback['employee_name'] ?? 'Unknown';
+      final String employeeSurname = feedback['employee_surname'] ?? '';
+      final String imgPath = feedback['img_path'] ?? '';
+      final String positionName = feedback['position_name'] ?? '';
+      
+      final String approverName = '$employeeName $employeeSurname'.trim();
+      final String approverImageUrl = _getImageUrl(imgPath);
+      final String requesterImageUrl = _getImageUrl(_requestDetails['img_path']);
+      
+      debugPrint('🔍 [AdminHQ RequestorDetail] Approver image URL: $approverImageUrl');
+      debugPrint('🔍 [AdminHQ RequestorDetail] Requester image URL: $requesterImageUrl');
+      debugPrint('🔍 [AdminHQ RequestorDetail] Position name: $positionName');
+      debugPrint('🔍 [AdminHQ RequestorDetail] Decide: $decide');
+      debugPrint('🔍 [AdminHQ RequestorDetail] Comment: $comment');
+
+      return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Profile images with arrow (Approver -> Requester)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Approver image with position (LEFT)
+                Column(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: approverImageUrl.isNotEmpty
+                            ? Image.network(
+                                approverImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  debugPrint('🔍 [AdminHQ] Approver image error: $error');
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.green,
+                                    size: 25,
+                                  );
+                                },
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
+                                size: 25,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      positionName.isNotEmpty ? positionName : 'Approver',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                // Arrow
+                Container(
+                  width: 40,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBB342),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Requester image (RIGHT)
+                Column(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: requesterImageUrl.isNotEmpty
+                            ? Image.network(
+                                requesterImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  debugPrint('🔍 [AdminHQ] Requester image error: $error');
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.green,
+                                    size: 25,
+                                  );
+                                },
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
+                                size: 25,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Requester',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Date and time
+            Text(
+              _formatDate(createdAt),
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Comment
+            if (comment.isNotEmpty)
+              Text(
+                comment,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+          ],
+        ),
+      );
+    } catch (e) {
+      debugPrint('🔍 [AdminHQ RequestorDetail] Feedback error: $e');
+      return const SizedBox.shrink();
+    }
+  }
+
+  Color _getDecideColor(String decide) {
+    switch (decide.toLowerCase()) {
+      case 'checked':
+      case 'approved':
+      case 'received':
+        return Colors.green;
+      case 'edit':
+        return Colors.orange;
+      case 'declined':
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+
+  String _getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return '';
+    return imagePath.startsWith('http') ? imagePath : '$_imageBaseUrl$imagePath';
   }
 }

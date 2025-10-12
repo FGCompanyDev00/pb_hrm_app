@@ -343,14 +343,18 @@ class _MyReceivePageState extends State<MyReceivePage> {
     final requestWithSource = Map<String, dynamic>.from(request);
     requestWithSource['source'] = 'receive';
     
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => RequestDetailPage(
           requestData: requestWithSource,
         ),
       ),
-    );
+    ).then((changed) {
+      if (changed == true) {
+        _fetchReceiveRequests();
+      }
+    });
   }
 
   String _formatDate(String? dateString) {

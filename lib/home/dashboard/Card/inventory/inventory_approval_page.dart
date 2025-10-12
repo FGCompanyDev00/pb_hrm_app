@@ -518,6 +518,9 @@ class _InventoryApprovalPageState extends State<InventoryApprovalPage> {
     if (status.toLowerCase().contains('approved') || status.toLowerCase().contains('checked') || status.toLowerCase().contains('received')) {
       statusColor = Colors.green;
       statusBgColor = Colors.green.withOpacity(0.2);
+    } else if (status.toLowerCase().contains('decline') || status.toLowerCase().contains('declined') || status.toLowerCase().contains('rejected')) {
+      statusColor = Colors.red;
+      statusBgColor = Colors.red.withOpacity(0.2);
     } else if (status.toLowerCase().contains('pending')) {
       statusColor = const Color(0xFFDBB342); // Yellow/gold theme
       statusBgColor = const Color(0xFFDBB342).withOpacity(0.2);

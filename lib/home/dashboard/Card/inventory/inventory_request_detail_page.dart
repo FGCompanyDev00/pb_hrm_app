@@ -183,7 +183,7 @@ class _InventoryRequestDetailPageState extends State<InventoryRequestDetailPage>
           const SizedBox(height: 24),
           
           // Approval Timeline
-          _buildApprovalTimeline(isDarkMode),
+          // _buildApprovalTimeline(isDarkMode), // Commented out - not in use yet
         ],
       ),
     );

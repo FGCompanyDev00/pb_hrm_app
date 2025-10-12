@@ -201,7 +201,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                           else
                             _buildUpdateCancelRow(isDarkMode),
                           const SizedBox(height: 16),
-                          if (_isFinalStatus) _buildApprovalHistorySection(isDarkMode),
+                          // if (_isFinalStatus) _buildApprovalHistorySection(isDarkMode), // Commented out - not in use yet
                         ],
                       ),
                     ),
@@ -491,7 +491,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   // Final vs editable status
   bool get _isFinalStatus {
     final s = (_requestDetails['status'] ?? '').toString().toLowerCase();
-    return s.contains('approved') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
+    return s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
   }
 
   // Quantity controls for editable mode
@@ -672,6 +672,8 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       if (token == null || baseUrl == null || topicUid == null) {
         return const SizedBox.shrink();
       }
+      
+      debugPrint('🔍 [AdminBR] Fetching feedback for topic: $topicUid');
       final response = await http.get(
         Uri.parse('$baseUrl/api/inventory/request_reply/$topicUid'),
         headers: {
@@ -679,46 +681,193 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
           'Content-Type': 'application/json',
         },
       );
+      
+      debugPrint('🔍 [AdminBR] Feedback response status: ${response.statusCode}');
+      debugPrint('🔍 [AdminBR] Feedback response body: ${response.body}');
+      
       if (response.statusCode != 200) return const SizedBox.shrink();
+      
       final decoded = jsonDecode(response.body);
-      final results = (decoded is Map && decoded['results'] != null) ? decoded['results'] : decoded;
-      if (results == null) return const SizedBox.shrink();
+      final List<dynamic> feedbackList = (decoded is List) ? decoded : (decoded['results'] ?? []);
+      
+      if (feedbackList.isEmpty) return const SizedBox.shrink();
 
-      final String status = (_requestDetails['status'] ?? '').toString();
-      final String when = (results['created_at'] ?? '').toString();
-      final String comment = (results['comment'] ?? '').toString();
+      // Get the latest feedback (first item in the list)
+      final feedback = feedbackList.first;
+      final String comment = feedback['comment'] ?? '';
+      final String decide = feedback['decide'] ?? '';
+      final String createdAt = feedback['created_at'] ?? '';
+      final String employeeName = feedback['employee_name'] ?? 'Unknown';
+      final String employeeSurname = feedback['employee_surname'] ?? '';
+      final String imgPath = feedback['img_path'] ?? '';
+      final String positionName = feedback['position_name'] ?? '';
+      
+      final String approverName = '$employeeName $employeeSurname'.trim();
+      final String approverImageUrl = _getImageUrl(imgPath);
+      final String requesterImageUrl = _getImageUrl(_requestDetails['img_path']);
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
-          Text(
-            status,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.green,
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            when,
-            style: TextStyle(
-              color: isDarkMode ? Colors.white70 : Colors.black54,
+          ],
+        ),
+        child: Column(
+          children: [
+            // Profile images with arrow
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Requester image with position
+                Column(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: requesterImageUrl.isNotEmpty
+                            ? Image.network(
+                                requesterImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                  Icons.person,
+                                  color: Colors.green,
+                                  size: 25,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
+                                size: 25,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Requester',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 16),
+                // Arrow
+                Container(
+                  width: 40,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBB342),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Approver image with position
+                Column(
+                  children: [
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: approverImageUrl.isNotEmpty
+                            ? Image.network(
+                                approverImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                  Icons.person,
+                                  color: Colors.green,
+                                  size: 25,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
+                                size: 25,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      positionName.isNotEmpty ? positionName : 'Approver',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            comment,
-            style: TextStyle(
-              fontSize: 16,
-              color: isDarkMode ? Colors.white : Colors.black87,
+            const SizedBox(height: 16),
+            // Date and time
+            Text(
+              _formatDate(createdAt),
+              style: TextStyle(
+                fontSize: 14,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            // Comment
+            if (comment.isNotEmpty)
+              Text(
+                comment,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+          ],
+        ),
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('🔍 [AdminBR] Feedback error: $e');
       return const SizedBox.shrink();
+    }
+  }
+
+  Color _getDecideColor(String decide) {
+    switch (decide.toLowerCase()) {
+      case 'checked':
+      case 'approved':
+        return Colors.green;
+      case 'edit':
+        return Colors.orange;
+      case 'declined':
+      case 'rejected':
+        return Colors.red;
+      default:
+        return Colors.blue;
     }
   }
 
@@ -864,6 +1013,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
         return Colors.green;
       case 'pending':
         return Colors.orange;
+      case 'decline':
       case 'declined':
         return Colors.red;
       case 'exported':

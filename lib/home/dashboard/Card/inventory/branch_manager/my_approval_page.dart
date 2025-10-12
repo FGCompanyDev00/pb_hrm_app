@@ -310,14 +310,18 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
     final requestWithSource = Map<String, dynamic>.from(request);
     requestWithSource['source'] = 'approval';
     
-    Navigator.push(
+    Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => RequestDetailPage(
           requestData: requestWithSource,
         ),
       ),
-    );
+    ).then((changed) {
+      if (changed == true) {
+        _fetchApprovalRequests();
+      }
+    });
   }
 
   String _formatDate(String? dateString) {
