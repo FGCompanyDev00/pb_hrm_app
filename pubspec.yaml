@@ -149,6 +149,7 @@ flutter:
 
   # Asset Management - Explicitly include all asset directories
   assets:
+    - AssetManifest.json
     - assets/
     - assets/flags/
     - assets/icons/
