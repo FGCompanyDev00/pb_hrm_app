@@ -58,18 +58,27 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         throw Exception('Authentication or BASE_URL not configured');
       }
 
-      // Get the topic ID from the request data
-      String topicUid = widget.requestData['topic_uniq_id'] ?? 
-                       widget.requestData['topicid'] ?? '';
+      final String topicUid = widget.requestData['topic_uniq_id'] ?? 
+          widget.requestData['topicid'] ?? '';
       if (topicUid.isEmpty) {
         throw Exception('No topic UID found in request data');
       }
 
       debugPrint('🔍 [RequestorDetailPage] Fetching details for topic: $topicUid');
-      debugPrint('🔍 [RequestorDetailPage] API URL: $baseUrl/api/inventory/request_topic/$topicUid');
+
+      Map<String, dynamic> waitingSummary = {};
+      try {
+        waitingSummary = await _fetchWaitingSummary(baseUrl, token, topicUid);
+        debugPrint('🔍 [RequestorDetailPage] Waiting summary: $waitingSummary');
+      } catch (e) {
+        debugPrint('⚠️ [RequestorDetailPage] Waiting summary fetch failed: $e');
+      }
+
+      final detailUrl = '$baseUrl/api/inventory/request_topic/$topicUid';
+      debugPrint('🔍 [RequestorDetailPage] API URL: $detailUrl');
 
       final response = await http.get(
-        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        Uri.parse(detailUrl),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
@@ -81,38 +90,66 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        if (data['results'] != null) {
-          final result = data['results'];
-          
-          // Extract request details
-          final requestDetails = {
-            'id': result['id'],
-            'topic_uniq_id': result['topic_uniq_id'],
-            'title': result['title'],
-            'product_priority': result['product_priority'],
-            'employee_name': result['employee_name'], // API uses employee_name
-            'img_path': result['img_path'], // Full URL from API
-            'branch_name': result['branch_name'],
-            'status': result['status'],
-            'created_at': result['created_at'],
-          };
-          
+        final result = data['results'];
+        Map<String, dynamic> requestDetails = {};
+        List<Map<String, dynamic>> requestItems = [];
+
+        if (result != null) {
           final List<dynamic> details = result['details'] ?? [];
-          
-          debugPrint('🔍 [RequestorDetailPage] Raw details: $details');
-          
-          setState(() {
-            _requestDetails = requestDetails;
-            _requestItems = List<Map<String, dynamic>>.from(
-                details.map((e) => Map<String, dynamic>.from(e)));
-            _isLoading = false;
-            _isError = false;
-          });
-          
-          debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
+          requestItems = List<Map<String, dynamic>>.from(
+            details.map((e) => Map<String, dynamic>.from(e)),
+          );
+
+          requestDetails = {
+            'id': result['id'] ?? waitingSummary['id'],
+            'topic_uniq_id': result['topic_uniq_id'] ?? topicUid,
+            'title': result['title'] ??
+                waitingSummary['title'] ??
+                widget.requestData['title'] ??
+                '',
+            'product_priority': result['product_priority'],
+            'employee_name': result['employee_name'] ??
+                waitingSummary['employee_name'] ??
+                widget.requestData['requestor_name'],
+            'img_path': result['img_path'] ??
+                waitingSummary['img_path'] ??
+                widget.requestData['img_path'],
+            'branch_name': result['branch_name'] ??
+                waitingSummary['branch_name'] ??
+                widget.requestData['branch_name'],
+            'status': result['status'] ??
+                waitingSummary['decide'] ??
+                widget.requestData['status'],
+            'created_at': result['created_at'] ??
+                waitingSummary['created_at'] ??
+                widget.requestData['created_at'],
+          };
+        } else if (waitingSummary.isNotEmpty) {
+          requestDetails = {
+            'id': waitingSummary['id'],
+            'topic_uniq_id': waitingSummary['topic_uniq_id'] ?? topicUid,
+            'title': waitingSummary['title'] ?? widget.requestData['title'] ?? '',
+            'employee_name': waitingSummary['employee_name'] ??
+                widget.requestData['requestor_name'],
+            'img_path': waitingSummary['img_path'] ?? widget.requestData['img_path'],
+            'branch_name': waitingSummary['branch_name'] ??
+                widget.requestData['branch_name'],
+            'status': waitingSummary['decide'] ?? widget.requestData['status'],
+            'created_at': waitingSummary['created_at'] ??
+                widget.requestData['created_at'],
+          };
         } else {
           throw Exception('No results in API response');
         }
+
+        setState(() {
+          _requestDetails = requestDetails;
+          _requestItems = requestItems;
+          _isLoading = false;
+          _isError = false;
+        });
+        
+        debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
       } else {
         throw Exception('Failed to fetch request details: ${response.statusCode}');
       }
@@ -124,6 +161,35 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       });
       debugPrint('🔍 [RequestorDetailPage] Error: $e');
     }
+  }
+
+  Future<Map<String, dynamic>> _fetchWaitingSummary(
+    String baseUrl,
+    String token,
+    String topicUid,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/api/inventory/waiting/$topicUid'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch waiting detail: ${response.statusCode}');
+    }
+
+    final data = jsonDecode(response.body);
+    final results = data['results'];
+
+    if (results is List && results.isNotEmpty) {
+      return Map<String, dynamic>.from(results.first);
+    } else if (results is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(results);
+    }
+
+    throw Exception('Waiting detail response empty');
   }
 
   @override
@@ -914,22 +980,23 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         throw Exception('No topic UID found in request data');
       }
 
-      // Make API call to approve with comment
+      final trimmedComment = comment.trim();
+      final uri = Uri.parse('$baseUrl/api/inventory/request-waiting/$topicUid');
+      debugPrint('🔍 [AdminBR] Approve URL: $uri');
+
       final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/approve/$topicUid'),
+        uri,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'comment': comment,
-        }),
+        body: jsonEncode({'comment': trimmedComment}),
       );
 
       debugPrint('🔍 [AdminBR] Approval response status: ${response.statusCode}');
       debugPrint('🔍 [AdminBR] Approval response body: ${response.body}');
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
           // Show success modal
           showDialog(
@@ -1018,22 +1085,23 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         throw Exception('No topic UID found in request data');
       }
 
-      // Make API call to decline with comment
+      final trimmedComment = comment.trim();
+      final uri = Uri.parse('$baseUrl/api/inventory/decline/$topicUid');
+      debugPrint('🔍 [AdminBR] Decline URL: $uri');
+
       final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/decline/$topicUid'),
+        uri,
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({
-          'comment': comment,
-        }),
+        body: jsonEncode({'comment': trimmedComment}),
       );
 
       debugPrint('🔍 [AdminBR] Decline response status: ${response.statusCode}');
       debugPrint('🔍 [AdminBR] Decline response body: ${response.body}');
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (mounted) {
           // Show success modal
           showDialog(
