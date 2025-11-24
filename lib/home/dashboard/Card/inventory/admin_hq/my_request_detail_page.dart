@@ -24,6 +24,14 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   bool _isError = false;
   String _errorMessage = '';
   bool _isSubmitting = false;
+  bool _isFeedbackExpanded = false;
+  final TextEditingController _titleController = TextEditingController();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
 
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
 
@@ -69,8 +77,12 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
         setState(() {
           _requestDetails = Map<String, dynamic>.from(result);
           _requestItems = List<Map<String, dynamic>>.from(details.map((e) => Map<String, dynamic>.from(e)));
+          _titleController.text = _requestDetails['title'] ?? '';
           _isLoading = false;
         });
+        // Debug: Log status for troubleshooting
+        debugPrint('🔍 [MyRequestDetail] Loaded status: "${_requestDetails['status']}"');
+        debugPrint('🔍 [MyRequestDetail] CanEditItems: ${_canEditItems}, IsFinalStatus: ${_isFinalStatus}');
       } else {
         throw Exception('Failed to fetch request details: ${response.statusCode}');
       }
@@ -113,15 +125,14 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                         children: [
                           _buildHeader(isDarkMode),
                           const SizedBox(height: 16),
+                          // Title field (editable if Supervisor Pending)
+                          if (_canEditItems) _buildTitleField(isDarkMode),
+                          if (_canEditItems) const SizedBox(height: 16),
                           _buildItems(isDarkMode),
                           const SizedBox(height: 16),
                           if (_isFinalStatus)
-                            FutureBuilder<Widget>(
-                              future: _buildFeedbackSection(isDarkMode),
-                              builder: (context, snap) => snap.data ?? const SizedBox.shrink(),
-                            )
-                          else
-                            _buildUpdateCancelRow(isDarkMode),
+                            _buildFeedbackSectionWidget(isDarkMode),
+                          if (!_isFinalStatus) _buildUpdateCancelRow(isDarkMode),
                         ],
                       ),
                     ),
@@ -131,7 +142,10 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   }
 
   Widget _buildHeader(bool isDarkMode) {
-    final imageUrl = _getImageUrl(_requestDetails['img_path']);
+    // Check both img_path and img_name for image
+    final imgPath = _requestDetails['img_path'] ?? '';
+    final imgName = _requestDetails['img_name'] ?? '';
+    final imageUrl = _getImageUrl(imgPath.isNotEmpty ? imgPath : imgName);
     final submittedAt = _formatDate(_requestDetails['created_at']);
     final status = (_requestDetails['status'] ?? '').toString();
 
@@ -175,6 +189,53 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     );
   }
 
+  Widget _buildTitleField(bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Request Title',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _titleController,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black87,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Enter request title...',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: const Color(0xFFDBB342).withOpacity(0.5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFDBB342), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildItems(bool isDarkMode) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,37 +258,78 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       decoration: BoxDecoration(color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [
         BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
       ]),
-      child: Row(children: [
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.withOpacity(0.3))),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: imageUrl.isNotEmpty ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.computer)) : const Icon(Icons.computer),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Text(name, style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black87, fontWeight: FontWeight.w500), maxLines: 2, overflow: TextOverflow.ellipsis)),
-        _isFinalStatus
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(color: const Color(0xFFDBB342).withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                child: Text(qty.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFDBB342))),
-              )
-            : Row(children: [
+      child: Stack(
+        children: [
+          Row(children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.withOpacity(0.3))),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: imageUrl.isNotEmpty ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.computer)) : const Icon(Icons.computer),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(name, style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black87, fontWeight: FontWeight.w500), maxLines: 2, overflow: TextOverflow.ellipsis)),
+            // Quantity controls (if editable)
+            if (_canEditItems)
+              Row(children: [
                 IconButton(onPressed: () => _decrementQuantity(index), icon: const Icon(Icons.remove_circle_outline), color: isDarkMode ? Colors.white70 : Colors.black54),
                 Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: const Color(0xFFDBB342).withOpacity(0.1), borderRadius: BorderRadius.circular(8)), child: Text(qty.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFFDBB342)))),
                 IconButton(onPressed: () => _incrementQuantity(index), icon: const Icon(Icons.add_circle_outline), color: isDarkMode ? Colors.white70 : Colors.black54),
                 IconButton(onPressed: () => _removeItem(index), icon: const Icon(Icons.delete_outline), color: Colors.red[400]),
               ]),
-      ]),
+          ]),
+          // Quantity display at bottom right (for final status)
+          if (_isFinalStatus && !_canEditItems)
+            Positioned(
+              bottom: 0,
+              right: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDBB342).withOpacity(0.1),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  qty.toString().padLeft(2, '0'),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFDBB342),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
   bool get _isFinalStatus {
-    final s = (_requestDetails['status'] ?? '').toString().toLowerCase();
-    return s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
+    final statusStr = (_requestDetails['status'] ?? '').toString();
+    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    // Supervisor Pending is NOT a final status - user can still edit
+    if (s.contains('supervisor pending')) {
+      debugPrint('🔍 [MyRequestDetail] Status "$statusStr" is Supervisor Pending - NOT final status');
+      return false;
+    }
+    final isFinal = s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported') || s.contains('cancel');
+    debugPrint('🔍 [MyRequestDetail] Status "$statusStr" isFinalStatus: $isFinal');
+    return isFinal;
+  }
+
+  bool get _canEditItems {
+    final statusStr = (_requestDetails['status'] ?? '').toString();
+    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    // Check for supervisor pending status (with or without dots, case insensitive)
+    final canEdit = s.contains('supervisor pending');
+    debugPrint('🔍 [MyRequestDetail] Status: "$statusStr", Normalized: "$s", CanEditItems: $canEdit');
+    return canEdit;
   }
 
   void _incrementQuantity(int index) {
@@ -293,24 +395,49 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       final topicUid = _requestDetails['topic_uniq_id'];
       if (token == null || baseUrl == null || topicUid == null) throw Exception('Missing auth or topic id');
 
+      // Validate quantities before sending
+      final details = <Map<String, dynamic>>[];
+      for (var item in _requestItems) {
+        final barcode = item['barcode'] ?? item['bar_code'] ?? '';
+        final qty = (item['quantity'] is String) ? int.tryParse(item['quantity']) ?? 0 : (item['quantity'] ?? 0);
+        if (barcode.isEmpty) {
+          throw Exception('Barcode is required for all items');
+        }
+        if (qty <= 0) {
+          throw Exception('Quantity must be greater than 0 for all items');
+        }
+        details.add({
+          'barcode': barcode,
+          'quantity': qty,
+        });
+      }
+
+      if (details.isEmpty) {
+        throw Exception('At least one item is required');
+      }
+
       final body = {
-        'title': _requestDetails['title'] ?? '',
-        'details': _requestItems.map((e) => {
-              'barcode': e['barcode'] ?? e['bar_code'] ?? '',
-              'quantity': (e['quantity'] is String) ? int.tryParse(e['quantity']) ?? 0 : (e['quantity'] ?? 0),
-            }).toList(),
+        'title': _titleController.text.trim().isEmpty ? (_requestDetails['title'] ?? '') : _titleController.text.trim(),
+        'details': details,
         'confirmed': 0,
       };
+
+      debugPrint('🔍 [MyRequestDetail] Update body: ${jsonEncode(body)}');
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
         headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
         body: jsonEncode(body),
       );
-      if (response.statusCode == 200) {
+      
+      debugPrint('🔍 [MyRequestDetail] Update response status: ${response.statusCode}');
+      debugPrint('🔍 [MyRequestDetail] Update response body: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request updated successfully')));
-        await _loadRequestDetails();
+        // Navigate back to refresh the list
+        Navigator.pop(context, true);
       } else {
         throw Exception('Failed to update (${response.statusCode})');
       }
@@ -330,15 +457,25 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       final token = prefs.getString('token');
       final baseUrl = dotenv.env['BASE_URL'];
       if (token == null || baseUrl == null) throw Exception('Missing auth');
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (topicUid == null) throw Exception('Missing topic id');
+      final body = {'comment': comment};
+      debugPrint('🔍 [MyRequestDetail] Cancel body: ${jsonEncode(body)}');
+
       final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/request-cancel/'),
+        Uri.parse('$baseUrl/api/inventory/request-cancel/$topicUid'),
         headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode({'comment': comment}),
+        body: jsonEncode(body),
       );
-      if (response.statusCode == 200) {
+      
+      debugPrint('🔍 [MyRequestDetail] Cancel response status: ${response.statusCode}');
+      debugPrint('🔍 [MyRequestDetail] Cancel response body: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled')));
-        Navigator.pop(context);
+        // Navigate back to refresh the list
+        Navigator.pop(context, true);
       } else {
         throw Exception('Failed to cancel (${response.statusCode})');
       }
@@ -350,14 +487,240 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     }
   }
 
-  Future<Widget> _buildFeedbackSection(bool isDarkMode) async {
+  Widget _buildFeedbackSectionWidget(bool isDarkMode) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchFeedbackList(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        final feedbackList = snapshot.data!;
+        
+        return Container(
+          margin: const EdgeInsets.only(top: 16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with expand/collapse button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _isFeedbackExpanded = !_isFeedbackExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Comments & Feedback',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      Icon(
+                        _isFeedbackExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Feedback items (shown when expanded)
+              if (_isFeedbackExpanded) ...[
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: feedbackList.map((feedback) {
+                      final String comment = feedback['comment'] ?? '';
+                      final String createdAt = feedback['created_at'] ?? '';
+                      final String employeeName = feedback['employee_name'] ?? 'Unknown';
+                      final String employeeSurname = feedback['employee_surname'] ?? '';
+                      final String imgPath = feedback['img_path'] ?? '';
+                      final String positionName = feedback['position_name'] ?? '';
+                      
+                      final String approverName = '$employeeName $employeeSurname'.trim();
+                      final String approverImageUrl = _getImageUrl(imgPath);
+                      // Check both img_path and img_name for requester image
+                      final String requesterImgPath = _requestDetails['img_path'] ?? '';
+                      final String requesterImgName = _requestDetails['img_name'] ?? '';
+                      final String requesterImageUrl = _getImageUrl(requesterImgPath.isNotEmpty ? requesterImgPath : requesterImgName);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            // Profile images with arrow
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Requester image
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.green,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: requesterImageUrl.isNotEmpty
+                                        ? Image.network(
+                                            requesterImageUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => const Icon(
+                                              Icons.person,
+                                              color: Colors.green,
+                                              size: 20,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            color: Colors.green,
+                                            size: 20,
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Arrow
+                                Container(
+                                  width: 30,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDBB342),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_forward,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Approver image
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.green,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: approverImageUrl.isNotEmpty
+                                        ? Image.network(
+                                            approverImageUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => const Icon(
+                                              Icons.person,
+                                              color: Colors.green,
+                                              size: 20,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            color: Colors.green,
+                                            size: 20,
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Employee name and position
+                            Text(
+                              approverName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            if (positionName.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                positionName,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            // Date and time
+                            Text(
+                              _formatDate(createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // Comment
+                            if (comment.isNotEmpty)
+                              Text(
+                                comment,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchFeedbackList() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
       final baseUrl = dotenv.env['BASE_URL'];
       final topicUid = _requestDetails['topic_uniq_id'];
       if (token == null || baseUrl == null || topicUid == null) {
-        return const SizedBox.shrink();
+        return [];
       }
       
       debugPrint('🔍 [AdminHQ] Fetching feedback for topic: $topicUid');
@@ -372,174 +735,15 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       debugPrint('🔍 [AdminHQ] Feedback response status: ${response.statusCode}');
       debugPrint('🔍 [AdminHQ] Feedback response body: ${response.body}');
       
-      if (response.statusCode != 200) return const SizedBox.shrink();
+      if (response.statusCode != 200) return [];
       
       final decoded = jsonDecode(response.body);
       final List<dynamic> feedbackList = (decoded is List) ? decoded : (decoded['results'] ?? []);
       
-      if (feedbackList.isEmpty) return const SizedBox.shrink();
-
-      // Get the latest feedback (first item in the list)
-      final feedback = feedbackList.first;
-      final String comment = feedback['comment'] ?? '';
-      final String decide = feedback['decide'] ?? '';
-      final String createdAt = feedback['created_at'] ?? '';
-      final String employeeName = feedback['employee_name'] ?? 'Unknown';
-      final String employeeSurname = feedback['employee_surname'] ?? '';
-      final String imgPath = feedback['img_path'] ?? '';
-      final String positionName = feedback['position_name'] ?? '';
-      
-      final String approverName = '$employeeName $employeeSurname'.trim();
-      final String approverImageUrl = _getImageUrl(imgPath);
-      final String requesterImageUrl = _getImageUrl(_requestDetails['img_path']);
-
-      return Container(
-        margin: const EdgeInsets.only(top: 16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Profile images with arrow
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Requester image with position
-                Column(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.green,
-                          width: 2,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: requesterImageUrl.isNotEmpty
-                            ? Image.network(
-                                requesterImageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.person,
-                                  color: Colors.green,
-                                  size: 25,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person,
-                                color: Colors.green,
-                                size: 25,
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Requester',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                // Arrow
-                Container(
-                  width: 40,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFDBB342),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                // Approver image with position
-                Column(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.green,
-                          width: 2,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child: approverImageUrl.isNotEmpty
-                            ? Image.network(
-                                approverImageUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.person,
-                                  color: Colors.green,
-                                  size: 25,
-                                ),
-                              )
-                            : const Icon(
-                                Icons.person,
-                                color: Colors.green,
-                                size: 25,
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      positionName.isNotEmpty ? positionName : 'Approver',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Date and time
-            Text(
-              _formatDate(createdAt),
-              style: TextStyle(
-                fontSize: 14,
-                color: isDarkMode ? Colors.white70 : Colors.black54,
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Comment
-            if (comment.isNotEmpty)
-              Text(
-                comment,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDarkMode ? Colors.white : Colors.black87,
-                ),
-                textAlign: TextAlign.center,
-              ),
-          ],
-        ),
-      );
+      return feedbackList.map((e) => Map<String, dynamic>.from(e)).toList();
     } catch (e) {
       debugPrint('🔍 [AdminHQ] Feedback error: $e');
-      return const SizedBox.shrink();
+      return [];
     }
   }
 
@@ -559,12 +763,20 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   }
 
   Color _statusColor(String s) {
-    switch (s.toLowerCase()) {
+    final statusLower = s.toLowerCase().trim();
+    // Check for supervisor pending first
+    if (statusLower.contains('supervisor pending')) {
+      return Colors.orange; // Kuning/oren untuk Supervisor Pending
+    }
+    switch (statusLower) {
       case 'approved':
         return Colors.green;
       case 'decline':
       case 'declined':
       case 'rejected':
+      case 'cancel':
+      case 'canceled':
+      case 'cancelled':
         return Colors.red;
       case 'received':
       case 'exported':
@@ -574,7 +786,15 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     }
   }
 
-  String _getImageUrl(String? imagePath) => (imagePath == null || imagePath.isEmpty) ? '' : (imagePath.startsWith('http') ? imagePath : '$_imageBaseUrl$imagePath');
+  String _getImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.isEmpty) return '';
+    // If already a full URL, return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    // Otherwise, prepend base URL
+    return '$_imageBaseUrl$imagePath';
+  }
   String _getItemImageUrl(String? imageRef) => (imageRef == null || imageRef.isEmpty) ? '' : (imageRef.startsWith('http') ? imageRef : '$_imageBaseUrl$imageRef');
   String _formatDate(String? dateString) { if (dateString == null) return 'Unknown date'; try { final d = DateTime.parse(dateString); return '${d.day.toString().padLeft(2,'0')} ${_month(d.month)} ${d.year} - ${d.hour.toString().padLeft(2,'0')}:${d.minute.toString().padLeft(2,'0')}:${d.second.toString().padLeft(2,'0')}'; } catch (_) { return dateString; } }
   String _month(int m) => const ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1];

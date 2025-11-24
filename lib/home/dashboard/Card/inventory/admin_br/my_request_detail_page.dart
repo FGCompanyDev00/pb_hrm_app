@@ -29,9 +29,16 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   bool _isError = false;
   String _errorMessage = '';
   bool _isSubmitting = false;
+  final TextEditingController _titleController = TextEditingController();
 
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -105,6 +112,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
             _requestDetails = requestDetails;
             _requestItems = List<Map<String, dynamic>>.from(
                 details.map((e) => Map<String, dynamic>.from(e)));
+            _titleController.text = _requestDetails['title'] ?? '';
             _isLoading = false;
             _isError = false;
           });
@@ -186,6 +194,9 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                         children: [
                           _buildRequestorInfoCard(isDarkMode),
                           const SizedBox(height: 16),
+                          // Title field (editable if Supervisor Pending)
+                          if (_canEditItems) _buildTitleField(isDarkMode),
+                          if (_canEditItems) const SizedBox(height: 16),
                           _buildRequestedItemsSection(isDarkMode),
                           const SizedBox(height: 16),
                           if (_isFinalStatus)
@@ -312,6 +323,54 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTitleField(bool isDarkMode) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Request Title',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _titleController,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black87,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Enter request title...',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: const Color(0xFFDBB342).withOpacity(0.5)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFDBB342), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
           ),
         ],
@@ -490,8 +549,25 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
 
   // Final vs editable status
   bool get _isFinalStatus {
-    final s = (_requestDetails['status'] ?? '').toString().toLowerCase();
-    return s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported');
+    final statusStr = (_requestDetails['status'] ?? '').toString();
+    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    // Supervisor Pending is NOT a final status - user can still edit
+    if (s.contains('supervisor pending')) {
+      debugPrint('🔍 [AdminBR] Status "$statusStr" is Supervisor Pending - NOT final status');
+      return false;
+    }
+    final isFinal = s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported') || s.contains('cancel');
+    debugPrint('🔍 [AdminBR] Status "$statusStr" isFinalStatus: $isFinal');
+    return isFinal;
+  }
+
+  bool get _canEditItems {
+    final statusStr = (_requestDetails['status'] ?? '').toString();
+    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    // Check for supervisor pending status (with or without dots, case insensitive)
+    final canEdit = s.contains('supervisor pending');
+    debugPrint('🔍 [AdminBR] Status: "$statusStr", Normalized: "$s", CanEditItems: $canEdit');
+    return canEdit;
   }
 
   // Quantity controls for editable mode
@@ -584,16 +660,34 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
         throw Exception('Missing auth or topic id');
       }
 
+      // Validate quantities before sending
+      final details = <Map<String, dynamic>>[];
+      for (var item in _requestItems) {
+        final barcode = item['barcode'] ?? item['bar_code'] ?? '';
+        final qty = (item['quantity'] is String) ? int.tryParse(item['quantity']) ?? 0 : (item['quantity'] ?? 0);
+        if (barcode.isEmpty) {
+          throw Exception('Barcode is required for all items');
+        }
+        if (qty <= 0) {
+          throw Exception('Quantity must be greater than 0 for all items');
+        }
+        details.add({
+          'barcode': barcode,
+          'quantity': qty,
+        });
+      }
+
+      if (details.isEmpty) {
+        throw Exception('At least one item is required');
+      }
+
       final body = {
-        'title': _requestDetails['title'] ?? '',
-        'details': _requestItems.map((e) => {
-              'barcode': e['barcode'] ?? e['bar_code'] ?? '',
-              'quantity': (e['quantity'] is String)
-                  ? int.tryParse(e['quantity']) ?? 0
-                  : (e['quantity'] ?? 0),
-            }).toList(),
+        'title': _titleController.text.trim().isEmpty ? (_requestDetails['title'] ?? '') : _titleController.text.trim(),
+        'details': details,
         'confirmed': 0,
       };
+
+      debugPrint('🔍 [AdminBR] Update body: ${jsonEncode(body)}');
 
       final response = await http.put(
         Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
@@ -604,15 +698,15 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
         body: jsonEncode(body),
       );
 
-      if (response.statusCode == 200) {
+      debugPrint('🔍 [AdminBR] Update response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Request updated successfully')),
         );
-        await _loadRequestDetails();
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop(true);
-        }
+        // Navigate back to refresh the list
+        Navigator.pop(context, true);
       } else {
         throw Exception('Failed to update (${response.statusCode})');
       }
@@ -636,19 +730,29 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       if (token == null || baseUrl == null) {
         throw Exception('Missing auth');
       }
+      final topicUid = _requestDetails['topic_uniq_id'];
+      if (topicUid == null) throw Exception('Missing topic id');
+      
+      final body = {'comment': comment};
+      debugPrint('🔍 [AdminBR] Cancel body: ${jsonEncode(body)}');
+
       final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/request-cancel/'),
+        Uri.parse('$baseUrl/api/inventory/request-cancel/$topicUid'),
         headers: {
           'Authorization': 'Bearer $token',
           'Content-Type': 'application/json',
         },
-        body: jsonEncode({'comment': comment}),
+        body: jsonEncode(body),
       );
-      if (response.statusCode == 200) {
+
+      debugPrint('🔍 [AdminBR] Cancel response status: ${response.statusCode}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Request cancelled')),
         );
+        // Navigate back to refresh the list
         Navigator.pop(context, true);
       } else {
         throw Exception('Failed to cancel (${response.statusCode})');
