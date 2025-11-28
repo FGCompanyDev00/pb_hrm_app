@@ -50,12 +50,14 @@ class _InventoryBranchManagerPageState extends State<InventoryBranchManagerPage>
       _bannerAutoSwipeTimer =
           Timer.periodic(const Duration(seconds: 4), (timer) {
         if (mounted && _bannerPageController.hasClients) {
-          final nextPage =
-              (_currentBannerPageNotifier.value + 1) % _banners.length;
+          final currentPage = _currentBannerPageNotifier.value;
+          final nextPage = (currentPage + 1) % _banners.length;
+          
+          // Smooth animation with optimized duration and curve
           _bannerPageController.animateToPage(
             nextPage,
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOutCubic,
           );
         }
       });

@@ -30,6 +30,8 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   bool _isError = false;
   String _errorMessage = '';
   bool _isProcessing = false;
+  bool _isFeedbackExpanded = false;
+  final TextEditingController _titleController = TextEditingController();
 
   // Base URL for images
   final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
@@ -39,6 +41,12 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
     super.initState();
     debugPrint('🔍 [RequestDetailPage] initState called with requestData: ${widget.requestData}');
     _loadRequestDetails();
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadRequestDetails() async {
@@ -100,6 +108,9 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
           
           debugPrint('🔍 [RequestDetailPage] Raw details: $details');
           
+          // Initialize title controller
+          _titleController.text = result['title'] ?? '';
+          
           setState(() {
             _requestDetails = requestDetails;
             _requestItems = List<Map<String, dynamic>>.from(
@@ -134,7 +145,7 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
         return Scaffold(
           backgroundColor: isDarkMode ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5),
           appBar: InventoryAppBar(
-            title: 'Requestor Detail',
+            title: _getPageTitle(),
             showBack: true,
           ),
           body: _isLoading
@@ -180,8 +191,17 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           _buildRequestorInfoCard(isDarkMode),
+                          if (_canEditItems) ...[
+                            const SizedBox(height: 16),
+                            _buildTitleField(isDarkMode),
+                          ],
                           const SizedBox(height: 16),
                           _buildRequestedItemsSection(isDarkMode),
+                          // Feedback Section (if final status)
+                          if (_isFinalStatus) ...[
+                            const SizedBox(height: 16),
+                            _buildFeedbackSectionWidget(isDarkMode),
+                          ],
                           const SizedBox(height: 16),
                           _buildActionButtons(isDarkMode),
                         ],
@@ -314,12 +334,12 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...(_requestItems.map((item) => _buildRequestedItemCard(item, isDarkMode))),
+        ...List.generate(_requestItems.length, (index) => _buildRequestedItemCard(_requestItems[index], isDarkMode, index)),
       ],
     );
   }
 
-  Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode) {
+  Widget _buildRequestedItemCard(Map<String, dynamic> item, bool isDarkMode, int index) {
     final String name = item['name'] ?? 'Unknown Item';
     final dynamic quantityValue = item['quantity'];
     final int quantity = (quantityValue is String) ? int.tryParse(quantityValue) ?? 0 : (quantityValue ?? 0);
@@ -411,20 +431,107 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
               ],
             ),
           ),
-          // Quantity
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFDBB342).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+          // Quantity controls or display
+          _canEditItems
+              ? Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => _decrementQuantity(index),
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDBB342).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        quantity.toString().padLeft(2, '0'),
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFDBB342),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _incrementQuantity(index),
+                      icon: const Icon(Icons.add_circle_outline),
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      onPressed: () => _removeItem(index),
+                      icon: const Icon(Icons.delete_outline),
+                      color: Colors.red[400],
+                    ),
+                  ],
+                )
+              : Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBB342).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    quantity.toString().padLeft(2, '0'),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFDBB342),
+                    ),
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTitleField(bool isDarkMode) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Request Title',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : Colors.black87,
             ),
-            child: Text(
-              quantity.toString().padLeft(2, '0'),
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFDBB342),
+          ),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _titleController,
+            style: TextStyle(
+              color: isDarkMode ? Colors.white : Colors.black87,
+              fontSize: 16,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Enter request title...',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide(color: const Color(0xFFDBB342).withOpacity(0.5)),
               ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Color(0xFFDBB342), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
           ),
         ],
@@ -441,6 +548,88 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
       return const SizedBox.shrink(); // Hide buttons completely
     }
     
+    // For Manager Pending status, show Update and Cancel buttons
+    if (_canEditItems) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _isProcessing ? null : _submitUpdate,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDBB342),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: _isProcessing
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Update',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _isProcessing
+                    ? null
+                    : () async {
+                        String? comment;
+                        await showDialog(
+                          context: context,
+                          builder: (context) => CommentModal(
+                            action: 'Cancel',
+                            onConfirm: (c) {
+                              comment = c;
+                              Navigator.of(context).pop();
+                            },
+                            onCancel: () {
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        );
+                        if ((comment ?? '').trim().isNotEmpty) {
+                          await _submitCancel((comment ?? '').trim());
+                        }
+                      },
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFDBB342), width: 2),
+                  foregroundColor: const Color(0xFFDBB342),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  _isProcessing ? 'Cancelling...' : 'Cancel',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
+    // For other statuses, show Approve/Decline buttons
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -940,19 +1129,582 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'decline':
-        return Colors.red;
-      case 'exported':
-        return Colors.blue;
-      case 'manager pending':
-        return Colors.green; // Green for Manager Pending as per design
-      default:
-        return Colors.orange;
+    final statusStr = status.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    if (statusStr.contains('approved')) {
+      return Colors.green;
+    } else if (statusStr.contains('manager pending')) {
+      return Colors.orange; // Orange for Manager Pending
+    } else if (statusStr.contains('decline') || statusStr.contains('rejected')) {
+      return Colors.red;
+    } else if (statusStr.contains('exported')) {
+      return Colors.blue;
+    } else if (statusStr.contains('pending')) {
+      return Colors.orange;
     }
+    return Colors.orange;
+  }
+
+  String _getPageTitle() {
+    if (_canEditItems) {
+      return 'My Request';
+    }
+    return 'Requestor Detail';
+  }
+
+  bool get _canEditItems {
+    final statusStr = (_requestDetails['status'] ?? '').toString();
+    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    // Check for manager pending status (with or without dots, case insensitive)
+    final canEdit = s.contains('manager pending');
+    debugPrint('🔍 [BranchManager RequestDetail] Status: "$statusStr", Normalized: "$s", CanEditItems: $canEdit');
+    return canEdit;
+  }
+
+  bool get _isFinalStatus {
+    final statusStr = (_requestDetails['status'] ?? '').toString();
+    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
+    final isFinal = s.contains('approved') || 
+                    s.contains('cancel') || 
+                    s.contains('cancelled') || 
+                    s.contains('rejected') || 
+                    s.contains('decline') || 
+                    s.contains('declined');
+    debugPrint('🔍 [BranchManager RequestDetail] Status: "$statusStr", Normalized: "$s", IsFinalStatus: $isFinal');
+    return isFinal;
+  }
+
+  void _incrementQuantity(int index) {
+    if (index < 0 || index >= _requestItems.length) return;
+    setState(() {
+      final current = (_requestItems[index]['quantity'] is String)
+          ? int.tryParse(_requestItems[index]['quantity']) ?? 0
+          : (_requestItems[index]['quantity'] ?? 0);
+      _requestItems[index]['quantity'] = current + 1;
+    });
+  }
+
+  void _decrementQuantity(int index) {
+    if (index < 0 || index >= _requestItems.length) return;
+    setState(() {
+      final current = (_requestItems[index]['quantity'] is String)
+          ? int.tryParse(_requestItems[index]['quantity']) ?? 0
+          : (_requestItems[index]['quantity'] ?? 0);
+      if (current > 1) {
+        _requestItems[index]['quantity'] = current - 1;
+      }
+    });
+  }
+
+  void _removeItem(int index) {
+    if (index < 0 || index >= _requestItems.length) return;
+    setState(() {
+      _requestItems.removeAt(index);
+    });
+  }
+
+  Future<void> _submitUpdate() async {
+    if (_isProcessing) return;
+    
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? 
+                       _requestDetails['topic_uniq_id'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      // Prepare details array with barcode and quantity
+      final List<Map<String, dynamic>> details = _requestItems
+          .where((item) {
+            final qty = (item['quantity'] is String)
+                ? int.tryParse(item['quantity']) ?? 0
+                : (item['quantity'] ?? 0);
+            return qty > 0;
+          })
+          .map((item) {
+            final qty = (item['quantity'] is String)
+                ? int.tryParse(item['quantity']) ?? 0
+                : (item['quantity'] ?? 0);
+            return {
+              'barcode': item['barcode'] ?? '',
+              'quantity': qty,
+            };
+          })
+          .toList();
+
+      if (details.isEmpty) {
+        throw Exception('Please add at least one item with quantity > 0');
+      }
+
+      final requestBody = {
+        'title': _titleController.text.trim(),
+        'details': details,
+        'confirmed': 0, // Default to 0, can be updated based on business logic
+      };
+
+      debugPrint('🔍 [BranchManager RequestDetail] Update request body: $requestBody');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      debugPrint('🔍 [BranchManager RequestDetail] Update response status: ${response.statusCode}');
+      debugPrint('🔍 [BranchManager RequestDetail] Update response body: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Updated',
+                onClose: () {
+                  // Close success modal and navigate back
+                  Navigator.of(context).pop(); // Close success modal
+                  // Use a small delay to ensure modal is closed before popping page
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (mounted) {
+                      final nav = Navigator.of(context);
+                      if (nav.canPop()) {
+                        nav.pop(true); // Go back to previous page with refresh flag
+                      }
+                    }
+                  });
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to update request: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _submitCancel(String comment) async {
+    if (_isProcessing) return;
+    
+    setState(() {
+      _isProcessing = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'] ?? '';
+      
+      if (token == null || baseUrl.isEmpty) {
+        throw Exception('Authentication or BASE_URL not configured');
+      }
+
+      // Get the topic ID from the request data
+      String topicUid = widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? 
+                       _requestDetails['topic_uniq_id'] ?? '';
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
+
+      final requestBody = {
+        'comment': comment.trim(),
+      };
+
+      debugPrint('🔍 [BranchManager RequestDetail] Cancel request body: $requestBody');
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/api/inventory/request-cancel/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+
+      debugPrint('🔍 [BranchManager RequestDetail] Cancel response status: ${response.statusCode}');
+      debugPrint('🔍 [BranchManager RequestDetail] Cancel response body: ${response.body}');
+      
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (mounted) {
+          // Show success modal
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return SuccessModal(
+                action: 'Cancelled',
+                onClose: () {
+                  // Close success modal and navigate back
+                  Navigator.of(context).pop(); // Close success modal
+                  // Use a small delay to ensure modal is closed before popping page
+                  Future.delayed(const Duration(milliseconds: 100), () {
+                    if (mounted) {
+                      final nav = Navigator.of(context);
+                      if (nav.canPop()) {
+                        nav.pop(true); // Go back to previous page with refresh flag
+                      }
+                    }
+                  });
+                },
+              );
+            },
+          );
+        }
+      } else {
+        throw Exception('Failed to cancel request: ${response.statusCode}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error cancelling request: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildFeedbackSectionWidget(bool isDarkMode) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchFeedbackList(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
+        final feedbackList = snapshot.data!;
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header with expand/collapse button
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _isFeedbackExpanded = !_isFeedbackExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Comments & Feedback',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isDarkMode ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      Icon(
+                        _isFeedbackExpanded ? Icons.expand_less : Icons.expand_more,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Feedback items (shown when expanded)
+              if (_isFeedbackExpanded) ...[
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: feedbackList.map((feedback) {
+                      final String comment = feedback['comment'] ?? '';
+                      final String decide = feedback['decide'] ?? '';
+                      final String createdAt = feedback['created_at'] ?? '';
+                      final String employeeName = feedback['employee_name'] ?? 'Unknown';
+                      final String employeeSurname = feedback['employee_surname'] ?? '';
+                      final String imgPath = feedback['img_path'] ?? '';
+                      final String positionName = feedback['position_name'] ?? '';
+                      
+                      final String approverName = '$employeeName $employeeSurname'.trim();
+                      final String approverImageUrl = _getImageUrl(imgPath);
+                      
+                      // Get requester image from request details
+                      final String requesterImgPath = _requestDetails['img_path'] ?? '';
+                      final String requesterImgName = _requestDetails['img_name'] ?? '';
+                      final String requesterImageUrl = _getImageUrl(
+                        requesterImgPath.isNotEmpty ? requesterImgPath : requesterImgName
+                      );
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey[50],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: Colors.grey.withOpacity(0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            // Profile images with arrow (Approval person -> Arrow -> Current user)
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Approval person image
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFDBB342),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: approverImageUrl.isNotEmpty
+                                        ? Image.network(
+                                            approverImageUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => const Icon(
+                                              Icons.person,
+                                              color: Color(0xFFDBB342),
+                                              size: 20,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            color: Color(0xFFDBB342),
+                                            size: 20,
+                                          ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Arrow
+                                Container(
+                                  width: 30,
+                                  height: 16,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFDBB342),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_forward,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                // Current user (requester) image
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: const Color(0xFFDBB342),
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: ClipOval(
+                                    child: requesterImageUrl.isNotEmpty
+                                        ? Image.network(
+                                            requesterImageUrl,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => const Icon(
+                                              Icons.person,
+                                              color: Color(0xFFDBB342),
+                                              size: 20,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.person,
+                                            color: Color(0xFFDBB342),
+                                            size: 20,
+                                          ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            // Employee name and position
+                            Text(
+                              approverName,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: isDarkMode ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                            if (positionName.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                positionName,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(height: 8),
+                            // Status
+                            if (decide.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _getDecideColor(decide),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  decide,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            // Date and time
+                            Text(
+                              _formatDate(createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDarkMode ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // Comment
+                            if (comment.isNotEmpty)
+                              Text(
+                                comment,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchFeedbackList() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final baseUrl = dotenv.env['BASE_URL'];
+      final topicUid = _requestDetails['topic_uniq_id'] ?? 
+                       widget.requestData['topic_uniq_id'] ?? 
+                       widget.requestData['topicid'] ?? '';
+      
+      if (token == null || baseUrl == null || topicUid == null || topicUid.isEmpty) {
+        debugPrint('⚠️ [BranchManager RequestDetail] Missing token, baseUrl, or topicUid for feedback');
+        return [];
+      }
+      
+      debugPrint('🔍 [BranchManager RequestDetail] Fetching feedback for topic: $topicUid');
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/inventory/request_reply/$topicUid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      
+      debugPrint('🔍 [BranchManager RequestDetail] Feedback response status: ${response.statusCode}');
+      debugPrint('🔍 [BranchManager RequestDetail] Feedback response body: ${response.body}');
+      
+      if (response.statusCode != 200) {
+        debugPrint('⚠️ [BranchManager RequestDetail] Feedback API returned status: ${response.statusCode}');
+        return [];
+      }
+      
+      final decoded = jsonDecode(response.body);
+      final List<dynamic> feedbackList = (decoded is List) 
+          ? decoded 
+          : (decoded['results'] ?? []);
+      
+      debugPrint('✅ [BranchManager RequestDetail] Fetched ${feedbackList.length} feedback items');
+      return feedbackList.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (e, stackTrace) {
+      debugPrint('❌ [BranchManager RequestDetail] Feedback error: $e');
+      debugPrint('   StackTrace: $stackTrace');
+      return [];
+    }
+  }
+
+  Color _getDecideColor(String decide) {
+    final decideStr = decide.toLowerCase().trim();
+    if (decideStr.contains('approved') || decideStr.contains('checked') || decideStr.contains('received')) {
+      return Colors.green;
+    } else if (decideStr.contains('edit')) {
+      return Colors.orange;
+    } else if (decideStr.contains('declined') || decideStr.contains('rejected') || decideStr.contains('cancel')) {
+      return Colors.red;
+    }
+    return Colors.blue;
   }
 }

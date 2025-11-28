@@ -80,11 +80,14 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
     if (_banners.length > 1) {
       _bannerAutoSwipeTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
         if (mounted && _bannerPageController.hasClients) {
-          final nextPage = (_currentBannerPageNotifier.value + 1) % _banners.length;
+          final currentPage = _currentBannerPageNotifier.value;
+          final nextPage = (currentPage + 1) % _banners.length;
+          
+          // Smooth animation with optimized duration and curve
           _bannerPageController.animateToPage(
             nextPage,
-            duration: const Duration(milliseconds: 800),
-            curve: Curves.easeInOut,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOutCubic,
           );
         }
       });
@@ -463,6 +466,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
       {
         'icon': Icons.list_alt,
         'label': 'My Request',
+        'color': const Color(0xFF9C27B0), // Pink
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -473,6 +477,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
       {
         'icon': Icons.pending_actions,
         'label': 'Approval Waiting',
+        'color': const Color(0xFF4CAF50), // Green
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -483,6 +488,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
       {
         'icon': Icons.swap_horiz,
         'label': 'Approval in Branch',
+        'color': const Color(0xFF2196F3), // Blue
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -493,6 +499,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
       {
         'icon': Icons.swap_horiz,
         'label': 'Approval from Branch',
+        'color': const Color(0xFFFF9800), // Orange
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -503,6 +510,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
       {
         'icon': Icons.shopping_bag,
         'label': 'My Receive',
+        'color': const Color(0xFFFF5722), // Deep Orange
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(
@@ -532,6 +540,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
         context,
         action['icon'] as IconData,
         action['label'] as String,
+        action['color'] as Color,
         action['onTap'] as VoidCallback,
         isDarkMode,
         screenWidth,
@@ -543,6 +552,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
     BuildContext context,
     IconData icon,
     String label,
+    Color iconColor,
     VoidCallback onTap,
     bool isDarkMode,
     double screenWidth,
@@ -557,7 +567,7 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
           color: isDarkMode ? Colors.grey[850] : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: const Color(0xFFDBB342).withOpacity(0.3),
+            color: iconColor.withOpacity(0.3),
             width: 1.2,
           ),
           boxShadow: [
@@ -578,13 +588,13 @@ class _InventoryAdminHQPageState extends State<InventoryAdminHQPage> {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFDBB342).withOpacity(0.13),
+                color: iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
                 icon,
                 size: iconSize,
-                color: Colors.green, // Green color as specified
+                color: iconColor,
               ),
             ),
             const SizedBox(height: 10),

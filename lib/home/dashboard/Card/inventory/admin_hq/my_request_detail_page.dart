@@ -261,17 +261,17 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       child: Stack(
         children: [
           Row(children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.withOpacity(0.3))),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: imageUrl.isNotEmpty ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.computer)) : const Icon(Icons.computer),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(name, style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black87, fontWeight: FontWeight.w500), maxLines: 2, overflow: TextOverflow.ellipsis)),
+        Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.withOpacity(0.3))),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: imageUrl.isNotEmpty ? Image.network(imageUrl, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.computer)) : const Icon(Icons.computer),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(child: Text(name, style: TextStyle(fontSize: 14, color: isDarkMode ? Colors.white : Colors.black87, fontWeight: FontWeight.w500), maxLines: 2, overflow: TextOverflow.ellipsis)),
             // Quantity controls (if editable)
             if (_canEditItems)
               Row(children: [
@@ -280,7 +280,7 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                 IconButton(onPressed: () => _incrementQuantity(index), icon: const Icon(Icons.add_circle_outline), color: isDarkMode ? Colors.white70 : Colors.black54),
                 IconButton(onPressed: () => _removeItem(index), icon: const Icon(Icons.delete_outline), color: Colors.red[400]),
               ]),
-          ]),
+      ]),
           // Quantity display at bottom right (for final status)
           if (_isFinalStatus && !_canEditItems)
             Positioned(
@@ -496,23 +496,23 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
         }
         
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        
+        return const SizedBox.shrink();
+      }
+      
         final feedbackList = snapshot.data!;
-        
-        return Container(
-          margin: const EdgeInsets.only(top: 16),
-          decoration: BoxDecoration(
-            color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+
+      return Container(
+        margin: const EdgeInsets.only(top: 16),
+        decoration: BoxDecoration(
+          color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -576,87 +576,87 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                             color: Colors.grey.withOpacity(0.2),
                             width: 1,
                           ),
-                        ),
-                        child: Column(
-                          children: [
-                            // Profile images with arrow
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
+        ),
+        child: Column(
+          children: [
+            // Profile images with arrow
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                                 // Requester image
-                                Container(
+                    Container(
                                   width: 40,
                                   height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.green,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: ClipOval(
-                                    child: requesterImageUrl.isNotEmpty
-                                        ? Image.network(
-                                            requesterImageUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => const Icon(
-                                              Icons.person,
-                                              color: Colors.green,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: requesterImageUrl.isNotEmpty
+                            ? Image.network(
+                                requesterImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                  Icons.person,
+                                  color: Colors.green,
                                               size: 20,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.person,
-                                            color: Colors.green,
-                                            size: 20,
-                                          ),
-                                  ),
                                 ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
+                                            size: 20,
+                              ),
+                      ),
+                    ),
                                 const SizedBox(width: 12),
-                                // Arrow
-                                Container(
+                // Arrow
+                Container(
                                   width: 30,
                                   height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDBB342),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBB342),
                                     borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_forward,
-                                    color: Colors.white,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
                                     size: 14,
-                                  ),
-                                ),
+                  ),
+                ),
                                 const SizedBox(width: 12),
                                 // Approver image
-                                Container(
+                    Container(
                                   width: 40,
                                   height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.green,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: ClipOval(
-                                    child: approverImageUrl.isNotEmpty
-                                        ? Image.network(
-                                            approverImageUrl,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => const Icon(
-                                              Icons.person,
-                                              color: Colors.green,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: approverImageUrl.isNotEmpty
+                            ? Image.network(
+                                approverImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                  Icons.person,
+                                  color: Colors.green,
                                               size: 20,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.person,
-                                            color: Colors.green,
-                                            size: 20,
-                                          ),
-                                  ),
                                 ),
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
+                                            size: 20,
+                              ),
+                      ),
+                    ),
                               ],
                             ),
                             const SizedBox(height: 8),
@@ -671,37 +671,37 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                             ),
                             if (positionName.isNotEmpty) ...[
                               const SizedBox(height: 2),
-                              Text(
+                    Text(
                                 positionName,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                                ),
-                              ),
-                            ],
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
                             const SizedBox(height: 8),
-                            // Date and time
-                            Text(
-                              _formatDate(createdAt),
-                              style: TextStyle(
+            // Date and time
+            Text(
+              _formatDate(createdAt),
+              style: TextStyle(
                                 fontSize: 12,
-                                color: isDarkMode ? Colors.white70 : Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Comment
-                            if (comment.isNotEmpty)
-                              Text(
-                                comment,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isDarkMode ? Colors.white : Colors.black87,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                          ],
-                        ),
-                      );
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Comment
+            if (comment.isNotEmpty)
+              Text(
+                comment,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+          ],
+        ),
+      );
                     }).toList(),
                   ),
                 ),

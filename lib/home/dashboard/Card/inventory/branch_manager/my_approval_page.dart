@@ -26,10 +26,13 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
   @override
   void initState() {
     super.initState();
+    debugPrint('🔍 [BranchManager MyApproval] initState called');
     _fetchApprovalRequests();
   }
 
   Future<void> _fetchApprovalRequests() async {
+    debugPrint('🔍 [BranchManager MyApproval] Starting to fetch approval requests...');
+    
     setState(() {
       _isLoading = true;
       _isError = false;
@@ -37,23 +40,59 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
     });
 
     try {
-      final results = await InventoryApprovalService.fetchWaitings();
+      debugPrint('🔍 [BranchManager MyApproval] Calling InventoryApprovalService.fetchBranchManagerWaitings()...');
+      final results = await InventoryApprovalService.fetchBranchManagerWaitings();
+      
+      debugPrint('🔍 [BranchManager MyApproval] API call completed');
+      debugPrint('🔍 [BranchManager MyApproval] Results count: ${results.length}');
+      
+      if (results.isNotEmpty) {
+        debugPrint('🔍 [BranchManager MyApproval] First result sample:');
+        debugPrint('   - Keys: ${results[0].keys.toList()}');
+        debugPrint('   - Title: ${results[0]['title']}');
+        debugPrint('   - Status: ${results[0]['status']}');
+        debugPrint('   - Requestor: ${results[0]['requestor_name']}');
+        debugPrint('   - Topic UID: ${results[0]['topic_uniq_id'] ?? results[0]['topicid']}');
+      } else {
+        debugPrint('⚠️ [BranchManager MyApproval] Results list is empty');
+      }
+      
       setState(() {
         _approvalRequests = results;
         _isLoading = false;
         _isError = false;
       });
-    } catch (e) {
+      
+      debugPrint('✅ [BranchManager MyApproval] State updated successfully');
+      debugPrint('   - _approvalRequests.length: ${_approvalRequests.length}');
+      debugPrint('   - _isLoading: $_isLoading');
+      debugPrint('   - _isError: $_isError');
+    } catch (e, stackTrace) {
+      debugPrint('❌ [BranchManager MyApproval] Error occurred:');
+      debugPrint('   - Error: $e');
+      debugPrint('   - StackTrace: $stackTrace');
+      
       setState(() {
         _isLoading = false;
         _isError = true;
         _errorMessage = e.toString();
       });
+      
+      debugPrint('❌ [BranchManager MyApproval] Error state set:');
+      debugPrint('   - _isLoading: $_isLoading');
+      debugPrint('   - _isError: $_isError');
+      debugPrint('   - _errorMessage: $_errorMessage');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    debugPrint('🔍 [BranchManager MyApproval] build() called');
+    debugPrint('   - _isLoading: $_isLoading');
+    debugPrint('   - _isError: $_isError');
+    debugPrint('   - _approvalRequests.length: ${_approvalRequests.length}');
+    debugPrint('   - _errorMessage: $_errorMessage');
+    
     return Consumer<ThemeNotifier>(
       builder: (context, themeNotifier, child) {
         final isDarkMode = themeNotifier.isDarkMode;
@@ -154,6 +193,9 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
   }
 
   Widget _buildApprovalCard(Map<String, dynamic> request, bool isDarkMode) {
+    debugPrint('🔍 [BranchManager MyApproval] Building approval card');
+    debugPrint('   - Request keys: ${request.keys.toList()}');
+    
     final String title = request['title'] ?? 'No Title';
     final String requestorName = request['requestor_name'] ?? 'Unknown';
     final String status = request['status'] ?? 'Unknown';
@@ -163,6 +205,11 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
     final String imageUrl = rawImageUrl.isNotEmpty
         ? (rawImageUrl.startsWith('http') ? rawImageUrl : '$_imageBaseUrl$rawImageUrl')
         : '';
+    
+    debugPrint('   - Title: $title');
+    debugPrint('   - Requestor: $requestorName');
+    debugPrint('   - Status: $status');
+    debugPrint('   - Image URL: ${imageUrl.isNotEmpty ? "Set" : "Empty"}');
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -306,9 +353,16 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
   }
 
   void _openRequestDetail(Map<String, dynamic> request) {
+    debugPrint('🔍 [BranchManager MyApproval] Opening request detail');
+    debugPrint('   - Request keys: ${request.keys.toList()}');
+    debugPrint('   - Title: ${request['title']}');
+    debugPrint('   - Topic UID: ${request['topic_uniq_id'] ?? request['topicid']}');
+    
     // Add source field to identify this is from approval page
     final requestWithSource = Map<String, dynamic>.from(request);
     requestWithSource['source'] = 'approval';
+    
+    debugPrint('   - Source set to: approval');
     
     Navigator.push<bool>(
       context,
@@ -318,7 +372,10 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
         ),
       ),
     ).then((changed) {
+      debugPrint('🔍 [BranchManager MyApproval] Returned from detail page');
+      debugPrint('   - Changed: $changed');
       if (changed == true) {
+        debugPrint('   - Refreshing approval requests list...');
         _fetchApprovalRequests();
       }
     });

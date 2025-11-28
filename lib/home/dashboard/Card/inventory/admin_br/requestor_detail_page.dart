@@ -59,7 +59,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       }
 
       final String topicUid = widget.requestData['topic_uniq_id'] ?? 
-          widget.requestData['topicid'] ?? '';
+                       widget.requestData['topicid'] ?? '';
       if (topicUid.isEmpty) {
         throw Exception('No topic UID found in request data');
       }
@@ -90,7 +90,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final result = data['results'];
+          final result = data['results'];
         Map<String, dynamic> requestDetails = {};
         List<Map<String, dynamic>> requestItems = [];
 
@@ -141,15 +141,15 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         } else {
           throw Exception('No results in API response');
         }
-
-        setState(() {
-          _requestDetails = requestDetails;
+          
+          setState(() {
+            _requestDetails = requestDetails;
           _requestItems = requestItems;
-          _isLoading = false;
-          _isError = false;
-        });
-        
-        debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
+            _isLoading = false;
+            _isError = false;
+          });
+          
+          debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
       } else {
         throw Exception('Failed to fetch request details: ${response.statusCode}');
       }
@@ -424,76 +424,76 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       child: Stack(
         children: [
           Row(
-            children: [
-              // Item Image
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[200],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: imageUrl.isNotEmpty
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                    : null,
-                                strokeWidth: 2,
-                                color: const Color(0xFFDBB342),
-                              ),
-                            );
-                          },
+        children: [
+          // Item Image
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: Colors.grey[200],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                : null,
+                            strokeWidth: 2,
+                            color: const Color(0xFFDBB342),
+                          ),
+                        );
+                      },
                           errorBuilder: (context, error, stackTrace) {
                             // Handle image load errors gracefully (403/404 are expected for expired S3 URLs)
                             // Just return fallback icon without logging
                             return Icon(
-                              Icons.inventory_2,
-                              color: Colors.grey[600],
-                              size: 30,
+                        Icons.inventory_2,
+                        color: Colors.grey[600],
+                        size: 30,
                             );
                           },
-                        )
-                      : Icon(
-                          Icons.inventory_2,
-                          color: Colors.grey[600],
-                          size: 30,
-                        ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              // Item Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode ? Colors.white : Colors.black,
-                      ),
+                    )
+                  : Icon(
+                      Icons.inventory_2,
+                      color: Colors.grey[600],
+                      size: 30,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'for Office',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Item Details
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  'for Office',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
             ],
           ),
           // Quantity display at bottom right (for final status)
@@ -502,24 +502,24 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
               bottom: 0,
               right: 0,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDBB342).withOpacity(0.1),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDBB342).withOpacity(0.1),
                   borderRadius: const BorderRadius.only(
                     topLeft: Radius.circular(12),
                     bottomRight: Radius.circular(12),
                   ),
-                ),
-                child: Text(
-                  quantity.toString().padLeft(2, '0'),
+            ),
+            child: Text(
+              quantity.toString().padLeft(2, '0'),
                   style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
                     color: Color(0xFFDBB342),
                   ),
-                ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -636,9 +636,9 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         }
         
         if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        
+        return const SizedBox.shrink();
+      }
+      
         final feedbackList = snapshot.data!;
         
         return Container(
@@ -692,116 +692,116 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: feedbackList.map((feedback) {
-                      final String comment = feedback['comment'] ?? '';
-                      final String createdAt = feedback['created_at'] ?? '';
-                      final String employeeName = feedback['employee_name'] ?? 'Unknown';
-                      final String employeeSurname = feedback['employee_surname'] ?? '';
-                      final String imgPath = feedback['img_path'] ?? '';
-                      final String positionName = feedback['position_name'] ?? '';
-                      
-                      final String approverName = '$employeeName $employeeSurname'.trim();
-                      final String approverImageUrl = _getImageUrl(imgPath);
+      final String comment = feedback['comment'] ?? '';
+      final String createdAt = feedback['created_at'] ?? '';
+      final String employeeName = feedback['employee_name'] ?? 'Unknown';
+      final String employeeSurname = feedback['employee_surname'] ?? '';
+      final String imgPath = feedback['img_path'] ?? '';
+      final String positionName = feedback['position_name'] ?? '';
+      
+      final String approverName = '$employeeName $employeeSurname'.trim();
+      final String approverImageUrl = _getImageUrl(imgPath);
                       // Check both img_path and img_name for requester image
                       final String requesterImgPath = _requestDetails['img_path'] ?? '';
                       final String requesterImgName = _requestDetails['img_name'] ?? '';
                       final String requesterImageUrl = _getImageUrl(requesterImgPath.isNotEmpty ? requesterImgPath : requesterImgName);
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
+        decoration: BoxDecoration(
                           color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.grey[50],
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: Colors.grey.withOpacity(0.2),
                             width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
+            ),
+        ),
+        child: Column(
+          children: [
                             // Profile images with arrow
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
                                 // Requester image
-                                Container(
+                    Container(
                                   width: 40,
                                   height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.green,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: ClipOval(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
                                     child: requesterImageUrl.isNotEmpty
-                                        ? Image.network(
+                            ? Image.network(
                                             requesterImageUrl,
-                                            fit: BoxFit.cover,
+                                fit: BoxFit.cover,
                                             errorBuilder: (context, error, stackTrace) => const Icon(
-                                              Icons.person,
-                                              color: Colors.green,
+                                    Icons.person,
+                                    color: Colors.green,
                                               size: 20,
                                             ),
-                                          )
-                                        : const Icon(
-                                            Icons.person,
-                                            color: Colors.green,
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
                                             size: 20,
-                                          ),
-                                  ),
-                                ),
+                              ),
+                      ),
+                    ),
                                 const SizedBox(width: 12),
-                                // Arrow
-                                Container(
+                // Arrow
+                Container(
                                   width: 30,
                                   height: 16,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFDBB342),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDBB342),
                                     borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.arrow_forward,
-                                    color: Colors.white,
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward,
+                    color: Colors.white,
                                     size: 14,
-                                  ),
-                                ),
+                  ),
+                ),
                                 const SizedBox(width: 12),
                                 // Approver image
-                                Container(
+                    Container(
                                   width: 40,
                                   height: 40,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: Colors.green,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: ClipOval(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.green,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
                                     child: approverImageUrl.isNotEmpty
-                                        ? Image.network(
+                            ? Image.network(
                                             approverImageUrl,
-                                            fit: BoxFit.cover,
+                                fit: BoxFit.cover,
                                             errorBuilder: (context, error, stackTrace) => const Icon(
-                                              Icons.person,
-                                              color: Colors.green,
+                                    Icons.person,
+                                    color: Colors.green,
                                               size: 20,
                                             ),
-                                          )
-                                        : const Icon(
-                                            Icons.person,
-                                            color: Colors.green,
+                              )
+                            : const Icon(
+                                Icons.person,
+                                color: Colors.green,
                                             size: 20,
-                                          ),
-                                  ),
-                                ),
+                              ),
+                      ),
+                    ),
                               ],
                             ),
                             const SizedBox(height: 8),
                             // Employee name and position
-                            Text(
+                    Text(
                               approverName,
                               style: TextStyle(
                                 fontSize: 12,
@@ -813,35 +813,35 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                               const SizedBox(height: 2),
                               Text(
                                 positionName,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: isDarkMode ? Colors.white70 : Colors.black54,
-                                ),
-                              ),
-                            ],
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
                             const SizedBox(height: 8),
-                            // Date and time
-                            Text(
-                              _formatDate(createdAt),
-                              style: TextStyle(
+            // Date and time
+            Text(
+              _formatDate(createdAt),
+              style: TextStyle(
                                 fontSize: 12,
-                                color: isDarkMode ? Colors.white70 : Colors.black54,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            // Comment
-                            if (comment.isNotEmpty)
-                              Text(
-                                comment,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isDarkMode ? Colors.white : Colors.black87,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                          ],
-                        ),
-                      );
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Comment
+            if (comment.isNotEmpty)
+              Text(
+                comment,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+                textAlign: TextAlign.center,
+              ),
+          ],
+        ),
+      );
                     }).toList(),
                   ),
                 ),

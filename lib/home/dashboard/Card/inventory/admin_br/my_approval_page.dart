@@ -37,7 +37,7 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
     });
 
     try {
-      final results = await InventoryApprovalService.fetchWaitings();
+      final results = await InventoryApprovalService.fetchSupervisorWaitings();
       setState(() {
         _approvalRequests = results;
         _isLoading = false;
@@ -80,7 +80,7 @@ class _MyApprovalPageState extends State<MyApprovalPage> {
         return Scaffold(
           backgroundColor: isDarkMode ? Colors.black : Colors.white,
           appBar: const InventoryAppBar(
-            title: 'My Approval',
+            title: 'Approval Waiting',
             showBack: true,
           ),
           body: _isLoading
