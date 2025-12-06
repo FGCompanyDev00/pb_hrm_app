@@ -80,36 +80,85 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        debugPrint('🔍 [MyReceiveDetailPage] Full API response: $data');
+        debugPrint('🔍 [MyReceiveDetailPage] Response keys: ${data.keys.toList()}');
+        
         if (data['results'] != null) {
           final result = data['results'];
+          debugPrint('🔍 [MyReceiveDetailPage] Result type: ${result.runtimeType}');
+          debugPrint('🔍 [MyReceiveDetailPage] Result: $result');
           
-          // Extract request details
-          final requestDetails = {
-            'id': result['id'],
-            'topic_uniq_id': result['topic_uniq_id'],
-            'title': result['title'],
-            'product_priority': result['product_priority'],
-            'employee_name': result['employee_name'], // API uses employee_name
-            'img_path': result['img_path'], // Full URL from API
-            'branch_name': result['branch_name'],
-            'status': result['status'],
-            'created_at': result['created_at'],
-          };
-          
-          final List<dynamic> details = result['details'] ?? [];
-          
-          debugPrint('🔍 [MyReceiveDetailPage] Raw details: $details');
-          
-          setState(() {
-            _requestDetails = requestDetails;
-            _requestItems = List<Map<String, dynamic>>.from(
-                details.map((e) => Map<String, dynamic>.from(e)));
-            _isLoading = false;
-            _isError = false;
-          });
-          
-          debugPrint('🔍 [MyReceiveDetailPage] Loaded ${_requestItems.length} items');
+          // Handle if result is a List (from exports endpoint)
+          if (result is List && result.isNotEmpty) {
+            debugPrint('⚠️ [MyReceiveDetailPage] Result is a List, taking first item');
+            final firstResult = result[0] as Map<String, dynamic>;
+            debugPrint('🔍 [MyReceiveDetailPage] First result keys: ${firstResult.keys.toList()}');
+            
+            // Extract request details from first item
+            final requestDetails = {
+              'id': firstResult['id'],
+              'topic_uniq_id': firstResult['topic_uniq_id'] ?? widget.requestData['topic_uniq_id'],
+              'title': firstResult['title'] ?? widget.requestData['title'],
+              'product_priority': firstResult['product_priority'],
+              'employee_name': firstResult['employee_name'] ?? widget.requestData['requestor_name'],
+              'img_path': firstResult['img_path'] ?? widget.requestData['img_path'],
+              'branch_name': firstResult['branch_name'] ?? widget.requestData['branch_name'],
+              'status': firstResult['status'] ?? widget.requestData['status'],
+              'created_at': firstResult['created_at'] ?? widget.requestData['created_at'],
+            };
+            
+            // Try to get details from first result
+            final List<dynamic> details = firstResult['details'] ?? [];
+            debugPrint('🔍 [MyReceiveDetailPage] Details from first result: $details (${details.length} items)');
+            
+            setState(() {
+              _requestDetails = requestDetails;
+              _requestItems = List<Map<String, dynamic>>.from(
+                  details.map((e) => Map<String, dynamic>.from(e)));
+              _isLoading = false;
+              _isError = false;
+            });
+            
+            debugPrint('🔍 [MyReceiveDetailPage] Loaded ${_requestItems.length} items');
+          } else if (result is Map) {
+            // Extract request details
+            debugPrint('🔍 [MyReceiveDetailPage] Result is a Map, keys: ${result.keys.toList()}');
+            final requestDetails = {
+              'id': result['id'],
+              'topic_uniq_id': result['topic_uniq_id'] ?? widget.requestData['topic_uniq_id'],
+              'title': result['title'] ?? widget.requestData['title'],
+              'product_priority': result['product_priority'],
+              'employee_name': result['employee_name'] ?? widget.requestData['requestor_name'],
+              'img_path': result['img_path'] ?? widget.requestData['img_path'],
+              'branch_name': result['branch_name'] ?? widget.requestData['branch_name'],
+              'status': result['status'] ?? widget.requestData['status'],
+              'created_at': result['created_at'] ?? widget.requestData['created_at'],
+            };
+            
+            final List<dynamic> details = result['details'] ?? [];
+            debugPrint('🔍 [MyReceiveDetailPage] Raw details: $details (${details.length} items)');
+            
+            if (details.isEmpty) {
+              debugPrint('⚠️ [MyReceiveDetailPage] Details array is empty!');
+              debugPrint('🔍 [MyReceiveDetailPage] Result keys available: ${result.keys.toList()}');
+            }
+            
+            setState(() {
+              _requestDetails = requestDetails;
+              _requestItems = List<Map<String, dynamic>>.from(
+                  details.map((e) => Map<String, dynamic>.from(e)));
+              _isLoading = false;
+              _isError = false;
+            });
+            
+            debugPrint('🔍 [MyReceiveDetailPage] Loaded ${_requestItems.length} items');
+          } else {
+            debugPrint('⚠️ [MyReceiveDetailPage] Unexpected result type: ${result.runtimeType}');
+            throw Exception('Unexpected API response structure');
+          }
         } else {
+          debugPrint('⚠️ [MyReceiveDetailPage] No results in API response');
+          debugPrint('🔍 [MyReceiveDetailPage] Available keys: ${data.keys.toList()}');
           throw Exception('No results in API response');
         }
       } else {
@@ -319,7 +368,42 @@ class _MyReceiveDetailPageState extends State<MyReceiveDetailPage> {
           ),
         ),
         const SizedBox(height: 12),
-        ...(_requestItems.map((item) => _buildRequestedItemCard(item, isDarkMode))),
+        if (_requestItems.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  size: 48,
+                  color: isDarkMode ? Colors.white54 : Colors.grey[400],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'No items found',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Items list is empty',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDarkMode ? Colors.white54 : Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ...(_requestItems.map((item) => _buildRequestedItemCard(item, isDarkMode))),
       ],
     );
   }

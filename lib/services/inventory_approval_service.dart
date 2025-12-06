@@ -33,7 +33,7 @@ class InventoryApprovalService {
     debugPrint('🔍 [InventoryApprovalService] Response received:');
     debugPrint('   - Status Code: ${response.statusCode}');
     debugPrint('   - Response Body Length: ${response.body.length}');
-    
+
     try {
       final Map<String, dynamic> data = jsonDecode(response.body);
       debugPrint('🔍 [InventoryApprovalService] JSON decoded successfully');

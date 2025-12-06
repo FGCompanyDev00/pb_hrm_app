@@ -204,6 +204,55 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     );
   }
 
+  /// Get user-friendly error message from exception
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    
+    // Network errors
+    if (errorString.contains('socket') || 
+        errorString.contains('network') || 
+        errorString.contains('connection') ||
+        errorString.contains('timeout')) {
+      return 'Unable to connect to server. Please check your internet connection and try again.';
+    }
+    
+    // Authentication errors
+    if (errorString.contains('auth') || 
+        errorString.contains('token') || 
+        errorString.contains('unauthorized') ||
+        errorString.contains('401')) {
+      return 'Your session has expired. Please log in again.';
+    }
+    
+    // Server errors (5xx)
+    if (errorString.contains('500') || 
+        errorString.contains('502') || 
+        errorString.contains('503') ||
+        errorString.contains('504')) {
+      return 'Server error occurred. Please try again later or contact IT support.';
+    }
+    
+    // Client errors (4xx) - but not auth
+    if (errorString.contains('400') || 
+        errorString.contains('403') || 
+        errorString.contains('404') ||
+        errorString.contains('422') ||
+        errorString.contains('202')) {
+      return 'Unable to process your request. Please try again or contact IT support if the problem persists.';
+    }
+    
+    // Generic errors
+    if (errorString.contains('failed to update') || 
+        errorString.contains('failed to cancel') ||
+        errorString.contains('failed to approve') ||
+        errorString.contains('failed to decline')) {
+      return 'Unable to complete the action. Please try again or contact IT support.';
+    }
+    
+    // Default message
+    return 'An error occurred. Please try again or contact IT support if the problem persists.';
+  }
+
   Widget _buildRequestorInfoCard(bool isDarkMode) {
     final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
     final String submittedAt = _formatDate(_requestDetails['created_at']);
@@ -705,7 +754,13 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getUserFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -738,7 +793,13 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cancel failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getUserFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -978,16 +1039,47 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
   }
 
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
+    final statusLower = status.toLowerCase().trim();
+    
+    // Handle status variations with contains check
+    if (statusLower.contains('manager pending')) {
+      return Colors.orange; // Orange for Manager Pending...
+    }
+    if (statusLower.contains('branch')) {
+      return const Color(0xFFDBB342); // Yellow for Branchs
+    }
+    if (statusLower.contains('received')) {
+      return Colors.green; // Green for Received
+    }
+    if (statusLower.contains('approved')) {
+      return Colors.green; // Green for Approved
+    }
+    if (statusLower.contains('reject') || 
+        statusLower.contains('cancel') || 
+        statusLower.contains('decline')) {
+      return Colors.red; // Red for Rejected/Reject/Cancel/Decline
+    }
+    
+    // Fallback to switch for exact matches
+    switch (statusLower) {
       case 'approved':
         return Colors.green;
-      case 'pending':
-        return Colors.orange;
+      case 'received':
+        return Colors.green;
+      case 'exported':
+        return Colors.blue;
       case 'decline':
       case 'declined':
+      case 'rejected':
+      case 'reject':
+      case 'cancel':
+      case 'canceled':
+      case 'cancelled':
         return Colors.red;
-      default:
+      case 'pending':
         return Colors.orange;
+      default:
+        return Colors.grey;
     }
   }
 }

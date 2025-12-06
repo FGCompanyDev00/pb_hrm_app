@@ -59,8 +59,17 @@ class _MyRequestPageState extends State<MyRequestPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['results'] != null) {
+          final requests = List<Map<String, dynamic>>.from(data['results']);
+          
+          // Debug: Log first request to see available fields
+          if (requests.isNotEmpty) {
+            debugPrint('🔍 [MyRequestPage-BranchManager] First request data: ${requests[0]}');
+            debugPrint('🔍 [MyRequestPage-BranchManager] First request img_path: ${requests[0]['img_path']}');
+            debugPrint('🔍 [MyRequestPage-BranchManager] First request img_name: ${requests[0]['img_name']}');
+          }
+          
           setState(() {
-            _requests = List<Map<String, dynamic>>.from(data['results']);
+            _requests = requests;
             _isLoading = false;
           });
         } else {
@@ -169,7 +178,10 @@ class _MyRequestPageState extends State<MyRequestPage> {
                       : RefreshIndicator(
                           onRefresh: _fetchMyRequests,
                           child: ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: MediaQuery.of(context).size.width < 360 ? 10 : 12,
+                              vertical: 8,
+                            ),
                             itemCount: _requests.length,
                             itemBuilder: (context, index) {
                               final request = _requests[index];
@@ -182,30 +194,87 @@ class _MyRequestPageState extends State<MyRequestPage> {
     );
   }
 
+  /// Get image URL by combining img_path and img_name for S3 pre-signed URLs
+  String _getImageUrl(String? imagePath, [String? imageName]) {
+    // If both are provided, check if we need to combine them
+    if (imagePath != null && imagePath.isNotEmpty && 
+        imageName != null && imageName.isNotEmpty) {
+      // If img_path is full URL and img_name is query string, combine them
+      if ((imagePath.startsWith('http://') || imagePath.startsWith('https://')) &&
+          imageName.startsWith('?')) {
+        // Combine: full URL + query string
+        return '$imagePath$imageName';
+      }
+    }
+    
+    // Use img_path if available
+    if (imagePath != null && imagePath.isNotEmpty) {
+      // If already a full URL, return as is
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imagePath';
+    }
+    
+    // Fallback to img_name if img_path is empty
+    if (imageName != null && imageName.isNotEmpty) {
+      // If starts with '?' it's a query string, append to base URL
+      if (imageName.startsWith('?')) {
+        return '$_imageBaseUrl$imageName';
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imageName';
+    }
+    
+    return '';
+  }
+
   Widget _buildRequestCard(Map<String, dynamic> request, bool isDarkMode) {
     final String title = request['title'] ?? 'No Title';
     final String status = request['status'] ?? 'Unknown';
     final String createdAt = request['created_at'] ?? '';
     final String type = 'for Office'; // Fixed as specified
-    final String rawImageUrl = request['img_path'] ?? request['img_name'] ?? '';
-    final String imageUrl = rawImageUrl.isNotEmpty
-        ? (rawImageUrl.startsWith('http') ? rawImageUrl : '$_imageBaseUrl$rawImageUrl')
-        : '';
+    
+    // Check multiple possible field names for image path
+    final String imgPath = request['img_path'] ?? 
+                          request['employee_img_path'] ?? 
+                          request['requestor_img_path'] ?? 
+                          request['profile_img_path'] ?? 
+                          '';
+    
+    // Check multiple possible field names for image name/query string
+    final String imgName = request['img_name'] ?? 
+                           request['employee_img_name'] ?? 
+                           request['requestor_img_name'] ?? 
+                           request['profile_img_name'] ?? 
+                           '';
+    
+    final String imageUrl = _getImageUrl(imgPath, imgName);
+    
+    // Debug logging
+    debugPrint('🔍 [MyRequestPage-BranchManager] Request "$title" - img_path: "$imgPath", img_name: "$imgName", final URL: "$imageUrl"');
 
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 360;
+    final cardPadding = isSmallScreen ? 10.0 : 12.0;
+    final iconSize = isSmallScreen ? 36.0 : 40.0;
+    final iconInnerSize = isSmallScreen ? 20.0 : 22.0;
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: EdgeInsets.only(bottom: isSmallScreen ? 8 : 10),
       decoration: BoxDecoration(
         color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: const Color(0xFF9C27B0).withOpacity(0.3), // Pink border
+          color: const Color(0xFF9C27B0).withOpacity(0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
           ),
         ],
       ),
@@ -213,116 +282,95 @@ class _MyRequestPageState extends State<MyRequestPage> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () => _openRequestDetail(request),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(cardPadding),
             child: Row(
               children: [
-                // Request Icon - Pink as per design
+                // Request Icon
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: iconSize,
+                  height: iconSize,
                   decoration: BoxDecoration(
                     color: const Color(0xFF9C27B0).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.search,
-                    color: Color(0xFF9C27B0), // Pink icon
-                    size: 24,
+                    color: const Color(0xFF9C27B0),
+                    size: iconInnerSize,
                   ),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: isSmallScreen ? 10 : 12),
                 
                 // Request Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: isSmallScreen ? 14 : 15,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF9C27B0), // Pink text
+                          color: const Color(0xFF9C27B0),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: isSmallScreen ? 2 : 3),
                       Text(
                         'Submitted on ${_formatDate(createdAt)}',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: isSmallScreen ? 10 : 11,
                           color: Colors.grey[600],
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Type: $type',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.orange,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      SizedBox(height: isSmallScreen ? 2 : 3),
+                      Row(
+                        children: [
+                          Text(
+                            'Type: ',
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 10 : 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          Text(
+                            type,
+                            style: TextStyle(
+                              fontSize: isSmallScreen ? 10 : 11,
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: isSmallScreen ? 2 : 3),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: isSmallScreen ? 6 : 7,
+                          vertical: isSmallScreen ? 2 : 3,
+                        ),
                         decoration: BoxDecoration(
                           color: _getStatusColor(status),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           'Status: $status',
-                          style: const TextStyle(
-                            fontSize: 10,
+                          style: TextStyle(
+                            fontSize: isSmallScreen ? 10 : 11,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                  ),
-                ),
-                
-                // Profile Picture
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFF9C27B0), // Pink border
-                      width: 2,
-                    ),
-                  ),
-                  child: ClipOval(
-                    child: imageUrl.isNotEmpty
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            loadingBuilder: (context, child, loadingProgress) {
-                              if (loadingProgress == null) return child;
-                              return Center(
-                                child: CircularProgressIndicator(
-                                  value: loadingProgress.expectedTotalBytes != null
-                                      ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                      : null,
-                                  strokeWidth: 2,
-                                  color: const Color(0xFF9C27B0),
-                                ),
-                              );
-                            },
-                            errorBuilder: (context, error, stackTrace) => Icon(
-                              Icons.person,
-                              color: Colors.grey[600],
-                              size: 20,
-                            ),
-                          )
-                        : Icon(
-                            Icons.person,
-                            color: Colors.grey[600],
-                            size: 20,
-                          ),
                   ),
                 ),
               ],

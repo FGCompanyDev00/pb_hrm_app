@@ -90,6 +90,10 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
           final result = data['results'];
           
           // Extract request details and items
+          debugPrint('🔍 [MyRequestDetailPage] API result img_path: ${result['img_path']}');
+          debugPrint('🔍 [MyRequestDetailPage] API result img_name: ${result['img_name']}');
+          debugPrint('🔍 [MyRequestDetailPage] API result employee_name: ${result['employee_name']}');
+          
           final requestDetails = {
             'id': result['id'],
             'topic_uniq_id': result['topic_uniq_id'],
@@ -97,12 +101,16 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
             'product_priority': result['product_priority'],
             'employee_name': result['employee_name'],
             'img_path': result['img_path'],
+            'img_name': result['img_name'],
             'branch_name': result['branch_name'],
             'status': result['status'],
             'request_stock': result['request_stock'],
             'department_name': result['department_name'],
             'created_at': result['created_at'],
           };
+          
+          debugPrint('🔍 [MyRequestDetailPage] Saved requestDetails img_path: ${requestDetails['img_path']}');
+          debugPrint('🔍 [MyRequestDetailPage] Saved requestDetails img_name: ${requestDetails['img_name']}');
           
           final List<dynamic> details = result['details'] ?? [];
           
@@ -225,7 +233,9 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
     final String submittedAt = _formatDate(_requestDetails['created_at']);
     final String status = _requestDetails['status'] ?? 'Unknown';
-    final String imageUrl = _getImageUrl(_requestDetails['img_path']);
+    final String imgPath = _requestDetails['img_path'] ?? '';
+    final String imgName = _requestDetails['img_name'] ?? '';
+    final String imageUrl = _getImageUrl(imgPath, imgName);
 
     return Container(
       width: double.infinity,
@@ -713,7 +723,11 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Update failed: $e')),
+        SnackBar(
+          content: Text(_getUserFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -760,7 +774,11 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Cancel failed: $e')),
+        SnackBar(
+          content: Text(_getUserFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
       );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -807,8 +825,32 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
       final String positionName = feedback['position_name'] ?? '';
       
       final String approverName = '$employeeName $employeeSurname'.trim();
-      final String approverImageUrl = _getImageUrl(imgPath);
-      final String requesterImageUrl = _getImageUrl(_requestDetails['img_path']);
+      // Check both img_path and img_name for approver image
+      final String imgName = feedback['img_name'] ?? '';
+      final String approverImageUrl = _getImageUrl(imgPath, imgName);
+      debugPrint('🔍 [MyRequestDetailPage] Approver image - img_path: $imgPath, img_name: $imgName, final URL: $approverImageUrl');
+      
+      // Get requester name and image
+      // Use original request data for name to avoid double name issue
+      final String requesterName = widget.requestData['employee_name'] ?? 
+                                   widget.requestData['full_name'] ?? 
+                                   _requestDetails['employee_name'] ?? 
+                                   'Unknown';
+      // Clean up name if it's duplicated (remove duplicate parts)
+      final String cleanRequesterName = _cleanDuplicateName(requesterName);
+      
+      // Get requester image - check both _requestDetails and widget.requestData
+      String requesterImgPath = _requestDetails['img_path'] ?? widget.requestData['img_path'] ?? '';
+      String requesterImgName = _requestDetails['img_name'] ?? widget.requestData['img_name'] ?? '';
+      
+      // If img_name is empty but img_path exists, try to get from original data
+      if (requesterImgName.isEmpty && requesterImgPath.isNotEmpty) {
+        // Check if we can get img_name from feedback or other sources
+        debugPrint('⚠️ [MyRequestDetailPage] Requester img_name is empty, trying to get from original data');
+      }
+      
+      final String requesterImageUrl = _getImageUrl(requesterImgPath, requesterImgName);
+      debugPrint('🔍 [MyRequestDetailPage] Requester - name: $cleanRequesterName (original: $requesterName), img_path: $requesterImgPath, img_name: $requesterImgName, final URL: $requesterImageUrl');
 
       return Container(
         margin: const EdgeInsets.only(top: 16),
@@ -848,11 +890,23 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                             ? Image.network(
                                 requesterImageUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.person,
-                                  color: Colors.green,
-                                  size: 25,
-                                ),
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  debugPrint('❌ [MyRequestDetailPage] Requester image error: $error, URL: $requesterImageUrl');
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.green,
+                                    size: 25,
+                                  );
+                                },
                               )
                             : const Icon(
                                 Icons.person,
@@ -863,11 +917,15 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Requester',
+                      cleanRequesterName,
                       style: TextStyle(
                         fontSize: 10,
                         color: isDarkMode ? Colors.white70 : Colors.black54,
+                        fontWeight: FontWeight.w600,
                       ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -905,11 +963,23 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
                             ? Image.network(
                                 approverImageUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Icon(
-                                  Icons.person,
-                                  color: Colors.green,
-                                  size: 25,
-                                ),
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  debugPrint('❌ [MyRequestDetailPage] Approver image error: $error, URL: $approverImageUrl');
+                                  return const Icon(
+                                    Icons.person,
+                                    color: Colors.green,
+                                    size: 25,
+                                  );
+                                },
                               )
                             : const Icon(
                                 Icons.person,
@@ -1083,9 +1153,92 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     );
   }
 
-  String _getImageUrl(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) return '';
-    return imagePath.startsWith('http') ? imagePath : '$_imageBaseUrl$imagePath';
+  /// Get user-friendly error message from exception
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    
+    // Network errors
+    if (errorString.contains('socket') || 
+        errorString.contains('network') || 
+        errorString.contains('connection') ||
+        errorString.contains('timeout')) {
+      return 'Unable to connect to server. Please check your internet connection and try again.';
+    }
+    
+    // Authentication errors
+    if (errorString.contains('auth') || 
+        errorString.contains('token') || 
+        errorString.contains('unauthorized') ||
+        errorString.contains('401')) {
+      return 'Your session has expired. Please log in again.';
+    }
+    
+    // Server errors (5xx)
+    if (errorString.contains('500') || 
+        errorString.contains('502') || 
+        errorString.contains('503') ||
+        errorString.contains('504')) {
+      return 'Server error occurred. Please try again later or contact IT support.';
+    }
+    
+    // Client errors (4xx) - but not auth
+    if (errorString.contains('400') || 
+        errorString.contains('403') || 
+        errorString.contains('404') ||
+        errorString.contains('422') ||
+        errorString.contains('202')) {
+      return 'Unable to process your request. Please try again or contact IT support if the problem persists.';
+    }
+    
+    // Generic errors
+    if (errorString.contains('failed to update') || 
+        errorString.contains('failed to cancel') ||
+        errorString.contains('failed to approve') ||
+        errorString.contains('failed to decline')) {
+      return 'Unable to complete the action. Please try again or contact IT support.';
+    }
+    
+    // Default message
+    return 'An error occurred. Please try again or contact IT support if the problem persists.';
+  }
+
+  /// Get image URL from img_path and img_name
+  /// If img_path is full URL and img_name is query string, combine them
+  /// Otherwise, use img_path if available, fallback to img_name
+  String _getImageUrl(String? imagePath, [String? imageName]) {
+    // If both are provided, check if we need to combine them
+    if (imagePath != null && imagePath.isNotEmpty && 
+        imageName != null && imageName.isNotEmpty) {
+      // If img_path is full URL and img_name is query string, combine them
+      if ((imagePath.startsWith('http://') || imagePath.startsWith('https://')) &&
+          imageName.startsWith('?')) {
+        // Combine: full URL + query string
+        debugPrint('🔍 [MyRequestDetailPage] Combining img_path + img_name: $imagePath$imageName');
+        return '$imagePath$imageName';
+      }
+    }
+    
+    // Use img_path if available
+    if (imagePath != null && imagePath.isNotEmpty) {
+      // If already a full URL, return as is
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imagePath';
+    }
+    
+    // Fallback to img_name if img_path is empty
+    if (imageName != null && imageName.isNotEmpty) {
+      // If starts with '?' it's a query string, append to base URL
+      if (imageName.startsWith('?')) {
+        return '$_imageBaseUrl$imageName';
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imageName';
+    }
+    
+    return '';
   }
 
   String _getItemImageUrl(String? imageRef) {
@@ -1111,17 +1264,74 @@ class _MyRequestDetailPageState extends State<MyRequestDetailPage> {
     return months[month - 1];
   }
 
+  /// Clean duplicate name (e.g., "Admin SBH1 Admin SBH1" -> "Admin SBH1")
+  String _cleanDuplicateName(String name) {
+    if (name.isEmpty) return name;
+    
+    final parts = name.trim().split(' ');
+    if (parts.length < 2) return name;
+    
+    // Check if first part and last part are the same
+    if (parts.length >= 4) {
+      final firstTwo = '${parts[0]} ${parts[1]}';
+      final lastTwo = '${parts[parts.length - 2]} ${parts[parts.length - 1]}';
+      if (firstTwo == lastTwo) {
+        // Remove duplicate, return first part
+        return firstTwo;
+      }
+    }
+    
+    // Check if name is repeated (e.g., "Admin SBH1 Admin SBH1")
+    final nameLower = name.toLowerCase();
+    final firstHalf = name.substring(0, name.length ~/ 2).trim();
+    final secondHalf = name.substring(name.length ~/ 2).trim();
+    if (firstHalf.toLowerCase() == secondHalf.toLowerCase()) {
+      return firstHalf;
+    }
+    
+    return name;
+  }
+
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
+    final statusLower = status.toLowerCase().trim();
+    
+    // Handle status variations with contains check
+    if (statusLower.contains('manager pending')) {
+      return Colors.orange; // Orange for Manager Pending...
+    }
+    if (statusLower.contains('branch')) {
+      return const Color(0xFFDBB342); // Yellow for Branchs
+    }
+    if (statusLower.contains('received')) {
+      return Colors.green; // Green for Received
+    }
+    if (statusLower.contains('approved')) {
+      return Colors.green; // Green for Approved
+    }
+    if (statusLower.contains('reject') || 
+        statusLower.contains('cancel') || 
+        statusLower.contains('decline')) {
+      return Colors.red; // Red for Rejected/Reject/Cancel/Decline
+    }
+    
+    // Fallback to switch for exact matches
+    switch (statusLower) {
       case 'approved':
         return Colors.green;
-      case 'pending':
-        return Colors.orange;
-      case 'decline':
-      case 'declined':
-        return Colors.red;
+      case 'received':
+        return Colors.green;
       case 'exported':
         return Colors.blue;
+      case 'decline':
+      case 'declined':
+      case 'rejected':
+      case 'reject':
+      case 'cancel':
+      case 'canceled':
+      case 'cancelled':
+        return Colors.red;
+      case 'pending':
+        return Colors.orange;
       default:
         return Colors.grey;
     }

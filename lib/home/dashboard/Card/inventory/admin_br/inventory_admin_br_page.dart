@@ -8,6 +8,7 @@ import 'my_request_page.dart';
 import 'my_approval_page.dart';
 import 'my_receive_page.dart';
 import 'request_from_hq_page.dart';
+import 'approval_in_branch_page.dart';
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -487,6 +488,17 @@ class _InventoryAdminBRPageState extends State<InventoryAdminBRPage> {
         ),
       },
       {
+        'icon': Icons.swap_horiz,
+        'label': 'Approval in Branch',
+        'color': const Color(0xFF2196F3), // Blue
+        'onTap': () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ApprovalInBranchPage(),
+          ),
+        ),
+      },
+      {
         'icon': Icons.shopping_bag,
         'label': 'My Receive',
         'color': const Color(0xFFFF9800), // Orange
@@ -500,7 +512,7 @@ class _InventoryAdminBRPageState extends State<InventoryAdminBRPage> {
       {
         'icon': Icons.business,
         'label': 'Request From HQ',
-        'color': const Color(0xFF2196F3), // Blue
+        'color': const Color(0xFFFF5722), // Deep Orange
         'onTap': () => Navigator.push(
           context,
           MaterialPageRoute(

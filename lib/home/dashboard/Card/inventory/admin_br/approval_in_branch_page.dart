@@ -5,7 +5,7 @@ import 'package:pb_hrsystem/services/inventory_approval_service.dart';
 import '../inventory_app_bar.dart';
 import 'requestor_detail_page.dart';
 
-/// Approval in Branch page for AdminHQ users
+/// Approval in Branch page for AdminBR users
 /// Uses API endpoint: GET {{baseUrl}}/api/inventory/waitings
 /// Same endpoint is used for both AdminHQ and AdminBR roles
 class ApprovalInBranchPage extends StatefulWidget {
@@ -185,7 +185,7 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
         color: isDarkMode ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.pink.withOpacity(0.3),
+          color: const Color(0xFF2196F3).withOpacity(0.3), // Blue border for Admin BR
           width: 1,
         ),
         boxShadow: [
@@ -210,12 +210,12 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.pink.withOpacity(0.1),
+                  color: const Color(0xFF2196F3).withOpacity(0.1), // Blue background
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   Icons.swap_horiz,
-                  color: Colors.pink,
+                  color: const Color(0xFF2196F3), // Blue icon
                   size: 24,
                 ),
               ),
@@ -230,7 +230,7 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: Colors.pink,
+                        color: const Color(0xFF2196F3), // Blue text
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -269,7 +269,7 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            'Supervisor Pending ...',
+                            status,
                             style: const TextStyle(
                               fontSize: 12,
                               color: Colors.white,
@@ -289,7 +289,7 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.pink.withOpacity(0.3),
+                    color: const Color(0xFF2196F3).withOpacity(0.3), // Blue border
                     width: 1,
                   ),
                 ),
@@ -329,3 +329,4 @@ class _ApprovalInBranchPageState extends State<ApprovalInBranchPage> {
     }
   }
 }
+

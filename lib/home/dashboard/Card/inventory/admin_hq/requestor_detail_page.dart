@@ -583,6 +583,55 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     }
   }
 
+  /// Get user-friendly error message from exception
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    
+    // Network errors
+    if (errorString.contains('socket') || 
+        errorString.contains('network') || 
+        errorString.contains('connection') ||
+        errorString.contains('timeout')) {
+      return 'Unable to connect to server. Please check your internet connection and try again.';
+    }
+    
+    // Authentication errors
+    if (errorString.contains('auth') || 
+        errorString.contains('token') || 
+        errorString.contains('unauthorized') ||
+        errorString.contains('401')) {
+      return 'Your session has expired. Please log in again.';
+    }
+    
+    // Server errors (5xx)
+    if (errorString.contains('500') || 
+        errorString.contains('502') || 
+        errorString.contains('503') ||
+        errorString.contains('504')) {
+      return 'Server error occurred. Please try again later or contact IT support.';
+    }
+    
+    // Client errors (4xx) - but not auth
+    if (errorString.contains('400') || 
+        errorString.contains('403') || 
+        errorString.contains('404') ||
+        errorString.contains('422') ||
+        errorString.contains('202')) {
+      return 'Unable to process your request. Please try again or contact IT support if the problem persists.';
+    }
+    
+    // Generic errors
+    if (errorString.contains('failed to update') || 
+        errorString.contains('failed to cancel') ||
+        errorString.contains('failed to approve') ||
+        errorString.contains('failed to decline')) {
+      return 'Unable to complete the action. Please try again or contact IT support.';
+    }
+    
+    // Default message
+    return 'An error occurred. Please try again or contact IT support if the problem persists.';
+  }
+
   String _getLeftButtonText() {
     final String source = widget.requestData['source'] ?? 'approval';
     switch (source) {
@@ -1299,7 +1348,13 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Update failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getUserFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -1338,7 +1393,13 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cancel failed: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_getUserFriendlyErrorMessage(e)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }

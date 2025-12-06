@@ -114,6 +114,9 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
             'img_path': result['img_path'] ??
                 waitingSummary['img_path'] ??
                 widget.requestData['img_path'],
+            'img_name': result['img_name'] ??
+                waitingSummary['img_name'] ??
+                widget.requestData['img_name'],
             'branch_name': result['branch_name'] ??
                 waitingSummary['branch_name'] ??
                 widget.requestData['branch_name'],
@@ -132,6 +135,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
             'employee_name': waitingSummary['employee_name'] ??
                 widget.requestData['requestor_name'],
             'img_path': waitingSummary['img_path'] ?? widget.requestData['img_path'],
+            'img_name': waitingSummary['img_name'] ?? widget.requestData['img_name'],
             'branch_name': waitingSummary['branch_name'] ??
                 widget.requestData['branch_name'],
             'status': waitingSummary['decide'] ?? widget.requestData['status'],
@@ -266,6 +270,55 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     );
   }
 
+  /// Get user-friendly error message from exception
+  String _getUserFriendlyErrorMessage(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    
+    // Network errors
+    if (errorString.contains('socket') || 
+        errorString.contains('network') || 
+        errorString.contains('connection') ||
+        errorString.contains('timeout')) {
+      return 'Unable to connect to server. Please check your internet connection and try again.';
+    }
+    
+    // Authentication errors
+    if (errorString.contains('auth') || 
+        errorString.contains('token') || 
+        errorString.contains('unauthorized') ||
+        errorString.contains('401')) {
+      return 'Your session has expired. Please log in again.';
+    }
+    
+    // Server errors (5xx)
+    if (errorString.contains('500') || 
+        errorString.contains('502') || 
+        errorString.contains('503') ||
+        errorString.contains('504')) {
+      return 'Server error occurred. Please try again later or contact IT support.';
+    }
+    
+    // Client errors (4xx) - but not auth
+    if (errorString.contains('400') || 
+        errorString.contains('403') || 
+        errorString.contains('404') ||
+        errorString.contains('422') ||
+        errorString.contains('202')) {
+      return 'Unable to process your request. Please try again or contact IT support if the problem persists.';
+    }
+    
+    // Generic errors
+    if (errorString.contains('failed to update') || 
+        errorString.contains('failed to cancel') ||
+        errorString.contains('failed to approve') ||
+        errorString.contains('failed to decline')) {
+      return 'Unable to complete the action. Please try again or contact IT support.';
+    }
+    
+    // Default message
+    return 'An error occurred. Please try again or contact IT support if the problem persists.';
+  }
+
   Widget _buildRequestorInfoCard(bool isDarkMode) {
     final String requestorName = _requestDetails['employee_name'] ?? 'Unknown';
     final String createdAt = _requestDetails['created_at'] ?? '';
@@ -273,7 +326,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     // Check both img_path and img_name
     final String imgPath = _requestDetails['img_path'] ?? '';
     final String imgName = _requestDetails['img_name'] ?? '';
-    final String imageUrl = _getImageUrl(imgPath.isNotEmpty ? imgPath : imgName);
+    final String imageUrl = _getImageUrl(imgPath, imgName);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -697,14 +750,20 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       final String employeeName = feedback['employee_name'] ?? 'Unknown';
       final String employeeSurname = feedback['employee_surname'] ?? '';
       final String imgPath = feedback['img_path'] ?? '';
+      final String imgName = feedback['img_name'] ?? '';
       final String positionName = feedback['position_name'] ?? '';
       
       final String approverName = '$employeeName $employeeSurname'.trim();
-      final String approverImageUrl = _getImageUrl(imgPath);
-                      // Check both img_path and img_name for requester image
-                      final String requesterImgPath = _requestDetails['img_path'] ?? '';
-                      final String requesterImgName = _requestDetails['img_name'] ?? '';
-                      final String requesterImageUrl = _getImageUrl(requesterImgPath.isNotEmpty ? requesterImgPath : requesterImgName);
+      // Check both img_path and img_name for approver image
+      // If img_path is full URL and img_name is query string, combine them
+      final String approverImageUrl = _getImageUrl(imgPath, imgName);
+      debugPrint('🔍 [RequestorDetailPage] Approver image - img_path: $imgPath, img_name: $imgName, final URL: $approverImageUrl');
+      
+      // Check both img_path and img_name for requester image
+      final String requesterImgPath = _requestDetails['img_path'] ?? '';
+      final String requesterImgName = _requestDetails['img_name'] ?? '';
+      final String requesterImageUrl = _getImageUrl(requesterImgPath, requesterImgName);
+      debugPrint('🔍 [RequestorDetailPage] Requester image - img_path: $requesterImgPath, img_name: $requesterImgName, final URL: $requesterImageUrl');
 
       return Container(
         margin: const EdgeInsets.only(bottom: 16),
@@ -739,11 +798,23 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                             ? Image.network(
                                             requesterImageUrl,
                                 fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => const Icon(
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                    ),
+                                  );
+                                },
+                                            errorBuilder: (context, error, stackTrace) {
+                                              debugPrint('❌ [RequestorDetailPage] Requester image error: $error, URL: $requesterImageUrl');
+                                              return const Icon(
                                     Icons.person,
                                     color: Colors.green,
                                               size: 20,
-                                            ),
+                                            );
+                                            },
                               )
                             : const Icon(
                                 Icons.person,
@@ -784,11 +855,23 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
                             ? Image.network(
                                             approverImageUrl,
                                 fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => const Icon(
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                                    ),
+                                  );
+                                },
+                                            errorBuilder: (context, error, stackTrace) {
+                                              debugPrint('❌ [RequestorDetailPage] Approver image error: $error, URL: $approverImageUrl');
+                                              return const Icon(
                                     Icons.person,
                                     color: Colors.green,
                                               size: 20,
-                                            ),
+                                            );
+                                            },
                               )
                             : const Icon(
                                 Icons.person,
@@ -903,14 +986,42 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     }
   }
 
-  String _getImageUrl(String? imagePath) {
-    if (imagePath == null || imagePath.isEmpty) return '';
-    // If already a full URL, return as is
-    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-      return imagePath;
+  /// Get image URL from img_path and img_name
+  /// If img_path is full URL and img_name is query string, combine them
+  /// Otherwise, use img_path if available, fallback to img_name
+  String _getImageUrl(String? imagePath, [String? imageName]) {
+    // If both are provided, check if we need to combine them
+    if (imagePath != null && imagePath.isNotEmpty && 
+        imageName != null && imageName.isNotEmpty) {
+      // If img_path is full URL and img_name is query string, combine them
+      if ((imagePath.startsWith('http://') || imagePath.startsWith('https://')) &&
+          imageName.startsWith('?')) {
+        // Combine: full URL + query string
+        return '$imagePath$imageName';
+      }
     }
-    // Otherwise, prepend base URL
-    return '$_imageBaseUrl$imagePath';
+    
+    // Use img_path if available
+    if (imagePath != null && imagePath.isNotEmpty) {
+      // If already a full URL, return as is
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imagePath';
+    }
+    
+    // Fallback to img_name if img_path is empty
+    if (imageName != null && imageName.isNotEmpty) {
+      // If starts with '?' it's a query string, append to base URL
+      if (imageName.startsWith('?')) {
+        return '$_imageBaseUrl$imageName';
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imageName';
+    }
+    
+    return '';
   }
 
   String _formatDate(String? dateString) {
@@ -1050,8 +1161,9 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error approving request: $e'),
+            content: Text(_getUserFriendlyErrorMessage(e)),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -1155,8 +1267,9 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error declining request: $e'),
+            content: Text(_getUserFriendlyErrorMessage(e)),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }

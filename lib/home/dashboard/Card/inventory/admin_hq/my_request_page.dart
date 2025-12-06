@@ -56,8 +56,17 @@ class _MyRequestPageState extends State<MyRequestPage> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['results'] != null) {
+          final requests = List<Map<String, dynamic>>.from(data['results']);
+          
+          // Debug: Log first request to see available fields
+          if (requests.isNotEmpty) {
+            debugPrint('🔍 [MyRequestPage-AdminHQ] First request data: ${requests[0]}');
+            debugPrint('🔍 [MyRequestPage-AdminHQ] First request img_path: ${requests[0]['img_path']}');
+            debugPrint('🔍 [MyRequestPage-AdminHQ] First request img_name: ${requests[0]['img_name']}');
+          }
+          
           setState(() {
-            _requests = List<Map<String, dynamic>>.from(data['results']);
+            _requests = requests;
             _isLoading = false;
           });
         } else {
@@ -142,6 +151,45 @@ class _MyRequestPageState extends State<MyRequestPage> {
     } catch (e) {
       return dateString;
     }
+  }
+
+  // Base URL for images
+  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+
+  /// Get image URL by combining img_path and img_name for S3 pre-signed URLs
+  String _getImageUrl(String? imagePath, [String? imageName]) {
+    // If both are provided, check if we need to combine them
+    if (imagePath != null && imagePath.isNotEmpty && 
+        imageName != null && imageName.isNotEmpty) {
+      // If img_path is full URL and img_name is query string, combine them
+      if ((imagePath.startsWith('http://') || imagePath.startsWith('https://')) &&
+          imageName.startsWith('?')) {
+        // Combine: full URL + query string
+        return '$imagePath$imageName';
+      }
+    }
+    
+    // Use img_path if available
+    if (imagePath != null && imagePath.isNotEmpty) {
+      // If already a full URL, return as is
+      if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+        return imagePath;
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imagePath';
+    }
+    
+    // Fallback to img_name if img_path is empty
+    if (imageName != null && imageName.isNotEmpty) {
+      // If starts with '?' it's a query string, append to base URL
+      if (imageName.startsWith('?')) {
+        return '$_imageBaseUrl$imageName';
+      }
+      // Regular path, prepend base URL
+      return '$_imageBaseUrl$imageName';
+    }
+    
+    return '';
   }
 
   /// Open requestor detail page
@@ -244,173 +292,149 @@ class _MyRequestPageState extends State<MyRequestPage> {
                             ),
                           )
                         : ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: MediaQuery.of(context).size.width < 360 ? 10 : 12,
+                              vertical: 8,
+                            ),
                             itemCount: _requests.length,
                             itemBuilder: (context, index) {
                               final request = _requests[index];
+                              final screenWidth = MediaQuery.of(context).size.width;
+                              final isSmallScreen = screenWidth < 360;
+                              final cardPadding = isSmallScreen ? 10.0 : 12.0;
+                              final iconSize = isSmallScreen ? 36.0 : 40.0;
+                              final iconInnerSize = isSmallScreen ? 20.0 : 22.0;
+                              
                               return InkWell(
                                 onTap: () => _openRequestorDetail(request),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Container(
-                                margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(
-                                  color: isDarkMode ? Colors.grey[850] : Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: const Color(0xFF9C27B0).withOpacity(0.3),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: isDarkMode
-                                          ? Colors.black.withOpacity(0.2)
-                                          : Colors.grey.withOpacity(0.1),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
+                                  margin: EdgeInsets.only(bottom: isSmallScreen ? 8 : 10),
+                                  decoration: BoxDecoration(
+                                    color: isDarkMode ? Colors.grey[850] : Colors.white,
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(
+                                      color: const Color(0xFF9C27B0).withOpacity(0.3),
                                     ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          // Left side - Icon
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF9C27B0).withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(8),
-                                            ),
-                                            child: const Icon(
-                                              Icons.inventory_2,
-                                              color: Color(0xFF9C27B0),
-                                              size: 24,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          // Center - Request details
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  request['title'] ?? 'No Title',
-                                                  style: TextStyle(
-                                                    fontSize: 18,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: const Color(0xFF9C27B0),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  'Submitted on ${_formatDate(request['created_at'])}',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.grey[600],
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Text(
-                                                  'Type: for Office',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.orange[600],
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Row(
-                                                  children: [
-                                                    Text(
-                                                      'Status: ',
-                                                      style: TextStyle(
-                                                        fontSize: 14,
-                                                        color: Colors.black,
-                                                        fontWeight: FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 12,
-                                                        vertical: 6,
-                                                      ),
-                                                      decoration: BoxDecoration(
-                                                        color: _getStatusColor(request['status'] ?? ''),
-                                                        borderRadius: BorderRadius.circular(20),
-                                                      ),
-                                                      child: Text(
-                                                        request['status'] ?? 'Unknown',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 12,
-                                                          fontWeight: FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          // Right side - Profile picture
-                                          Container(
-                                            width: 48,
-                                            height: 48,
-                                            decoration: BoxDecoration(
-                                              borderRadius: BorderRadius.circular(24),
-                                              border: Border.all(
-                                                color: const Color(0xFF9C27B0).withOpacity(0.3),
-                                                width: 2,
-                                              ),
-                                            ),
-                                            child: ClipRRect(
-                                              borderRadius: BorderRadius.circular(24),
-                                              child: request['img_path'] != null
-                                                  ? Image.network(
-                                                      request['img_path'],
-                                                      fit: BoxFit.cover,
-                                                      loadingBuilder: (context, child, loadingProgress) {
-                                                        if (loadingProgress == null) return child;
-                                                        return Center(
-                                                          child: CircularProgressIndicator(
-                                                            value: loadingProgress.expectedTotalBytes != null
-                                                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                                                : null,
-                                                            strokeWidth: 2,
-                                                            color: const Color(0xFF9C27B0),
-                                                          ),
-                                                        );
-                                                      },
-                                                      errorBuilder: (context, error, stackTrace) => Container(
-                                                        color: Colors.grey[200],
-                                                        child: Icon(
-                                                          Icons.person,
-                                                          color: Colors.grey[600],
-                                                          size: 24,
-                                                        ),
-                                                      ),
-                                                    )
-                                                  : Container(
-                                                      color: Colors.grey[200],
-                                                      child: Icon(
-                                                        Icons.person,
-                                                        color: Colors.grey[600],
-                                                        size: 24,
-                                                      ),
-                                                    ),
-                                            ),
-                                          ),
-                                        ],
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: isDarkMode
+                                            ? Colors.black.withOpacity(0.15)
+                                            : Colors.grey.withOpacity(0.08),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 1),
                                       ),
                                     ],
                                   ),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(cardPadding),
+                                    child: Row(
+                                      children: [
+                                        // Left side - Icon
+                                        Container(
+                                          width: iconSize,
+                                          height: iconSize,
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF9C27B0).withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Icon(
+                                            Icons.inventory_2,
+                                            color: const Color(0xFF9C27B0),
+                                            size: iconInnerSize,
+                                          ),
+                                        ),
+                                        SizedBox(width: isSmallScreen ? 10 : 12),
+                                        // Center - Request details
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                request['title'] ?? 'No Title',
+                                                style: TextStyle(
+                                                  fontSize: isSmallScreen ? 14 : 15,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: const Color(0xFF9C27B0),
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              SizedBox(height: isSmallScreen ? 2 : 3),
+                                              Text(
+                                                'Submitted on ${_formatDate(request['created_at'])}',
+                                                style: TextStyle(
+                                                  fontSize: isSmallScreen ? 10 : 11,
+                                                  color: Colors.grey[600],
+                                                ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              SizedBox(height: isSmallScreen ? 2 : 3),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Type: ',
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 10 : 11,
+                                                      color: Colors.grey[600],
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    'for Office',
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 10 : 11,
+                                                      color: Colors.orange[600],
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              SizedBox(height: isSmallScreen ? 2 : 3),
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    'Status: ',
+                                                    style: TextStyle(
+                                                      fontSize: isSmallScreen ? 10 : 11,
+                                                      color: Colors.black,
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                  Flexible(
+                                                    child: Container(
+                                                      padding: EdgeInsets.symmetric(
+                                                        horizontal: isSmallScreen ? 6 : 7,
+                                                        vertical: isSmallScreen ? 2 : 3,
+                                                      ),
+                                                      decoration: BoxDecoration(
+                                                        color: _getStatusColor(request['status'] ?? ''),
+                                                        borderRadius: BorderRadius.circular(6),
+                                                      ),
+                                                      child: Text(
+                                                        request['status'] ?? 'Unknown',
+                                                        style: TextStyle(
+                                                          fontSize: isSmallScreen ? 10 : 11,
+                                                          color: Colors.white,
+                                                          fontWeight: FontWeight.w500,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow.ellipsis,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
                           ),
           ),
         );

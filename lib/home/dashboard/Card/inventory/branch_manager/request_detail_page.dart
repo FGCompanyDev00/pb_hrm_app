@@ -440,20 +440,20 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
                       icon: const Icon(Icons.remove_circle_outline),
                       color: isDarkMode ? Colors.white70 : Colors.black54,
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFDBB342).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        quantity.toString().padLeft(2, '0'),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFDBB342),
-                        ),
-                      ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDBB342).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              quantity.toString().padLeft(2, '0'),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFDBB342),
+              ),
+            ),
                     ),
                     IconButton(
                       onPressed: () => _incrementQuantity(index),
@@ -1131,15 +1131,15 @@ class _RequestDetailPageState extends State<RequestDetailPage> {
   Color _getStatusColor(String status) {
     final statusStr = status.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
     if (statusStr.contains('approved')) {
-      return Colors.green;
+        return Colors.green;
     } else if (statusStr.contains('manager pending')) {
       return Colors.orange; // Orange for Manager Pending
     } else if (statusStr.contains('decline') || statusStr.contains('rejected')) {
-      return Colors.red;
+        return Colors.red;
     } else if (statusStr.contains('exported')) {
-      return Colors.blue;
+        return Colors.blue;
     } else if (statusStr.contains('pending')) {
-      return Colors.orange;
+        return Colors.orange;
     }
     return Colors.orange;
   }
