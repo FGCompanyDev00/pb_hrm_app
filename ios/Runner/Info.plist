@@ -84,5 +84,9 @@
 	<string>We need to send you notifications to keep you updated with important information and updates.</string>
 	<key>NSUserNotificationCenterDelegateClassName</key>
 	<string>$(PRODUCT_MODULE_NAME).AppDelegate</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app needs access to the local network to communicate with services and sync data.</string>
+	<key>NSBonjourServices</key>
+	<array/>
 </dict>
 </plist>

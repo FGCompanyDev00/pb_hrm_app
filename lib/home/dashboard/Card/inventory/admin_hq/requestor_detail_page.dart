@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pb_hrsystem/settings/theme_notifier.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import '../inventory_app_bar.dart';
 import '../widgets/comment_modal.dart';
 import '../widgets/success_modal.dart';
+import 'requestor_detail_service.dart';
+import 'requestor_detail_constants.dart';
 
 /// Requestor Detail page for AdminHQ users
 /// Displays detailed information about a request and allows receive/cancel actions
@@ -26,6 +25,7 @@ class RequestorDetailPage extends StatefulWidget {
 class _RequestorDetailPageState extends State<RequestorDetailPage> {
   Map<String, dynamic> _requestDetails = {};
   List<Map<String, dynamic>> _requestItems = [];
+  // Consolidated state management
   bool _isLoading = true;
   bool _isError = false;
   String _errorMessage = '';
@@ -33,6 +33,9 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   bool _isSubmitting = false;
   bool _isFeedbackExpanded = false;
   final TextEditingController _titleController = TextEditingController();
+  
+  // Cache for feedback data to avoid unnecessary rebuilds
+  List<Map<String, dynamic>>? _cachedFeedbackList;
 
   @override
   void dispose() {
@@ -40,8 +43,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     super.dispose();
   }
 
-  // Base URL for images
-  final String _imageBaseUrl = 'https://demo-flexiflows-hr-employee-images.s3.ap-southeast-1.amazonaws.com/';
+  // Image base URL from constants
 
   @override
   void initState() {
@@ -59,128 +61,104 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'] ?? '';
-      if (token == null || baseUrl.isEmpty) {
-        throw Exception('Authentication or BASE_URL not configured');
-      }
-
-      final String source = widget.requestData['source'] ?? 'approval';
-      final bool isApprovalSource = source == 'approval';
+      final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
+      final bool isApprovalSource = source == RequestorDetailConstants.sourceApproval;
       final String topicUid = widget.requestData['topic_uniq_id'] ??
           widget.requestData['topicid'] ??
           '';
-        if (topicUid.isEmpty) {
-          throw Exception('No topic UID found in request data');
-        }
+      if (topicUid.isEmpty) {
+        throw Exception('No topic UID found in request data');
+      }
 
       debugPrint('🔍 [RequestorDetailPage] Fetching details for topic: $topicUid (source: $source)');
 
+      // Fetch waiting summary for approval source
       Map<String, dynamic> waitingSummary = {};
       if (isApprovalSource) {
         try {
-          waitingSummary = await _fetchWaitingSummary(baseUrl, token, topicUid);
+          waitingSummary = await RequestorDetailService.fetchWaitingSummary(topicUid);
           debugPrint('🔍 [RequestorDetailPage] Waiting summary: $waitingSummary');
         } catch (e) {
           debugPrint('⚠️ [RequestorDetailPage] Waiting summary fetch failed: $e');
         }
       }
 
-      final String detailEndpoint = isApprovalSource
-          ? '$baseUrl/api/inventory/request_topic/$topicUid'
-          : '$baseUrl/api/inventory/my-request-topic-detail/$topicUid';
-      debugPrint('🔍 [RequestorDetailPage] Detail API URL: $detailEndpoint');
+      // Fetch request details using service
+      final data = await RequestorDetailService.fetchRequestDetails(topicUid, isApprovalSource);
+      final result = data['results'];
+      
+      Map<String, dynamic> normalizedDetails = {};
+      List<Map<String, dynamic>> requestItems = [];
 
-      final response = await http.get(
-        Uri.parse(detailEndpoint),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      if (result != null) {
+        final List<dynamic> details = result['details'] ?? [];
+        requestItems = List<Map<String, dynamic>>.from(
+          details.map((e) => Map<String, dynamic>.from(e)),
+        );
 
-      debugPrint('🔍 [RequestorDetailPage] Detail response status: ${response.statusCode}');
-      debugPrint('🔍 [RequestorDetailPage] Detail response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-          final result = data['results'];
-        Map<String, dynamic> normalizedDetails = {};
-        List<Map<String, dynamic>> requestItems = [];
-
-        if (result != null) {
-          final List<dynamic> details = result['details'] ?? [];
-          requestItems = List<Map<String, dynamic>>.from(
-            details.map((e) => Map<String, dynamic>.from(e)),
-          );
-
-          normalizedDetails = {
-            'id': result['id'] ?? waitingSummary['id'],
-            'topic_uniq_id': result['topic_uniq_id'] ?? topicUid,
-            'title': result['title'] ??
-                waitingSummary['title'] ??
-                widget.requestData['title'] ??
-                '',
-            'product_priority': result['product_priority'],
-            'employee_name': result['employee_name'] ??
-                waitingSummary['employee_name'] ??
-                widget.requestData['requestor_name'],
-            'img_path': result['img_path'] ??
-                waitingSummary['img_path'] ??
-                widget.requestData['img_path'],
-            'img_name': result['img_name'] ??
-                waitingSummary['img_name'] ??
-                widget.requestData['img_name'],
-            'branch_name': result['branch_name'] ??
-                waitingSummary['branch_name'] ??
-                widget.requestData['branch_name'],
-            'status': result['status'] ??
-                waitingSummary['decide'] ??
-                widget.requestData['status'],
-            'request_stock': result['request_stock'],
-            'department_name': result['department_name'] ??
-                waitingSummary['department_name'],
-            'created_at': result['created_at'] ??
-                waitingSummary['created_at'] ??
-                widget.requestData['created_at'],
-          };
-        } else if (waitingSummary.isNotEmpty) {
-          normalizedDetails = {
-            'id': waitingSummary['id'],
-            'topic_uniq_id': waitingSummary['topic_uniq_id'] ?? topicUid,
-            'title': waitingSummary['title'] ?? widget.requestData['title'] ?? '',
-            'employee_name': waitingSummary['employee_name'] ??
-                widget.requestData['requestor_name'],
-            'img_path': waitingSummary['img_path'] ?? widget.requestData['img_path'],
-            'img_name': waitingSummary['img_name'] ?? widget.requestData['img_name'],
-            'branch_name': waitingSummary['branch_name'] ??
-                widget.requestData['branch_name'],
-            'status': waitingSummary['decide'] ?? widget.requestData['status'],
-            'department_name': waitingSummary['department_name'],
-            'created_at': waitingSummary['created_at'] ??
-                widget.requestData['created_at'],
-          };
-        } else {
-          throw Exception('No results in API response');
-        }
-          
-          setState(() {
-          _requestDetails = normalizedDetails;
-          _requestItems = requestItems;
-          if (!isApprovalSource) {
-            _titleController.text = _requestDetails['title'] ?? '';
-          }
-            _isLoading = false;
-            _isError = false;
-          });
-          
-          debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
-        debugPrint('🔍 [RequestorDetailPage] Status: "${_requestDetails['status']}"');
-        debugPrint('🔍 [RequestorDetailPage] CanEditItems: ${_canEditItems}, IsFinalStatus: ${_isFinalStatus}');
+        normalizedDetails = {
+          'id': result['id'] ?? waitingSummary['id'],
+          'topic_uniq_id': result['topic_uniq_id'] ?? topicUid,
+          'title': result['title'] ??
+              waitingSummary['title'] ??
+              widget.requestData['title'] ??
+              '',
+          'product_priority': result['product_priority'],
+          'employee_name': result['employee_name'] ??
+              waitingSummary['employee_name'] ??
+              widget.requestData['requestor_name'],
+          'img_path': result['img_path'] ??
+              waitingSummary['img_path'] ??
+              widget.requestData['img_path'],
+          'img_name': result['img_name'] ??
+              waitingSummary['img_name'] ??
+              widget.requestData['img_name'],
+          'branch_name': result['branch_name'] ??
+              waitingSummary['branch_name'] ??
+              widget.requestData['branch_name'],
+          'status': result['status'] ??
+              waitingSummary['decide'] ??
+              widget.requestData['status'],
+          'request_stock': result['request_stock'],
+          'department_name': result['department_name'] ??
+              waitingSummary['department_name'],
+          'created_at': result['created_at'] ??
+              waitingSummary['created_at'] ??
+              widget.requestData['created_at'],
+        };
+      } else if (waitingSummary.isNotEmpty) {
+        normalizedDetails = {
+          'id': waitingSummary['id'],
+          'topic_uniq_id': waitingSummary['topic_uniq_id'] ?? topicUid,
+          'title': waitingSummary['title'] ?? widget.requestData['title'] ?? '',
+          'employee_name': waitingSummary['employee_name'] ??
+              widget.requestData['requestor_name'],
+          'img_path': waitingSummary['img_path'] ?? widget.requestData['img_path'],
+          'img_name': waitingSummary['img_name'] ?? widget.requestData['img_name'],
+          'branch_name': waitingSummary['branch_name'] ??
+              widget.requestData['branch_name'],
+          'status': waitingSummary['decide'] ?? widget.requestData['status'],
+          'department_name': waitingSummary['department_name'],
+          'created_at': waitingSummary['created_at'] ??
+              widget.requestData['created_at'],
+        };
       } else {
-        throw Exception('Failed to fetch request details: ${response.statusCode}');
+        throw Exception('No results in API response');
       }
+
+      setState(() {
+        _requestDetails = normalizedDetails;
+        _requestItems = requestItems;
+        if (!isApprovalSource) {
+          _titleController.text = _requestDetails['title'] ?? '';
+        }
+        _isLoading = false;
+        _isError = false;
+      });
+
+      debugPrint('🔍 [RequestorDetailPage] Loaded ${_requestItems.length} items');
+      debugPrint('🔍 [RequestorDetailPage] Status: "${_requestDetails['status']}"');
+      debugPrint('🔍 [RequestorDetailPage] CanEditItems: ${_canEditItems}, IsFinalStatus: ${_isFinalStatus}');
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -190,34 +168,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     }
   }
 
-  Future<Map<String, dynamic>> _fetchWaitingSummary(
-    String baseUrl,
-    String token,
-    String topicUid,
-  ) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/api/inventory/waiting/$topicUid'),
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch waiting detail: ${response.statusCode}');
-    }
-
-    final data = jsonDecode(response.body);
-    final results = data['results'];
-
-    if (results is List && results.isNotEmpty) {
-      return Map<String, dynamic>.from(results.first);
-    } else if (results is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(results);
-    }
-
-    throw Exception('Waiting detail response empty');
-  }
+  // _fetchWaitingSummary removed - now handled by RequestorDetailService
 
   Future<void> _receiveItem() async {
     setState(() {
@@ -225,55 +176,39 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'] ?? '';
-      
-      if (token == null || baseUrl.isEmpty) {
-        throw Exception('Authentication or BASE_URL not configured');
-      }
-
-      // Get the topic ID from the request data - check both possible field names
-      String topicUid = widget.requestData['topic_uniq_id'] ?? 
-                       widget.requestData['topicid'] ?? '';
+      final String topicUid = widget.requestData['topic_uniq_id'] ??
+          widget.requestData['topicid'] ??
+          '';
       if (topicUid.isEmpty) {
         throw Exception('No topic UID found in request data');
       }
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/received/$topicUid'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      await RequestorDetailService.receiveItem(topicUid);
 
-      debugPrint('🔍 [RequestorDetailPage] Receive response status: ${response.statusCode}');
-      debugPrint('🔍 [RequestorDetailPage] Receive response body: ${response.body}');
-      
-      // Accept 200 (OK) as success
-      if (response.statusCode == 200) {
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Item received successfully'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context, true); // Return true to indicate success
-      } else {
-        throw Exception('Failed to receive item: ${response.statusCode}');
+        Navigator.pop(context, true);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error receiving item: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error receiving item: ${_getUserFriendlyErrorMessage(e)}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     } finally {
-      setState(() {
-        _isProcessing = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+        });
+      }
     }
   }
 
@@ -350,94 +285,37 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'] ?? '';
-      
-      if (token == null || baseUrl.isEmpty) {
-        throw Exception('Authentication or BASE_URL not configured');
-      }
-
-      // Get the topic ID from the request data
-      String topicUid = widget.requestData['topic_uniq_id'] ?? 
-                       widget.requestData['topicid'] ?? '';
+      final String topicUid = widget.requestData['topic_uniq_id'] ??
+          widget.requestData['topicid'] ??
+          '';
       if (topicUid.isEmpty) {
         throw Exception('No topic UID found in request data');
       }
 
-      final trimmedComment = comment.trim();
-      final uri = Uri.parse('$baseUrl/api/inventory/request-waiting/$topicUid');
-      debugPrint('🔍 [AdminHQ] Approve URL: $uri');
+      await RequestorDetailService.approveRequest(topicUid, comment);
 
-      final response = await http.put(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'comment': trimmedComment}),
-      );
-
-      debugPrint('🔍 [AdminHQ] Approval response status: ${response.statusCode}');
-      debugPrint('🔍 [AdminHQ] Approval response body: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Show success modal
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return SuccessModal(
-                action: 'Approved',
-                onClose: () {
-                  final nav = Navigator.of(context);
-                  if (nav.canPop()) nav.pop();
-                  final rootNav = Navigator.of(context, rootNavigator: true);
-                  if (rootNav.canPop()) rootNav.pop(true);
-                },
-              );
-            },
-          );
-        }
-      } else {
-        debugPrint('🔍 [AdminHQ] Approval failed with status: ${response.statusCode}');
-        debugPrint('🔍 [AdminHQ] Response body: ${response.body}');
-        
-        // Parse API response message for better error display
-        String errorMessage = 'Cannot approve request. Please contact IT department.';
-        try {
-          final responseData = jsonDecode(response.body);
-          if (responseData['message'] != null) {
-            errorMessage = responseData['message'];
-          } else if (responseData['error'] != null) {
-            errorMessage = responseData['error'];
-          } else if (responseData['detail'] != null) {
-            errorMessage = responseData['detail'];
-          }
-        } catch (e) {
-          // If parsing fails, show user-friendly message based on status code
-          switch (response.statusCode) {
-            case 404:
-              errorMessage = 'Cannot approve request. Please contact IT department.';
-              break;
-            case 403:
-              errorMessage = 'You do not have permission to approve this request.';
-              break;
-            case 500:
-              errorMessage = 'Server error. Please contact IT department.';
-              break;
-            default:
-              errorMessage = 'Cannot approve request. Please contact IT department.';
-          }
-        }
-        
-        throw Exception(errorMessage);
+      // Show success modal
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return SuccessModal(
+              action: 'Approved',
+              onClose: () {
+                final nav = Navigator.of(context);
+                if (nav.canPop()) nav.pop();
+                final rootNav = Navigator.of(context, rootNavigator: true);
+                if (rootNav.canPop()) rootNav.pop(true);
+              },
+            );
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error approving request: $e'),
+            content: Text('Error approving request: ${_getUserFriendlyErrorMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -457,94 +335,37 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     });
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'] ?? '';
-      
-      if (token == null || baseUrl.isEmpty) {
-        throw Exception('Authentication or BASE_URL not configured');
-      }
-
-      // Get the topic ID from the request data
-      String topicUid = widget.requestData['topic_uniq_id'] ?? 
-                       widget.requestData['topicid'] ?? '';
+      final String topicUid = widget.requestData['topic_uniq_id'] ??
+          widget.requestData['topicid'] ??
+          '';
       if (topicUid.isEmpty) {
         throw Exception('No topic UID found in request data');
       }
 
-      final trimmedComment = comment.trim();
-      final uri = Uri.parse('$baseUrl/api/inventory/decline/$topicUid');
-      debugPrint('🔍 [AdminHQ] Decline URL: $uri');
+      await RequestorDetailService.declineRequest(topicUid, comment);
 
-      final response = await http.put(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'comment': trimmedComment}),
-      );
-
-      debugPrint('🔍 [AdminHQ] Decline response status: ${response.statusCode}');
-      debugPrint('🔍 [AdminHQ] Decline response body: ${response.body}');
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        // Show success modal
-        if (mounted) {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return SuccessModal(
-                action: 'Declined',
-                onClose: () {
-                  final nav = Navigator.of(context);
-                  if (nav.canPop()) nav.pop();
-                  final rootNav = Navigator.of(context, rootNavigator: true);
-                  if (rootNav.canPop()) rootNav.pop(true);
-                },
-              );
-            },
-          );
-        }
-      } else {
-        debugPrint('🔍 [AdminHQ] Decline failed with status: ${response.statusCode}');
-        debugPrint('🔍 [AdminHQ] Response body: ${response.body}');
-        
-        // Parse API response message for better error display
-        String errorMessage = 'Cannot decline request. Please contact IT department.';
-        try {
-          final responseData = jsonDecode(response.body);
-          if (responseData['message'] != null) {
-            errorMessage = responseData['message'];
-          } else if (responseData['error'] != null) {
-            errorMessage = responseData['error'];
-          } else if (responseData['detail'] != null) {
-            errorMessage = responseData['detail'];
-          }
-        } catch (e) {
-          // If parsing fails, show user-friendly message based on status code
-          switch (response.statusCode) {
-            case 404:
-              errorMessage = 'Cannot decline request. Please contact IT department.';
-              break;
-            case 403:
-              errorMessage = 'You do not have permission to decline this request.';
-              break;
-            case 500:
-              errorMessage = 'Server error. Please contact IT department.';
-              break;
-            default:
-              errorMessage = 'Cannot decline request. Please contact IT department.';
-          }
-        }
-        
-        throw Exception(errorMessage);
+      // Show success modal
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return SuccessModal(
+              action: 'Declined',
+              onClose: () {
+                final nav = Navigator.of(context);
+                if (nav.canPop()) nav.pop();
+                final rootNav = Navigator.of(context, rootNavigator: true);
+                if (rootNav.canPop()) rootNav.pop(true);
+              },
+            );
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error declining request: $e'),
+            content: Text('Error declining request: ${_getUserFriendlyErrorMessage(e)}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -560,11 +381,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
 
   // Helper methods for button logic
   VoidCallback? _getLeftButtonAction() {
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     switch (source) {
-      case 'my_receive':
+      case RequestorDetailConstants.sourceMyReceive:
         return _receiveItem;
-      case 'approval':
+      case RequestorDetailConstants.sourceApproval:
         return _approveItem;
       default:
         return _approveItem;
@@ -572,11 +393,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   Color _getLeftButtonColor() {
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     switch (source) {
-      case 'my_receive':
+      case RequestorDetailConstants.sourceMyReceive:
         return const Color(0xFFDBB342); // Yellow
-      case 'approval':
+      case RequestorDetailConstants.sourceApproval:
         return Colors.green;
       default:
         return Colors.green;
@@ -633,11 +454,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   String _getLeftButtonText() {
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     switch (source) {
-      case 'my_receive':
+      case RequestorDetailConstants.sourceMyReceive:
         return 'Receive';
-      case 'approval':
+      case RequestorDetailConstants.sourceApproval:
         return 'Approve';
       default:
         return 'Approve';
@@ -645,11 +466,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   VoidCallback? _getRightButtonAction() {
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     switch (source) {
-      case 'my_receive':
+      case RequestorDetailConstants.sourceMyReceive:
         return _cancelItem;
-      case 'approval':
+      case RequestorDetailConstants.sourceApproval:
         return _declineItem;
       default:
         return _declineItem;
@@ -657,11 +478,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   Color _getRightButtonColor() {
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     switch (source) {
-      case 'my_receive':
+      case RequestorDetailConstants.sourceMyReceive:
         return Colors.grey[400]!;
-      case 'approval':
+      case RequestorDetailConstants.sourceApproval:
         return Colors.red;
       default:
         return Colors.red;
@@ -669,11 +490,11 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   String _getRightButtonText() {
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     switch (source) {
-      case 'my_receive':
+      case RequestorDetailConstants.sourceMyReceive:
         return 'Cancel';
-      case 'approval':
+      case RequestorDetailConstants.sourceApproval:
         return 'Decline';
       default:
         return 'Decline';
@@ -1075,13 +896,13 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
 
   Widget _buildActionButtons(bool isDarkMode) {
     // Check which page this detail view is from
-    final String source = widget.requestData['source'] ?? 'approval';
+    final String source = widget.requestData['source'] ?? RequestorDetailConstants.sourceApproval;
     final status = (_requestDetails['status'] ?? '').toString();
     
     debugPrint('🔍 [RequestorDetail] _buildActionButtons - Source: $source, Status: $status, CanEdit: $_canEditItems');
     
     // Don't show any buttons for My Request page (unless Supervisor Pending)
-    if (source == 'my_request' && !_canEditItems) {
+    if (source == RequestorDetailConstants.sourceMyRequest && !_canEditItems) {
       debugPrint('🔍 [RequestorDetail] Hiding buttons - source is my_request and cannot edit');
       return const SizedBox.shrink(); // Hide buttons completely
     }
@@ -1252,23 +1073,15 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
 
   bool get _isFinalStatus {
     final statusStr = (_requestDetails['status'] ?? '').toString();
-    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
-    // Supervisor Pending is NOT a final status - user can still edit
-    if (s.contains('supervisor pending')) {
-      debugPrint('🔍 [RequestorDetail] Status "$statusStr" is Supervisor Pending - NOT final status');
-      return false;
-    }
-    final isFinal = s.contains('approved') || s.contains('decline') || s.contains('declined') || s.contains('rejected') || s.contains('received') || s.contains('exported') || s.contains('cancel');
-    debugPrint('🔍 [RequestorDetail] Status "$statusStr" isFinalStatus: $isFinal');
+    final isFinal = RequestorDetailConstants.isFinalStatus(statusStr);
+    debugPrint('🔍 [RequestorDetail] Status: "$statusStr", IsFinalStatus: $isFinal');
     return isFinal;
   }
 
   bool get _canEditItems {
     final statusStr = (_requestDetails['status'] ?? '').toString();
-    final s = statusStr.toLowerCase().trim().replaceAll(RegExp(r'[.\s]+'), ' ');
-    // Check for supervisor pending status (with or without dots, case insensitive)
-    final canEdit = s.contains('supervisor pending');
-    debugPrint('🔍 [RequestorDetail] Status: "$statusStr", Normalized: "$s", CanEditItems: $canEdit');
+    final canEdit = RequestorDetailConstants.canEditItems(statusStr);
+    debugPrint('🔍 [RequestorDetail] Status: "$statusStr", CanEditItems: $canEdit');
     return canEdit;
   }
 
@@ -1294,17 +1107,18 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'];
       final topicUid = _requestDetails['topic_uniq_id'];
-      if (token == null || baseUrl == null || topicUid == null) throw Exception('Missing auth or topic id');
+      if (topicUid == null) {
+        throw Exception('Missing topic ID');
+      }
 
       // Validate quantities before sending
       final details = <Map<String, dynamic>>[];
       for (var item in _requestItems) {
         final barcode = item['barcode'] ?? item['bar_code'] ?? '';
-        final qty = (item['quantity'] is String) ? int.tryParse(item['quantity']) ?? 0 : (item['quantity'] ?? 0);
+        final qty = (item['quantity'] is String)
+            ? int.tryParse(item['quantity']) ?? 0
+            : (item['quantity'] ?? 0);
         if (barcode.isEmpty) {
           throw Exception('Barcode is required for all items');
         }
@@ -1321,31 +1135,18 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
         throw Exception('At least one item is required');
       }
 
-      final body = {
-        'title': _titleController.text.trim().isEmpty ? (_requestDetails['title'] ?? '') : _titleController.text.trim(),
-        'details': details,
-        'confirmed': 0,
-      };
+      final title = _titleController.text.trim().isEmpty
+          ? (_requestDetails['title'] ?? '')
+          : _titleController.text.trim();
 
-      debugPrint('🔍 [RequestorDetail] Update body: ${jsonEncode(body)}');
+      await RequestorDetailService.updateRequest(topicUid, title, details);
 
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/request_topic/$topicUid'),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode(body),
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request updated successfully')),
       );
-      
-      debugPrint('🔍 [RequestorDetail] Update response status: ${response.statusCode}');
-      debugPrint('🔍 [RequestorDetail] Update response body: ${response.body}');
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request updated successfully')));
-        // Navigate back to refresh the list
-        Navigator.pop(context, true);
-      } else {
-        throw Exception('Failed to update (${response.statusCode})');
-      }
+      // Navigate back to refresh the list
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1364,33 +1165,19 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     if (_isSubmitting) return;
     setState(() => _isSubmitting = true);
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'];
-      if (token == null || baseUrl == null) throw Exception('Missing auth');
       final topicUid = _requestDetails['topic_uniq_id'];
-      if (topicUid == null) throw Exception('Missing topic id');
-      
-      final body = {'comment': comment};
-      debugPrint('🔍 [RequestorDetail] Cancel body: ${jsonEncode(body)}');
-
-      final response = await http.put(
-        Uri.parse('$baseUrl/api/inventory/request-cancel/$topicUid'),
-        headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'},
-        body: jsonEncode(body),
-      );
-      
-      debugPrint('🔍 [RequestorDetail] Cancel response status: ${response.statusCode}');
-      debugPrint('🔍 [RequestorDetail] Cancel response body: ${response.body}');
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Request cancelled')));
-        // Navigate back to refresh the list
-        Navigator.pop(context, true);
-      } else {
-        throw Exception('Failed to cancel (${response.statusCode})');
+      if (topicUid == null) {
+        throw Exception('Missing topic ID');
       }
+
+      await RequestorDetailService.cancelRequest(topicUid, comment);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request cancelled')),
+      );
+      // Navigate back to refresh the list
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1632,33 +1419,23 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchFeedbackList() async {
+    // Return cached data if available
+    if (_cachedFeedbackList != null) {
+      return _cachedFeedbackList!;
+    }
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-      final baseUrl = dotenv.env['BASE_URL'];
       final topicUid = _requestDetails['topic_uniq_id'];
-      if (token == null || baseUrl == null || topicUid == null) {
+      if (topicUid == null) {
         return [];
       }
+
+      final feedbackList = await RequestorDetailService.fetchFeedbackList(topicUid);
       
-      debugPrint('🔍 [AdminHQ RequestorDetail] Fetching feedback for topic: $topicUid');
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/inventory/request_reply/$topicUid'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      );
+      // Cache the result
+      _cachedFeedbackList = feedbackList;
       
-      debugPrint('🔍 [AdminHQ RequestorDetail] Feedback response status: ${response.statusCode}');
-      debugPrint('🔍 [AdminHQ RequestorDetail] Feedback response body: ${response.body}');
-      
-      if (response.statusCode != 200) return [];
-      
-      final decoded = jsonDecode(response.body);
-      final List<dynamic> feedbackList = (decoded is List) ? decoded : (decoded['results'] ?? []);
-      
-      return feedbackList.map((e) => Map<String, dynamic>.from(e)).toList();
+      return feedbackList;
     } catch (e) {
       debugPrint('🔍 [AdminHQ RequestorDetail] Feedback error: $e');
       return [];
@@ -1687,7 +1464,7 @@ class _RequestorDetailPageState extends State<RequestorDetailPage> {
     if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
       return imagePath;
     }
-    // Otherwise, prepend base URL
-    return '$_imageBaseUrl$imagePath';
+    // Otherwise, prepend base URL from constants
+    return '${RequestorDetailConstants.imageBaseUrl}$imagePath';
   }
 }
