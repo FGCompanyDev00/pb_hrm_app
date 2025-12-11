@@ -135,6 +135,8 @@ dev_dependencies:
 
 dependency_overrides:
   intl: any
+  flutter_datetime_format:
+    path: packages/flutter_datetime_format
 
   # Code Quality
   flutter_lints: ^4.0.0

@@ -552,10 +552,9 @@ packages:
   flutter_datetime_format:
     dependency: "direct main"
     description:
-      name: flutter_datetime_format
-      sha256: "5d7e504eff86268e26966917ccfdb3446b7276a1233a907d29b68c7b5993eb30"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/flutter_datetime_format"
+      relative: true
+    source: path
     version: "0.0.4"
   flutter_dotenv:
     dependency: "direct main"
